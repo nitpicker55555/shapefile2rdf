@@ -31,6 +31,21 @@ def query_tdb(database_path, sparql_query_file):
     print("Running command:", " ".join(cmd))
     result = subprocess.run(cmd, stdout=subprocess.PIPE, text=True,env=env)
     print(result.stdout)
+def random_search():
+    from SPARQLWrapper import SPARQLWrapper, JSON
+
+    sparql = SPARQLWrapper("http://localhost:3030/ds/query")
+
+    # 示例SPARQL查询，可以根据您的需要修改
+    while True:
+        query=get_multiline_input()
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        results = sparql.query().convert()
+
+        for result in results["results"]["bindings"]:
+
+            print(result)
 
 
 def main():
@@ -38,9 +53,9 @@ def main():
         sparql_query = get_multiline_input()
         save_to_file(sparql_query, "temp_query.sparql")
 
-        database_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query'
+        database_path = r'C:\Users\Morning\Desktop\hiwi\ontop\ttt'
         query_tdb(database_path, "temp_query.sparql")
 
 
 if __name__ == "__main__":
-    main()
+    random_search()
