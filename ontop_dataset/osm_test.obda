@@ -1,0 +1,17 @@
+[PrefixDeclaration]
+: <http://example.org/data/>
+ns1: <http://example.org/property/>
+geo: <http://www.opengis.net/ont/geosparql#>
+xsd: <http://www.w3.org/2001/XMLSchema#>
+
+[MappingDeclaration] @collection [[
+mappingId     BuildingMapping
+target        :{ID} a ns1:Building ;
+                ns1:code {code}^^xsd:integer ;
+                ns1:fclass {fclass}^^xsd:string ;
+                ns1:name {name}^^xsd:string ;
+                ns1:osm_id {osm_id}^^xsd:string ;
+                ns1:type {type}^^xsd:string ;
+                geo:asWKT {asWKT}^^geo:wktLiteral .
+source        SELECT id AS ID, code, fclass, name, osm_id, type, asWKT FROM buildings
+]]
