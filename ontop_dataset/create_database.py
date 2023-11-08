@@ -8,7 +8,7 @@ Base = declarative_base()
 
 
 class Building(Base):
-    __tablename__ = 'land_use'
+    __tablename__ = 'buildings'
     id = Column(Integer, primary_key=True)
     code = Column(Integer)
     fclass = Column(String)
@@ -19,7 +19,7 @@ class Building(Base):
     geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
 
 
-ns1 = rdflib.Namespace("http://land_use/property/")
+ns1 = rdflib.Namespace("http://example.org/property/")
 geo = rdflib.Namespace("http://www.opengis.net/ont/geosparql#")
 
 
@@ -30,7 +30,7 @@ session = Session()
 
 
 g = rdflib.Graph()
-g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm2.ttl", format="turtle")
+g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm_buildings.ttl", format="turtle")
 print("finds")
 
 code = None
@@ -39,38 +39,44 @@ name = None
 osm_id = None
 type_ = None
 geom = None
+from collections import defaultdict
 
+# 创建一个默认字典来存储每个主题s的属性
+properties = defaultdict(dict)
 
 for s, p, o in g:
-    print(s,p,o)
-    print(ns1.code)
+    # 根据谓词p设置属性
+    print(".")
     if p == ns1.code:
-        code = int(o)
+        properties[s]['code'] = int(o)
     elif p == ns1.fclass:
-        fclass = str(o)
+        properties[s]['fclass'] = str(o)
     elif p == ns1.name:
-        name = str(o)
+        properties[s]['name'] = str(o)
+    elif p == ns1.type:
+        properties[s]['type'] = str(o)
     elif p == ns1.osm_id:
-        osm_id = str(o)
-    # elif p == ns1.type:
-    #     type_ = str(o)
+        properties[s]['osm_id'] = str(o)
     elif p == geo.asWKT:
-        geom = o
+        properties[s]['geom'] = o
 
+# 遍历每个主题s的属性字典
+for s, attrs in properties.items():
+    # 确保所有需要的属性都存在
+    print("..")
+    if all(key in attrs for key in ['code', 'fclass', 'type','name', 'osm_id', 'geom']):
 
-        if code is not None and fclass is not None and name is not None and osm_id is not None and geom is not None:
-        # if code is not None and fclass is not None and name is not None and osm_id is not None and type_ is not None and geom is not None:
-            print("12")
-            building = Building(code=code, fclass=fclass, name=name, osm_id=osm_id, type=type_, geom=geom)
-            session.add(building)
-
-            code = None
-            fclass = None
-            name = None
-            osm_id = None
-            type_ = None
-            geom = None
-
+        # 创建Building对象
+        building = Building(
+            code=attrs['code'],
+            fclass=attrs['fclass'],
+            name=attrs['name'],
+            osm_id=attrs['osm_id'],
+            type=attrs['type'],
+            geom=attrs['geom']
+        )
+        # 添加到会话
+        session.add(building)
 try:
     session.commit()
 except Exception as e:

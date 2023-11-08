@@ -39,7 +39,7 @@ def draw_geo_map(data_map):
     # Save the map to an HTML file
 
     # Save the map to an HTML file
-    map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
+    map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map3.html'
     m.save(map_path)
 
     # Open the HTML file in the default web browser

@@ -24,8 +24,8 @@ def repair():
             file.write(output_str)
 
     # 修改文件的路径
-    input_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\osm_land_use2.ttl"
-    output_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm2.ttl'
+    input_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\osm_buildings.ttl"
+    output_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm_buildings.ttl'
 
     modify_ttl_file(input_path, output_path)
 
