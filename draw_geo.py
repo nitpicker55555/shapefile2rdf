@@ -5,7 +5,7 @@ import folium
 import webbrowser
 
 # Path to the HTML file
-
+#输入{名称：坐标}
 # WKB data provided by the user
 def draw_geo_map(data_map):
     # wkb_data = "0103000020E6100000010000000500000024A82BE9725427404EDCE0FA6609484072BE7DC27E5427401EAE30D868094840C9810D3E835427406C932F0D680948407B6BBB64775427409CC1DF2F6609484024A82BE9725427404EDCE0FA66094840"
@@ -39,7 +39,7 @@ def draw_geo_map(data_map):
     # Save the map to an HTML file
 
     # Save the map to an HTML file
-    map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map3.html'
+    map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
     m.save(map_path)
 
     # Open the HTML file in the default web browser

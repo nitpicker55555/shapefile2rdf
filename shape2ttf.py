@@ -37,8 +37,9 @@ def shapefile_to_ttl(shapefile_path, output_ttl_path):
     # Serialize graph to TTL
     g.serialize(destination=output_ttl_path, format="turtle")
 
-shapefile_path = r"C:\Users\Morning\Downloads\oberbayern-latest-free.shp\gis_osm_buildings_a_free_1"  # e.g., 'C:/path_to_file/filename' without .shp
-output_ttl_path = 'osm_buildings.ttl'
+# shapefile_path = r"C:\Users\Morning\Downloads\oberbayern-latest-free.shp\gis_osm_buildings_a_free_1"  # e.g., 'C:/path_to_file/filename' without .shp
+shapefile_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\shape_file\mbk25_epsg25832\shape\Moore_Bayern"  # e.g., 'C:/path_to_file/filename' without .shp
+output_ttl_path = 'ttl_file/Moore_Bayern.ttl'
 shapefile_to_ttl(shapefile_path, output_ttl_path)
 
 

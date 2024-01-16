@@ -24,8 +24,8 @@ def repair():
             file.write(output_str)
 
     # 修改文件的路径
-    input_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\osm_buildings.ttl"
-    output_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm_buildings.ttl'
+    input_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\Moore_Bayern.ttl"
+    output_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern.ttl"
 
     modify_ttl_file(input_path, output_path)
 
@@ -96,8 +96,8 @@ def repair_polygon():
         g.serialize(destination=output_path, format='turtle')
 
 
-    file_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_shape_file.ttl"
-    output_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_shape_file_poly.ttl"
+    file_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\Moore_Bayern.ttl"
+    output_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern.ttl"
 
     g = read_ttl(file_path)
     geometries = extract_geometries(g)
