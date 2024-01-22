@@ -12,4 +12,4 @@ osm_graph.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moor
 merged_graph = shapefile_graph + osm_graph
 
 # 保存融合后的RDF文件
-merged_graph.serialize(destination="merged_soil.ttl", format="turtle")
+merged_graph.serialize(destination="merged_building_soil.ttl", format="turtle")
