@@ -6,10 +6,16 @@ import openai
 import requests
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from termcolor import colored
+from dotenv import load_dotenv
+import geopandas as gpd
+from shapely.wkt import loads
+from geopandas import GeoDataFrame
 
+load_dotenv()
 from SPARQLWrapper import SPARQLWrapper, JSON
 GPT_MODEL = "gpt-3.5-turbo-1106"
 api_key = os.getenv('OPENAI_API_KEY')
+
 #距离适合农业的土壤最近的居民楼
 """
 找到土壤数据库
@@ -106,6 +112,7 @@ WHERE {
 
 
     """%(graph_name,single_type)
+
     feed_back=ask_soil(query)
     return feed_back
 def ask_soil(query):
@@ -122,10 +129,71 @@ def ask_soil(query):
 
     # 遍历并打印结果
     result_list=[]
-    for result in results["results"]["bindings"]:
-        print(result)
-        result_list.append(result)
+
+    try:
+        if results["results"]["bindings"][0]['wkt']:
+
+            pass
+
+        for result in results["results"]["bindings"]:
+            # print(result)
+
+                wkt = result['wkt']['value']
+                osm_id = result['osmId']['value']
+
+                # 将WKT字符串转换为几何对象
+                geometry = loads(wkt)
+
+                # 添加到列表
+                result_list.append({"osmId":osm_id,"wkt":geometry})
+    except:
+        for result in results["results"]["bindings"]:
+            result_list.append(result)
+    # print(result_list)
     return result_list
+def geo_calculate(data_list1,data_list2,mode):
+
+    gseries1 = gpd.GeoSeries([(item['wkt']) for item in data_list1])
+    gseries1.index = [item['osmId'] for item in data_list1]
+
+    gseries2 = gpd.GeoSeries([(item['wkt']) for item in data_list2])
+    gseries2.index = [item['osmId'] for item in data_list2]
+
+    # 创建空间索引
+    sindex = gseries2.sindex
+    if mode=="contains":
+    # 检查包含关系
+        for osmId1, geom1 in gseries1.items():
+            possible_matches_index = list(sindex.intersection(geom1.bounds))
+            possible_matches = gseries2.iloc[possible_matches_index]
+            precise_matches = possible_matches[possible_matches.contains(geom1)]
+
+            if not precise_matches.empty:
+                matching_osmIds = precise_matches.index.tolist()
+                print(f"osmId {osmId1} in: {matching_osmIds}")
+    elif mode=="buffer":
+        for osmId1, geom1 in gseries1.items():
+            # 创建缓冲区（100米）
+            buffer = geom1.buffer(100)
+
+            possible_matches_index = list(sindex.intersection(buffer.bounds))
+            possible_matches = gseries2.iloc[possible_matches_index]
+            precise_matches = possible_matches[possible_matches.intersects(buffer)]
+
+            if not precise_matches.empty:
+                matching_osmIds = precise_matches.index.tolist()
+                print(f"osmId {osmId1} in buffer of: {matching_osmIds}")
+    elif mode == "intersects":
+            # 检查交叉关系
+            for osmId1, geom1 in gseries1.items():
+                possible_matches_index = list(sindex.intersection(geom1.bounds))
+                possible_matches = gseries2.iloc[possible_matches_index]
+                precise_matches = possible_matches[possible_matches.intersects(geom1)]
+
+                if not precise_matches.empty:
+                    matching_osmIds = precise_matches.index.tolist()
+                    print(f"osmId {osmId1} intersects with: {matching_osmIds}")
+
 
 all_graph_name=list_all_graph_name()
 print(all_graph_name)
@@ -203,17 +271,47 @@ def build_agents():
     messages = []
     messages.append({"role": "system",
                      "content": """
-                     Response Format: 
-                    {
-                        "thoughts": {
-                            "text": "thought",
-                            "reasoning": "reasoning",
-                            "plan": "- short bulleted\n- list that conveys\n- long-term plan",
-                            "criticism": "constructive self-criticism",
-                            "speak": "thoughts summary to say to user",
-                        },
-                        "command": {"name": "command name", "args": {"arg name": "value"}},
-                    }
+You are Story-GPT, an AI designed to autonomously write stories.
+Your decisions must always be made independently without seeking user assistance. Play to your strengths as an LLM and pursue simple strategies with no legal complications.
+
+GOALS:
+1. write a short story about flowers
+
+Constraints:
+
+
+1. 4000 word limit for short term memory. Your short term memory is short, so immediately save important information to files.
+2. If you are unsure how you previously did something or want to recall past events, thinking about similar events will help you remember.
+3. No user assistance
+4. Exclusively use the commands listed in double quotes e.g. "command name"
+
+Commands:
+1. list_type_of_graph_name: "list_type_of_graph_name", args: "input": "<search>"
+2. list_id_of_type: "browse_website", args: "url": "<url>", "question": "<what_you_want_to_find_on_website>"
+3. Start GPT Agent: "start_agent", args: "name": "<name>", "task": "<short_task_desc>", "prompt": "<prompt>"
+
+Resources:
+1. Database access for information gathering.
+2. Long Term memory management.
+3. GPT-3.5 powered Agents for delegation of simple tasks.
+
+Performance Evaluation:
+1. Continuously review and analyze your actions to ensure you are performing to the best of your abilities.
+2. Constructively self-criticize your big-picture behavior constantly.
+3. Reflect on past decisions and strategies to refine your approach.
+4. Every command has a cost, so be smart and efficient. Aim to complete tasks in the least number of steps.
+
+ Response Format: 
+{
+    "thoughts": {
+        "text": "thought",
+        "reasoning": "reasoning",
+        "plan": "- short bulleted\n- list that conveys\n- long-term plan",
+        "criticism": "constructive self-criticism",
+        "speak": "thoughts summary to say to user",
+    },
+    "command": {"name": "command name", "args": {"arg name": "value"}},
+}
                      """})
     messages_2 = []
     messages_2.append({"role": "system",
@@ -267,7 +365,8 @@ def ask_gpt():
         messages.append(assistant_message)
         print(assistant_message)
         type_list=list_type_of_graph_name(json.loads(assistant_message["tool_calls"][0]["function"]["arguments"])["graph_name"])
-        tools_2 = {
+        print(type_list)
+        tools_2 = [{
             "type": "function",
             "function": {
                 "name": "list_id_of_type",
@@ -284,7 +383,7 @@ def ask_gpt():
                     "required": ["single_type"]
                 },
             }
-        }
+        }]
 
         chat_response_2 = chat_completion_request(
             messages_2, tools=tools_2
@@ -294,4 +393,9 @@ def ask_gpt():
         messages_2.append(assistant_message_2)
         print(assistant_message_2)
         id_list=list_id_of_type(json.loads(assistant_message["tool_calls"][0]["function"]["arguments"])["graph_name"],json.loads(assistant_message_2["tool_calls"][0]["function"]["arguments"])["single_type"])
-ask_gpt()
+
+
+print(list_type_of_graph_name(all_graph_name[1]))
+id_list_buildings=list_id_of_type(all_graph_name[1],"building")
+id_list_landuse=list_id_of_type(all_graph_name[0],"forest")
+geo_calculate_contains(id_list_buildings,id_list_landuse)
