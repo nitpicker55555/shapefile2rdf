@@ -285,8 +285,8 @@ def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
         print(distance)
 
 
-all_graph_name=list_all_graph_name()
-print(all_graph_name)
+# all_graph_name=list_all_graph_name()
+# print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
 def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
     headers = {
@@ -320,13 +320,16 @@ def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MO
 
 def build_agents():
     def execute_function_call(message):
-        args_=json.loads(message["tool_calls"][0]["function"]["arguments"])["query"]
+
+        args_=list(json.loads(message["tool_calls"][0]["function"]["arguments"]).values())
+        print(args_)
         function_name=message["tool_calls"][0]["function"]["name"]
         if function_name:
-            results = eval(f'functions["{function_name}"](*{args_})')
+            results = globals()[function_name](*args_)
+            print(results)
         else:
             results = f"Error: function  does not exist"
-        return results
+        return results[:400]
 
 
     tools = [{
@@ -337,18 +340,20 @@ def build_agents():
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "graph_name": {
+                        "type": "string",
+                        "enum": ['http://example.com/landuse', 'http://example.com/soil',
+                                 'http://example.com/buildings'],
+                        "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
+                    },
                     "single_type": {
                         "type": "string",
                         # "enum": type_list,
                         "description": "type of data user want to search",
                     },
-                    "graph_name": {
-                    "type": "string",
-                    "enum": ['http://example.com/landuse', 'http://example.com/soil', 'http://example.com/buildings'],
-                    "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
-                        },
+
                 },
-                "required": ["single_type"]
+                "required": ["graph_name","single_type"]
             },
         }
     },
@@ -374,28 +379,73 @@ def build_agents():
     ]
     messages=[]
     messages.append({"role": "system",
-                     "content": "你是一个处理复杂数据库查询的ai助手，你需要将用户的查询进行拆解，分步骤完成所有查询"})
-    messages.append({"role": "user", "content": ""})
-    chat_response = chat_completion_request(messages, tools)
-    assistant_message = chat_response.json()["choices"][0]["message"]
-    assistant_message['content'] = str(assistant_message["tool_calls"][0]["function"])
-    messages.append(assistant_message)
-    if assistant_message.get("tool_calls"):
-        results = execute_function_call(assistant_message)
-        messages.append({"role": "tool", "tool_call_id": assistant_message["tool_calls"][0]['id'],
-                         "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
-    print(messages)
+                     "content": """
+                     You are an AI assistant that processes complex database queries. You need to break down the user's query into several steps to complete the final query. :
+Each response should only cover one step. Your response format should be as follows, and set the finish_sign to True if you think the task is completed:
+{
+"whole_plan": ["first:...", "second:...", "third:...", ...],
+"next_step": "...",
+"command": {"command": "", "args": []},
+"finish_sign": False
+}
+                     """})
+    messages_2=[]
+    messages_2.append({"role": "system",
+                     "content": """
+You are an AI assistant that processes complex database queries. You need to break down the user's query into several steps to complete the final query. Below are the functions you can use:
+
+{
+    "get_all_graph_name": {
+        "Description": "Returns the names of all graphs in the current database."
+    },
+    "get_type_of_graph": {
+        "Argument": "graph_name",
+        "Description": "Enter the name of the graph you want to query and it returns all types of that graph. For example, for a soil graph, the types are different soil types."
+    },
+    "get_id_of_type": {
+        "Arguments": ["graph_name", "type_name"],
+        "Description": "Enter the graph name and type name you want to query, and it returns the corresponding element IDs."
+    }
+}
+
+Each response should only cover one step. Your response format should be as follows, and set the finish_sign to True if you think the task is completed:
+{
+"whole_plan": ["first:...", "second:...", "third:...", ...],
+"next_step": "...",
+"command": {"command": "", "args": []},
+"finish_sign": False
+}
+                     """})
+
+    while True:
+        user_content=input("input")
+        messages.append({"role": "user", "content": user_content})
+        messages_2.append({"role": "user", "content": user_content})
+
+        chat_response = chat_completion_request(messages,tools=tools)
+        assistant_message = chat_response.json()["choices"][0]["message"]
+        print(assistant_message)
+        messages_2.append(assistant_message)
+        # messages.append(assistant_message)
+
+        assistant_message['content'] = str(assistant_message["tool_calls"][0]["function"])
+        messages.append(assistant_message)
+        if assistant_message.get("tool_calls"):
+            results = str(execute_function_call(assistant_message))
+            messages.append({"role": "tool", "tool_call_id": assistant_message["tool_calls"][0]['id'],
+                             "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
 
 
 
 
+build_agents()
 
 
 # print(list_type_of_graph_name(all_graph_name[1]))
 # id_list_buildings=list_id_of_type(all_graph_name[2],"building")
-id_list_landuse=list_id_of_type(all_graph_name[0],"forest")
-id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
-geo_calculate(id_list_landuse,id_list_soil,"contains")
+# id_list_landuse=list_id_of_type(all_graph_name[0],"forest")
+# id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
+# geo_calculate(id_list_landuse,id_list_soil,"contains")
 
 # print(id_list_landuse)
 # print(id_list_soil)
