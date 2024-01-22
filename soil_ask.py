@@ -1,4 +1,4 @@
-import time
+import time,os
 
 from rdflib import Graph
 import json
@@ -9,6 +9,7 @@ from termcolor import colored
 
 from SPARQLWrapper import SPARQLWrapper, JSON
 GPT_MODEL = "gpt-3.5-turbo-1106"
+api_key = os.getenv('OPENAI_API_KEY')
 #距离适合农业的土壤最近的居民楼
 """
 找到土壤数据库
@@ -129,6 +130,97 @@ def ask_soil(query):
 all_graph_name=list_all_graph_name()
 print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
+def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + api_key,
+    }
+    json_data = {"model": model, "messages": messages}
+    if tools is not None:
+        json_data.update({"tools": tools})
+    if tool_choice is not None:
+        json_data.update({"tool_choice": tool_choice})
+    try:
+        while True:
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=json_data,
+            )
+            if "choices" in response.json():
+                print(response, "response")
+                return response
+
+            else:
+                print("400 error")
+                time.sleep(2)
+
+    except Exception as e:
+        print("Unable to generate ChatCompletion response")
+        print(f"Exception: {e}")
+        return e
+def build_agents():
+    tools=["list_type_of_graph_name()","list_id_of_type()",list_all_graph_name()]
+    type_list=[]
+    tools_list = [{
+        "type": "function",
+        "function": {
+            "name": "list_id_of_type",
+            "description": "get all elements information with specific type in the graph of database",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "single_type": {
+                        "type": "string",
+                        "enum": type_list,
+                        "description": "select the semantically similar type in the list",
+                    },
+                },
+                "required": ["single_type"]
+            },
+        }
+    },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_type_of_graph_name",
+                "description": "get all element types of this graph in database",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "graph_name": {
+                            "type": "string",
+                            "enum": all_graph_name,
+                            "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
+                        },
+
+                    },
+                    "required": ["graph_name"],
+                },
+            }
+        },
+    ]
+    messages = []
+    messages.append({"role": "system",
+                     "content": """
+                     Response Format: 
+                    {
+                        "thoughts": {
+                            "text": "thought",
+                            "reasoning": "reasoning",
+                            "plan": "- short bulleted\n- list that conveys\n- long-term plan",
+                            "criticism": "constructive self-criticism",
+                            "speak": "thoughts summary to say to user",
+                        },
+                        "command": {"name": "command name", "args": {"arg name": "value"}},
+                    }
+                     """})
+    messages_2 = []
+    messages_2.append({"role": "system",
+                     "content": "为输入文本中的特定区域类型选择最合适的type"})
+
+
+
 def ask_gpt():
     tools = [
         {
@@ -154,36 +246,6 @@ def ask_gpt():
     ]
 
 
-    def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
-
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + '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',
-            }
-            json_data = {"model": model, "messages": messages}
-            if tools is not None:
-                json_data.update({"tools": tools})
-            if tool_choice is not None:
-                json_data.update({"tool_choice": tool_choice})
-            try:
-                while True:
-                    response = requests.post(
-                        "https://api.openai.com/v1/chat/completions",
-                        headers=headers,
-                        json=json_data,
-                    )
-                    if "choices" in response.json():
-                        print(response,"response")
-                        return response
-
-                    else:
-                        print("400 error")
-                        time.sleep(2)
-
-            except Exception as e:
-                print("Unable to generate ChatCompletion response")
-                print(f"Exception: {e}")
-                return e
 
 
     messages = []
