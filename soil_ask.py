@@ -46,6 +46,7 @@ WHERE {
         graph_list.append(i['graph']['value'])
     return graph_list
 def list_type_of_graph_name(graph_name):
+
     """
 
     :param graph_name: 需要查找的数据库
@@ -64,18 +65,31 @@ WHERE {
 {'fclass': {'type': 'literal', 'value': 'building'}}
     """
 
+    if "soil" not in graph_name:
+        query = """
+        PREFIX ns1: <http://example.org/property/>
 
-    query="""
-PREFIX ns1: <http://example.org/property/>
+        SELECT DISTINCT ?fclass
+        WHERE {
+          GRAPH <%s> {
+            ?entity ns1:fclass ?fclass .
+          }
+        }
 
-SELECT DISTINCT ?fclass
-WHERE {
-  GRAPH <%s> {
-    ?entity ns1:fclass ?fclass .
-  }
-}
+            """ % graph_name
+    else:
 
-    """%graph_name
+        query="""
+    PREFIX ns1: <http://example.org/property/>
+    
+    SELECT DISTINCT ?fclass
+    WHERE {
+      GRAPH <%s> {
+        ?entity ns1:uebk25_l ?fclass .
+      }
+    }
+    
+        """%graph_name
     type_list=[]
     feed_back=ask_soil(query)
     for i in feed_back:
@@ -96,16 +110,32 @@ def list_id_of_type(graph_name,single_type):
     """
 
 
-    id_geo_dict={}
+    if "soil" not in graph_name:
+        query = """
+        PREFIX ns1: <http://example.org/property/>
+        PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+        SELECT ?osmId ?wkt
+        WHERE {
+          GRAPH <%s> {
+            ?entity ns1:fclass "%s" .
+            ?entity ns1:osm_id ?osmId .
+            ?entity geo:asWKT ?wkt .
+          }
+        }
 
-    query="""
+
+            """ % (graph_name, single_type)
+    else:
+
+        query="""
+
 PREFIX ns1: <http://example.org/property/>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?osmId ?wkt
 WHERE {
   GRAPH <%s> {
-    ?entity ns1:fclass "%s" .
-    ?entity ns1:osm_id ?osmId .
+    ?entity ns1:uebk25_l "%s" .
+    ?entity ns1:soil_id ?osmId .
     ?entity geo:asWKT ?wkt .
   }
 }
@@ -151,8 +181,51 @@ def ask_soil(query):
             result_list.append(result)
     # print(result_list)
     return result_list
-def geo_calculate(data_list1,data_list2,mode):
+def get_geo_via_id(graph_name,id):
+    """
 
+    :param graph_name:
+    :param id:
+    :return:
+    """
+    if "soil" not in graph_name:
+
+        query="""
+PREFIX ns1: <http://example.org/property/>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?element ?wkt ?osmId 
+WHERE {
+    GRAPH <%s>{
+        ?element ns1:osm_id ?osmId .
+        FILTER(?osmId = "%s")
+        ?element geo:asWKT ?wkt .
+    }
+}
+
+
+    """%(graph_name,id)
+    else:
+        query = """
+PREFIX ns1: <http://example.org/property/>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?element ?wkt ?osmId 
+WHERE {
+    GRAPH <%s>{
+        ?element ns1:soil_id ?osmId .
+        FILTER(?osmId = "%s")
+        ?element geo:asWKT ?wkt .
+    }
+}
+
+
+    """%(graph_name,id)
+    # print(query)
+    feed_back=ask_soil(query)
+    return feed_back
+
+def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
+    print("len datalist1",len(data_list1))
+    print("len datalist2",len(data_list2))
     gseries1 = gpd.GeoSeries([(item['wkt']) for item in data_list1])
     gseries1.index = [item['osmId'] for item in data_list1]
 
@@ -174,7 +247,7 @@ def geo_calculate(data_list1,data_list2,mode):
     elif mode=="buffer":
         for osmId1, geom1 in gseries1.items():
             # 创建缓冲区（100米）
-            buffer = geom1.buffer(100)
+            buffer = geom1.buffer(buffer_number)
 
             possible_matches_index = list(sindex.intersection(buffer.bounds))
             possible_matches = gseries2.iloc[possible_matches_index]
@@ -193,6 +266,23 @@ def geo_calculate(data_list1,data_list2,mode):
                 if not precise_matches.empty:
                     matching_osmIds = precise_matches.index.tolist()
                     print(f"osmId {osmId1} intersects with: {matching_osmIds}")
+    elif mode=="shortest_distance":
+        min_distance = float('inf')
+        closest_pair = (None, None)
+
+        # 计算两个列表中每对元素间的距离，并找出最小值
+        for item1 in data_list1:
+            geom1 = loads(item1['wkt'])
+            for item2 in data_list2:
+                geom2 = loads(item2['wkt'])
+                distance = geom1.distance(geom2)
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_pair = (item1['osmId'], item2['osmId'])
+        print(closest_pair, min_distance)
+    elif mode=="single_distance":
+        distance = data_list1[0]['wkt'].distance(data_list2[0]['wkt'])
+        print(distance)
 
 
 all_graph_name=list_all_graph_name()
@@ -227,22 +317,36 @@ def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MO
         print("Unable to generate ChatCompletion response")
         print(f"Exception: {e}")
         return e
+
 def build_agents():
-    tools=["list_type_of_graph_name()","list_id_of_type()",list_all_graph_name()]
-    type_list=[]
-    tools_list = [{
+    def execute_function_call(message):
+        args_=json.loads(message["tool_calls"][0]["function"]["arguments"])["query"]
+        function_name=message["tool_calls"][0]["function"]["name"]
+        if function_name:
+            results = eval(f'functions["{function_name}"](*{args_})')
+        else:
+            results = f"Error: function  does not exist"
+        return results
+
+
+    tools = [{
         "type": "function",
         "function": {
             "name": "list_id_of_type",
-            "description": "get all elements information with specific type in the graph of database",
+            "description": "get all element id of one specific type",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "single_type": {
                         "type": "string",
-                        "enum": type_list,
-                        "description": "select the semantically similar type in the list",
+                        # "enum": type_list,
+                        "description": "type of data user want to search",
                     },
+                    "graph_name": {
+                    "type": "string",
+                    "enum": ['http://example.com/landuse', 'http://example.com/soil', 'http://example.com/buildings'],
+                    "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
+                        },
                 },
                 "required": ["single_type"]
             },
@@ -252,13 +356,13 @@ def build_agents():
             "type": "function",
             "function": {
                 "name": "list_type_of_graph_name",
-                "description": "get all element types of this graph in database",
+                "description": "get all element types of this graph and return a type_list, example: for soil graph, its type_list gonna be different kinds of soil",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "graph_name": {
                             "type": "string",
-                            "enum": all_graph_name,
+                            "enum": ['http://example.com/landuse', 'http://example.com/soil', 'http://example.com/buildings'],
                             "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
                         },
 
@@ -268,134 +372,35 @@ def build_agents():
             }
         },
     ]
-    messages = []
+    messages=[]
     messages.append({"role": "system",
-                     "content": """
-You are Story-GPT, an AI designed to autonomously write stories.
-Your decisions must always be made independently without seeking user assistance. Play to your strengths as an LLM and pursue simple strategies with no legal complications.
-
-GOALS:
-1. write a short story about flowers
-
-Constraints:
-
-
-1. 4000 word limit for short term memory. Your short term memory is short, so immediately save important information to files.
-2. If you are unsure how you previously did something or want to recall past events, thinking about similar events will help you remember.
-3. No user assistance
-4. Exclusively use the commands listed in double quotes e.g. "command name"
-
-Commands:
-1. list_type_of_graph_name: "list_type_of_graph_name", args: "input": "<search>"
-2. list_id_of_type: "browse_website", args: "url": "<url>", "question": "<what_you_want_to_find_on_website>"
-3. Start GPT Agent: "start_agent", args: "name": "<name>", "task": "<short_task_desc>", "prompt": "<prompt>"
-
-Resources:
-1. Database access for information gathering.
-2. Long Term memory management.
-3. GPT-3.5 powered Agents for delegation of simple tasks.
-
-Performance Evaluation:
-1. Continuously review and analyze your actions to ensure you are performing to the best of your abilities.
-2. Constructively self-criticize your big-picture behavior constantly.
-3. Reflect on past decisions and strategies to refine your approach.
-4. Every command has a cost, so be smart and efficient. Aim to complete tasks in the least number of steps.
-
- Response Format: 
-{
-    "thoughts": {
-        "text": "thought",
-        "reasoning": "reasoning",
-        "plan": "- short bulleted\n- list that conveys\n- long-term plan",
-        "criticism": "constructive self-criticism",
-        "speak": "thoughts summary to say to user",
-    },
-    "command": {"name": "command name", "args": {"arg name": "value"}},
-}
-                     """})
-    messages_2 = []
-    messages_2.append({"role": "system",
-                     "content": "为输入文本中的特定区域类型选择最合适的type"})
-
-
-
-def ask_gpt():
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "list_type_of_graph_name",
-                "description": "get all element types of this graph in database",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "graph_name": {
-                            "type": "string",
-                            "enum": all_graph_name,
-                            "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
-                        },
-
-                    },
-                    "required": ["graph_name"],
-                },
-            }
-        },
-
-    ]
+                     "content": "你是一个处理复杂数据库查询的ai助手，你需要将用户的查询进行拆解，分步骤完成所有查询"})
+    messages.append({"role": "user", "content": ""})
+    chat_response = chat_completion_request(messages, tools)
+    assistant_message = chat_response.json()["choices"][0]["message"]
+    assistant_message['content'] = str(assistant_message["tool_calls"][0]["function"])
+    messages.append(assistant_message)
+    if assistant_message.get("tool_calls"):
+        results = execute_function_call(assistant_message)
+        messages.append({"role": "tool", "tool_call_id": assistant_message["tool_calls"][0]['id'],
+                         "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
+    print(messages)
 
 
 
 
-    messages = []
-    messages.append({"role": "system",
-                     "content": "为输入的文本中所有的区域选择最合适的graph name"})
-    messages_2 = []
-    messages_2.append({"role": "system",
-                     "content": "为输入文本中的特定区域类型选择最合适的type"})
-
-    while True:
-        user_input=input("")
-        messages.append({"role": "user", "content":user_input})
-        messages_2.append({"role": "user", "content":user_input})
-
-        chat_response = chat_completion_request(
-            messages, tools=tools
-        )
-        assistant_message = chat_response.json()["choices"][0]["message"]
-        messages.append(assistant_message)
-        print(assistant_message)
-        type_list=list_type_of_graph_name(json.loads(assistant_message["tool_calls"][0]["function"]["arguments"])["graph_name"])
-        print(type_list)
-        tools_2 = [{
-            "type": "function",
-            "function": {
-                "name": "list_id_of_type",
-                "description": "get all elements information with specific type in the graph of database",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "single_type": {
-                            "type": "string",
-                            "enum": type_list,
-                            "description": "select the semantically similar type in the list",
-                        },
-                    },
-                    "required": ["single_type"]
-                },
-            }
-        }]
-
-        chat_response_2 = chat_completion_request(
-            messages_2, tools=tools_2
-        )
-        print(chat_response_2)
-        assistant_message_2 = chat_response_2.json()["choices"][0]["message"]
-        messages_2.append(assistant_message_2)
-        print(assistant_message_2)
-        id_list=list_id_of_type(json.loads(assistant_message["tool_calls"][0]["function"]["arguments"])["graph_name"],json.loads(assistant_message_2["tool_calls"][0]["function"]["arguments"])["single_type"])
 
 
-print(list_type_of_graph_name(all_graph_name[1]))
-id_list_buildings=list_id_of_type(all_graph_name[1],"building")
+# print(list_type_of_graph_name(all_graph_name[1]))
+# id_list_buildings=list_id_of_type(all_graph_name[2],"building")
 id_list_landuse=list_id_of_type(all_graph_name[0],"forest")
-geo_calculate_contains(id_list_buildings,id_list_landuse)
+id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
+geo_calculate(id_list_landuse,id_list_soil,"contains")
+
+# print(id_list_landuse)
+# print(id_list_soil)
+
+# id1=get_geo_via_id(all_graph_name[0],"153446951") #forest
+# id2=get_geo_via_id(all_graph_name[1],"2984") #"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum"
+# print(id1)
+# geo_calculate(id1,id2,"single_distance")
