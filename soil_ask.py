@@ -280,9 +280,9 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
         # 计算两个列表中每对元素间的距离，并找出最小值
         for item1 in data_list1:
-            geom1 = loads(item1['wkt'])
+            geom1 = (item1['wkt'])
             for item2 in data_list2:
-                geom2 = loads(item2['wkt'])
+                geom2 = (item2['wkt'])
                 distance = geom1.distance(geom2)
                 if distance < min_distance:
                     min_distance = distance
@@ -293,7 +293,7 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
         print(distance)
 
 
-# all_graph_name=list_all_graph_name()
+#
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
 def chat_single(messages,mode="json"):
@@ -441,13 +441,12 @@ Constraints:
 After each step you will receive feedback from functions, which contains results length and results, but you can only receive top 500 characters due to memory limitation.
 
 
-Each response should only cover one step. Your response format should be json format as follows, and set the finish_sign to True after you get the result of last step, if the task is not finished yet please set finish_sign to False. Please always keep all the keys in response:
+Each response should only cover one step. Your response format should be json format as follows, and set the finish_sign to True after you get the result of last step, if the task is not finished yet please set finish_sign to False. Please always keep all the keys in response,if nothing to write leave the value empty:
 Response json format:
 {
+"description":"what you want to do in this step and next step",
 "whole_plan": ["first:...", "second:...", "third:...", ...],
 "next_step": "...",
-
-
 "command": {"command": "", "args": []},
 "finish_sign": False
 }
@@ -480,13 +479,15 @@ Response json format:
         #                      "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
 
 
-build_agents()
-
+# build_agents()
+all_graph_name=list_all_graph_name()
 # print(list_type_of_graph_name(all_graph_name[1]))
 # id_list_buildings=list_id_of_type(all_graph_name[2],"building")
-# id_list_landuse=list_id_of_type(all_graph_name[0],"forest")
-# id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
-# geo_calculate(id_list_landuse,id_list_soil,"contains")
+id_list_landuse=list_id_of_type(all_graph_name[0],"residential")[:200]
+id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
+print(id_list_landuse)
+print(id_list_soil)
+geo_calculate(id_list_landuse,id_list_soil,"shortest_distance")
 
 # print(id_list_landuse)
 # print(id_list_soil)
