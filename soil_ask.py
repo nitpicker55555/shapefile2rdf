@@ -231,9 +231,10 @@ WHERE {
     return feed_back
 
 
-def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
+def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
     print("len datalist1", len(data_list1))
     print("len datalist2", len(data_list2))
+    data_list1=data_list1[:300]
     gseries1 = gpd.GeoSeries([(item['wkt']) for item in data_list1])
     gseries1.index = [item['osmId'] for item in data_list1]
 
@@ -242,8 +243,10 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
     # 创建空间索引
     sindex = gseries2.sindex
+    result_list=[]
     if mode == "contains":
         # 检查包含关系
+
         for osmId1, geom1 in gseries1.items():
             possible_matches_index = list(sindex.intersection(geom1.bounds))
             possible_matches = gseries2.iloc[possible_matches_index]
@@ -251,7 +254,9 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                print(f"osmId {osmId1} in: {matching_osmIds}")
+                result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
+                print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
+        return result_list
     elif mode == "buffer":
         for osmId1, geom1 in gseries1.items():
             # 创建缓冲区（100米）
@@ -263,7 +268,9 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                print(f"osmId {osmId1} in buffer of: {matching_osmIds}")
+                result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
+                print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
+        return result_list
     elif mode == "intersects":
         # 检查交叉关系
         for osmId1, geom1 in gseries1.items():
@@ -273,7 +280,9 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                print(f"osmId {osmId1} intersects with: {matching_osmIds}")
+                result_list.append(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
+                print(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
+        return result_list
     elif mode == "shortest_distance":
         min_distance = float('inf')
         closest_pair = (None, None)
@@ -287,7 +296,8 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
                 if distance < min_distance:
                     min_distance = distance
                     closest_pair = (item1['osmId'], item2['osmId'])
-        print(closest_pair, min_distance)
+        print("distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m")
+        return "distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m"
     elif mode == "single_distance":
         distance = data_list1[0]['wkt'].distance(data_list2[0]['wkt'])
         print(distance)
@@ -482,12 +492,13 @@ Response json format:
 # build_agents()
 all_graph_name=list_all_graph_name()
 # print(list_type_of_graph_name(all_graph_name[1]))
-# id_list_buildings=list_id_of_type(all_graph_name[2],"building")
-id_list_landuse=list_id_of_type(all_graph_name[0],"residential")[:200]
-id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
-print(id_list_landuse)
-print(id_list_soil)
-geo_calculate(id_list_landuse,id_list_soil,"shortest_distance")
+id_list_buildings=list_id_of_type(all_graph_name[2],"building")
+id_list_landuse=list_id_of_type(all_graph_name[0],"residential")
+# id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
+# print(id_list_landuse)
+# print(id_list_soil)
+
+geo_calculate(id_list_buildings,id_list_landuse,"buffer")
 
 # print(id_list_landuse)
 # print(id_list_soil)
