@@ -18,6 +18,8 @@ client = OpenAI()
 from draw_geo import draw_geo_map
 from SPARQLWrapper import SPARQLWrapper, JSON
 from tqdm import tqdm
+from bounding_box import find_boundbox
+from shapely import wkb
 globals_dict = {}
 
 
@@ -31,7 +33,7 @@ globals_dict = {}
 计算这些id和居民楼的距离
 
 """
-sparql = SPARQLWrapper("http://LAPTOP-AN4QTF3N:7200/repositories/osm_search")
+sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 
 def list_all_graph_name():
@@ -105,7 +107,7 @@ WHERE {
     return type_list
 
 
-def list_id_of_type(graph_name, single_type):
+def list_id_of_type(graph_name, single_type, bounding_box_coordinats=None):
     """
 
     :param single_type: 需要查找的type
@@ -119,39 +121,58 @@ def list_id_of_type(graph_name, single_type):
     }
     """
 
-    if "soil" not in graph_name:
-        query = """
-        PREFIX ns1: <http://example.org/property/>
-        PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-        SELECT ?osmId ?wkt
-        WHERE {
-          GRAPH <%s> {
-            ?entity ns1:fclass "%s" .
-            ?entity ns1:osm_id ?osmId .
-            ?entity geo:asWKT ?wkt .
-          }
-        }
-
-
-            """ % (graph_name, single_type)
-    else:
-
-        query = """
-
-PREFIX ns1: <http://example.org/property/>
+    """
+    PREFIX ns1: <http://example.org/property/>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+PREFIX sf: <http://www.opengis.net/ont/sf#>
+
 SELECT ?osmId ?wkt
 WHERE {
-  GRAPH <%s> {
-    ?entity ns1:uebk25_l "%s" .
-    ?entity ns1:soil_id ?osmId .
+  GRAPH <http://example.com/buildings> {
+    ?entity ns1:fclass "building" .
+    ?entity ns1:osm_id ?osmId .
     ?entity geo:asWKT ?wkt .
   }
+
+  # 创建一个边界框的多边形，用指定的坐标
+  BIND("POLYGON((11.5971976 48.2168632, 11.6851890 48.2168632, 11.6851890 48.2732260, 11.5971976 48.2732260, 11.5971976 48.2168632))"^^geo:wktLiteral AS ?bbox) .
+
+  # 检查元素是否与边界框相交
+  FILTER(geof:sfIntersects(?wkt, ?bbox))
 }
 
+    """
+    fclass="fclass"
+    osm_id="osm_id"
+    bounding_box_str=""
+    if bounding_box_coordinats is not None:
+        min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
+        polygon_wkt = f"POLYGON(({min_lon} {min_lat}, {max_lon} {min_lat}, {max_lon} {max_lat}, {min_lon} {max_lat}, {min_lon} {min_lat}))"
+        bounding_box_str=f'BIND("{polygon_wkt}"^^geo:wktLiteral AS ?bbox) .'
+        bounding_box_str+="\nFILTER(geof:sfIntersects(?wkt, ?bbox))"
+    if "soil" in graph_name:
+        fclass='uebk25_l'
+        osm_id='soil_id'
 
-    """ % (graph_name, single_type)
+    query = """
+PREFIX ns1: <http://example.org/property/>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+    SELECT ?osmId ?wkt
+    WHERE {
+      GRAPH <%s> {
+        ?entity ns1:%s "%s" .
+        ?entity ns1:%s ?osmId .
+        ?entity geo:asWKT ?wkt .
+      }
+        # 创建一个边界框的多边形，用指定的坐标
+        %s
+    }
 
+
+        """ % (graph_name, fclass,single_type,osm_id,bounding_box_str)
+    print(query)
     feed_back = ask_soil(query,graph_name+"_"+single_type)
     return feed_back
 
@@ -165,7 +186,7 @@ def ask_soil(query,map):
     results = sparql.query().convert()
 
     # 遍历并打印结果
-    result_list = []
+    result_dict = {}
 
     try:
         if results["results"]["bindings"][0]['wkt']:
@@ -181,12 +202,14 @@ def ask_soil(query,map):
             geometry = loads(wkt)
 
             # 添加到列表
-            result_list.append({"osmId": map.split("/")[-1]+"_"+str(osm_id), "wkt": geometry})
+            result_dict.update({map.split("/")[-1]+"_"+str(osm_id):  geometry})
+        return result_dict
     except:
+        result_list=[]
         for result in results["results"]["bindings"]:
             result_list.append(result)
     # print(result_list)
-    return result_list
+        return result_list
 
 
 def get_geo_via_id(graph_name, id):
@@ -244,11 +267,16 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     print("len datalist2", len(data_list2))
     data_list1=data_list1
     # data_list1=data_list1[:300]
-    gseries1 = gpd.GeoSeries([(item['wkt']) for item in data_list1])
-    gseries1.index = [item['osmId'] for item in data_list1]
-
-    gseries2 = gpd.GeoSeries([(item['wkt']) for item in data_list2])
-    gseries2.index = [item['osmId'] for item in data_list2]
+    gseries1 = gpd.GeoSeries(list(data_list1.values()))
+    gseries1.index = list(data_list1.keys())
+    gseries2 = gpd.GeoSeries(list(data_list2.values()))
+    gseries2.index = list(data_list2.keys())
+    gseries1 = gseries1.set_crs("EPSG:4326", allow_override=True)
+    gseries1 = gseries1.to_crs("EPSG:32632")
+    gseries2 = gseries2.set_crs("EPSG:4326", allow_override=True)
+    gseries2 = gseries2.to_crs("EPSG:32632")
+    # gseries2 = gpd.GeoSeries([(item['wkt']) for item in data_list2])
+    # gseries2.index = [item['osmId'] for item in data_list2]
 
     # 创建空间索引
     sindex = gseries2.sindex
@@ -271,7 +299,7 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
 
     elif mode == "buffer":
-        for osmId1, geom1 in gseries1.items():
+        for osmId1, geom1 in tqdm(gseries1.items(),desc="buffer"):
             # 创建缓冲区（100米）
             buffer = geom1.buffer(buffer_number)
 
@@ -284,7 +312,7 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
                 id_list.append(osmId1)
                 id_list.extend(matching_osmIds)
                 result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
-                print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
+                # print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
 
     elif mode == "intersects":
         # 检查交叉关系
@@ -306,18 +334,18 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
         # 计算两个列表中每对元素间的距离，并找出最小值
         for item1 in data_list1:
-            geom1 = (item1['wkt'])
+            geom1 = (data_list1[item1])
             for item2 in data_list2:
-                geom2 = (item2['wkt'])
+                geom2 = (data_list1[item2])
                 distance = geom1.distance(geom2)
                 if distance < min_distance:
                     min_distance = distance
-                    closest_pair = (item1['osmId'], item2['osmId'])
+                    closest_pair = (item1, item2)
         print("distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m")
 
         result_list.append("distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m")
     elif mode == "single_distance":
-        distance = data_list1[0]['wkt'].distance(data_list2[0]['wkt'])
+        distance = list(data_list1[0].values())[0].distance(list(data_list2[0].values())[0])
         print(distance)
     return result_list,id_list
 
@@ -349,12 +377,12 @@ def merge_id_list(list1,list2):
             existing_osm_ids.add(item['osmId'])
 
     return merged_list
-def transfer_id_list_2_geo_dict(id_list):
+def transfer_id_list_2_geo_dict(id_list,raw_dict):
     result_dict={}
     for i in tqdm(id_list,desc="transferring..."):
-        id=i.split("_")[-1]
-        map=i.split("_")[0]
-        result_dict[i]=get_geo_via_id(map,id)[0]['wkt']
+        # id=i.split("_")[-1]
+        # map=i.split("_")[0]
+        result_dict[i]=raw_dict[i]
     return result_dict
 def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
     headers = {
@@ -577,17 +605,24 @@ Response json format:
 
 
 # build_agents()
+
 all_graph_name=list_all_graph_name()
+region_name="munich Ismaning"
+bounding_coordinates,bounding_wkb=find_boundbox(region_name)
 # # print(list_type_of_graph_name(all_graph_name[1]))
-id_list_buildings=list_id_of_type(all_graph_name[0],"residential")
-id_list_landuse=list_id_of_type(all_graph_name[0],"park")
+id_list_buildings=list_id_of_type(all_graph_name[2],"building",bounding_coordinates)
+id_list_landuse=list_id_of_type(all_graph_name[0],"forest",bounding_coordinates)
 
 # # id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
 # # print(id_list_landuse)
 # # print(id_list_soil)
 #
-_,id_list=geo_calculate(id_list_buildings,id_list_landuse,"intersects")
-geo_dict=transfer_id_list_2_geo_dict(id_list)
+
+_,id_list=geo_calculate(id_list_buildings,id_list_landuse,"buffer",100)
+geo_dict={region_name:wkb.loads(bytes.fromhex(bounding_wkb))}
+id_list_buildings.update(id_list_landuse)
+geo_dict.update(transfer_id_list_2_geo_dict(id_list,id_list_buildings))
+
 draw_geo_map(geo_dict,"geo")
 
 # print(id_list_landuse)
@@ -597,3 +632,32 @@ draw_geo_map(geo_dict,"geo")
 # id2=get_geo_via_id(all_graph_name[1],"2984") #"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum"
 # print(id1)
 # geo_calculate(id1,id2,"single_distance")
+# query="""
+# PREFIX ns1: <http://example.org/property/>
+# PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+# PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+#     SELECT ?osmId ?wkt
+#     WHERE {
+#       GRAPH <http://example.com/buildings> {
+#         ?entity ns1:fclass "building" .
+#         ?entity ns1:osm_id ?osmId .
+#         ?entity geo:asWKT ?wkt .
+#       }
+#         # 创建一个边界框的多边形，用指定的坐标
+#         BIND("POLYGON((11.661455 48.2609734, 11.6794104 48.2609734, 11.6794104 48.2702361, 11.661455 48.2702361, 11.661455 48.2609734))"^^geo:wktLiteral AS ?bbox) .
+# FILTER(geof:sfIntersects(?wkt, ?bbox))
+#     }
+#
+# """
+# start_time = time.time()
+# sparql.setQuery(query)
+# sparql.setReturnFormat(JSON)
+#
+# # 执行查询并获取结果
+# results = sparql.query().convert()
+# print(len(results["results"]["bindings"]))
+# end_time = time.time()
+#
+# # 计算运行时间
+# elapsed_time = end_time - start_time
+# print(f"函数运行时间：{elapsed_time}秒")

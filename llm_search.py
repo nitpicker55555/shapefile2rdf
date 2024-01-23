@@ -407,13 +407,13 @@ while True:
         # # time.sleep(4)
         #
         # print(indication)
-        # corrdinates_list, wkb_str = find_boundbox("munich ismaning")
-        # print(corrdinates_list)
+        # coordinates_list, wkb_str = find_boundbox("munich ismaning")
+        # print(coordinates_list)
         #
         # query = location_query(corrdinates_list, False)
         # map_dict.update({"munich ismaning": wkb_str})
         # print("-------------------")
-        # print("Grammer correct!")
+        # print("Grammar correct!")
         # print("-------------------")
         # system_content="I will give you a sql query, please translate it to natural language in a simple way, and do not mention sql"
         # translation= (change_statement(query,system_content))
