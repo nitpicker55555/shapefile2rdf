@@ -15,9 +15,10 @@ load_dotenv()
 GPT_MODEL = "gpt-3.5-turbo-1106"
 api_key = os.getenv('OPENAI_API_KEY')
 client = OpenAI()
-
+from draw_geo import draw_geo_map
 from SPARQLWrapper import SPARQLWrapper, JSON
-
+from tqdm import tqdm
+globals_dict = {}
 
 
 # 距离适合农业的土壤最近的居民楼
@@ -47,7 +48,7 @@ WHERE {
 
     """
     graph_list = []
-    feed_back = ask_soil(query)
+    feed_back = ask_soil(query,"")
     for i in feed_back:
         graph_list.append(i['graph']['value'])
     return graph_list
@@ -98,7 +99,7 @@ WHERE {
     
         """ % graph_name
     type_list = []
-    feed_back = ask_soil(query)
+    feed_back = ask_soil(query,graph_name)
     for i in feed_back:
         type_list.append(i['fclass']['value'])
     return type_list
@@ -151,11 +152,11 @@ WHERE {
 
     """ % (graph_name, single_type)
 
-    feed_back = ask_soil(query)
+    feed_back = ask_soil(query,graph_name+"_"+single_type)
     return feed_back
 
 
-def ask_soil(query):
+def ask_soil(query,map):
     # SPARQL查询来提取所有的ns1:kategorie实体
     sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
@@ -180,7 +181,7 @@ def ask_soil(query):
             geometry = loads(wkt)
 
             # 添加到列表
-            result_list.append({"osmId": osm_id, "wkt": geometry})
+            result_list.append({"osmId": map.split("/")[-1]+"_"+str(osm_id), "wkt": geometry})
     except:
         for result in results["results"]["bindings"]:
             result_list.append(result)
@@ -189,6 +190,10 @@ def ask_soil(query):
 
 
 def get_geo_via_id(graph_name, id):
+    if "/" not in graph_name:
+        graph_name="http://example.com/"+graph_name
+    if "_" in id:
+        id=id.split("_")[-1]
     """
 
     :param graph_name:
@@ -227,14 +232,18 @@ WHERE {
 
     """ % (graph_name, id)
     # print(query)
-    feed_back = ask_soil(query)
+    feed_back = ask_soil(query,graph_name)
     return feed_back
 
 
-def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
+def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
+    if isinstance(data_list1,str):
+        data_list1=globals_dict[data_list1]
+        data_list2=globals_dict[data_list2]
     print("len datalist1", len(data_list1))
     print("len datalist2", len(data_list2))
-    data_list1=data_list1[:300]
+    data_list1=data_list1
+    # data_list1=data_list1[:300]
     gseries1 = gpd.GeoSeries([(item['wkt']) for item in data_list1])
     gseries1.index = [item['osmId'] for item in data_list1]
 
@@ -244,6 +253,7 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
     # 创建空间索引
     sindex = gseries2.sindex
     result_list=[]
+    id_list=[]
     if mode == "contains":
         # 检查包含关系
 
@@ -254,9 +264,12 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
+                id_list.append(osmId1)
+                id_list.extend(matching_osmIds)
                 result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
                 print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
-        return result_list
+
+
     elif mode == "buffer":
         for osmId1, geom1 in gseries1.items():
             # 创建缓冲区（100米）
@@ -268,9 +281,11 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
+                id_list.append(osmId1)
+                id_list.extend(matching_osmIds)
                 result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
                 print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
-        return result_list
+
     elif mode == "intersects":
         # 检查交叉关系
         for osmId1, geom1 in gseries1.items():
@@ -281,8 +296,10 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
                 result_list.append(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
-                print(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
-        return result_list
+                id_list.append(osmId1)
+                id_list.extend(matching_osmIds)
+                # print(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
+
     elif mode == "shortest_distance":
         min_distance = float('inf')
         closest_pair = (None, None)
@@ -297,11 +314,12 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=100):
                     min_distance = distance
                     closest_pair = (item1['osmId'], item2['osmId'])
         print("distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m")
-        return "distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m"
+
+        result_list.append("distance between set1 id "+str(closest_pair[0])+" set2 id "+str(closest_pair[1])+" is closest: "+str(min_distance)+" m")
     elif mode == "single_distance":
         distance = data_list1[0]['wkt'].distance(data_list2[0]['wkt'])
         print(distance)
-
+    return result_list,id_list
 
 #
 # print(all_graph_name)
@@ -320,7 +338,24 @@ def chat_single(messages,mode="json"):
             messages=messages
         )
     return response.choices[0].message.content
+def merge_id_list(list1,list2):
+    merged_list = list1.copy()
 
+    existing_osm_ids = set(item['osmId'] for item in list1)
+
+    for item in list2:
+        if item['osmId'] not in existing_osm_ids:
+            merged_list.append(item)
+            existing_osm_ids.add(item['osmId'])
+
+    return merged_list
+def transfer_id_list_2_geo_dict(id_list):
+    result_dict={}
+    for i in tqdm(id_list,desc="transferring..."):
+        id=i.split("_")[-1]
+        map=i.split("_")[0]
+        result_dict[i]=get_geo_via_id(map,id)[0]['wkt']
+    return result_dict
 def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
     headers = {
         "Content-Type": "application/json",
@@ -369,13 +404,18 @@ def build_agents():
     def execute_function_call_dict(message):
         feed_dict=json.loads(message)
         finish_sign=str(feed_dict['finish_sign'])
-        if "t" not in finish_sign:
-            command=feed_dict['command']['command']
-            args_=feed_dict['command']['args']
-            results = globals()[command](*args_)
-            return ("length: " + str(len(results)) + " " + str(results)[:300])
+
+        print("finish_sign:",finish_sign)
+        command = feed_dict['command']['command']
+        variable=feed_dict['command']['variable']
+
+        args_=feed_dict['command']['args']
+        globals_dict[variable]=  globals()[command](*args_)
+        results=globals_dict[variable]
+        if command=="list_type_of_graph_name" and "soil" in str(args_):
+            return ("length: " + str(len(results)) + " " + str(results)[:1000])
         else:
-            return "break down"
+            return ("length: " + str(len(results)) + " " + str(results)[:300])
     tools = [{
         "type": "function",
         "function": {
@@ -440,6 +480,48 @@ You are an AI assistant that processes complex database queries. You need to bre
     "list_id_of_type": {
         "Arguments": ["graph_name", "type_name"],
         "Description": "Enter the graph name and type name you want to query, and it returns the corresponding element IDs."
+    },
+
+        "geo_calculate": {
+        "Arguments": [id_list_1, id_list_2,"function name",buffer_number=0],
+        "Description": "
+        geo_calculate function has functions: contains, intersects, buffer. 
+        Input should be two id_list which generated by function list_id_of_type and function name you want to use. 
+        
+        function contains: return which id in id_list_2 geographically contains which id in id_list_1
+        function intersects: return which id in id_list_2 geographically intersects which id in id_list_1
+        function buffer: return which id in id_list_2 geographically intersects the buffer of which id in id_list_1, if you want to call buffer, you need to specify the last argument "buffer_number" as a number.
+        Example:
+{        If user wants to search buildings in farmland, 
+        first you need to figure out farmland and buildings in which graph using function list_type_of_graph_name,
+        then generate id_list for buildings and farmland using function list_id_of_type, 
+        "command": {
+        "command": "list_id_of_type",
+        "args": ["http://example.com/buildings", "building"]
+        "variable":"id_list1"
+        },
+        "command": {
+        "command": "list_id_of_type",
+        "args": ["http://example.com/landuse", "farmland"]
+        "variable":"id_list2"
+        },
+        finally call geo_calculate(id_list_1,id_list_2,"contains").
+        "command": {
+        "command": "geo_calculate",
+        "args": ["id_list1", "id_list2","contains"]
+        "variable":"contains_list"
+        },},{
+        If user wants to search soil that suitable for agriculture,
+        first you need to figure out what kind of soil the soil graph have using list_type_of_graph_name,
+            "command": {
+        "command": "list_type_of_graph_name",
+        "args": ["http://example.com/soil"],
+        "variable": "soil_type"
+    },
+        then pick one you think is good for agriculture(please pick its full name but not only index of this type), and use list_id_of_type to get its id_list
+        }
+        
+        "
     }
 }
 
@@ -451,13 +533,15 @@ Constraints:
 After each step you will receive feedback from functions, which contains results length and results, but you can only receive top 500 characters due to memory limitation.
 
 
-Each response should only cover one step. Your response format should be json format as follows, and set the finish_sign to True after you get the result of last step, if the task is not finished yet please set finish_sign to False. Please always keep all the keys in response,if nothing to write leave the value empty:
+Each response should only cover one step. Your response format should be json format as follows, and set the finish_sign to True after you get the result of last step, if the task is not finished yet please set finish_sign to False. 
+
+Please always keep all the keys in response,if nothing to write leave the value empty:
 Response json format:
 {
 "description":"what you want to do in this step and next step",
 "whole_plan": ["first:...", "second:...", "third:...", ...],
 "next_step": "...",
-"command": {"command": "", "args": []},
+"command": {"command": "", "args": [],"variable":"you can set a variable to store the result of this command"},
 "finish_sign": False
 }
                      """})
@@ -470,7 +554,10 @@ Response json format:
         while results!="break down":
             chat_response = chat_single(messages_2)
             print(chat_response)
-            results=execute_function_call_dict(chat_response)
+            try:
+                results=execute_function_call_dict(chat_response)
+            except Exception as e:
+                results="provided function or args does not correct, please check it and try again, Exception: "+str(e)
             print(results)
             # assistant_message = chat_response.json()["choices"][0]["message"]
             messages_2.append({"role": "assistant", "content": chat_response})
@@ -491,14 +578,17 @@ Response json format:
 
 # build_agents()
 all_graph_name=list_all_graph_name()
-# print(list_type_of_graph_name(all_graph_name[1]))
-id_list_buildings=list_id_of_type(all_graph_name[2],"building")
-id_list_landuse=list_id_of_type(all_graph_name[0],"residential")
-# id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
-# print(id_list_landuse)
-# print(id_list_soil)
+# # print(list_type_of_graph_name(all_graph_name[1]))
+id_list_buildings=list_id_of_type(all_graph_name[0],"residential")
+id_list_landuse=list_id_of_type(all_graph_name[0],"park")
 
-geo_calculate(id_list_buildings,id_list_landuse,"buffer")
+# # id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
+# # print(id_list_landuse)
+# # print(id_list_soil)
+#
+_,id_list=geo_calculate(id_list_buildings,id_list_landuse,"intersects")
+geo_dict=transfer_id_list_2_geo_dict(id_list)
+draw_geo_map(geo_dict,"geo")
 
 # print(id_list_landuse)
 # print(id_list_soil)
