@@ -1,4 +1,4 @@
-import time,os
+import time, os
 
 from rdflib import Graph
 import json
@@ -10,13 +10,17 @@ from dotenv import load_dotenv
 import geopandas as gpd
 from shapely.wkt import loads
 from geopandas import GeoDataFrame
-
+from openai import OpenAI
 load_dotenv()
-from SPARQLWrapper import SPARQLWrapper, JSON
 GPT_MODEL = "gpt-3.5-turbo-1106"
 api_key = os.getenv('OPENAI_API_KEY')
+client = OpenAI()
 
-#距离适合农业的土壤最近的居民楼
+from SPARQLWrapper import SPARQLWrapper, JSON
+
+
+
+# 距离适合农业的土壤最近的居民楼
 """
 找到土壤数据库
 找到土壤数据库中的所有type名称
@@ -27,26 +31,29 @@ api_key = os.getenv('OPENAI_API_KEY')
 
 """
 sparql = SPARQLWrapper("http://LAPTOP-AN4QTF3N:7200/repositories/osm_search")
+
+
 def list_all_graph_name():
     """
 
     :return:目前所有的数据库
     {'graph': {'type': 'uri', 'value': 'http://example.com/buildings'}}
     """
-    query="""
+    query = """
     SELECT DISTINCT ?graph
 WHERE {
   GRAPH ?graph { ?s ?p ?o }
 }
 
     """
-    graph_list=[]
-    feed_back= ask_soil(query)
+    graph_list = []
+    feed_back = ask_soil(query)
     for i in feed_back:
         graph_list.append(i['graph']['value'])
     return graph_list
-def list_type_of_graph_name(graph_name):
 
+
+def list_type_of_graph_name(graph_name):
     """
 
     :param graph_name: 需要查找的数据库
@@ -79,7 +86,7 @@ WHERE {
             """ % graph_name
     else:
 
-        query="""
+        query = """
     PREFIX ns1: <http://example.org/property/>
     
     SELECT DISTINCT ?fclass
@@ -89,13 +96,15 @@ WHERE {
       }
     }
     
-        """%graph_name
-    type_list=[]
-    feed_back=ask_soil(query)
+        """ % graph_name
+    type_list = []
+    feed_back = ask_soil(query)
     for i in feed_back:
         type_list.append(i['fclass']['value'])
     return type_list
-def list_id_of_type(graph_name,single_type):
+
+
+def list_id_of_type(graph_name, single_type):
     """
 
     :param single_type: 需要查找的type
@@ -108,7 +117,6 @@ def list_id_of_type(graph_name,single_type):
         }
     }
     """
-
 
     if "soil" not in graph_name:
         query = """
@@ -127,7 +135,7 @@ def list_id_of_type(graph_name,single_type):
             """ % (graph_name, single_type)
     else:
 
-        query="""
+        query = """
 
 PREFIX ns1: <http://example.org/property/>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -141,47 +149,46 @@ WHERE {
 }
 
 
-    """%(graph_name,single_type)
+    """ % (graph_name, single_type)
 
-    feed_back=ask_soil(query)
+    feed_back = ask_soil(query)
     return feed_back
+
+
 def ask_soil(query):
-
-
-
-
     # SPARQL查询来提取所有的ns1:kategorie实体
-    sparql.setQuery ( query)
+    sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
 
     # 执行查询并获取结果
     results = sparql.query().convert()
 
     # 遍历并打印结果
-    result_list=[]
+    result_list = []
 
     try:
         if results["results"]["bindings"][0]['wkt']:
-
             pass
 
         for result in results["results"]["bindings"]:
             # print(result)
 
-                wkt = result['wkt']['value']
-                osm_id = result['osmId']['value']
+            wkt = result['wkt']['value']
+            osm_id = result['osmId']['value']
 
-                # 将WKT字符串转换为几何对象
-                geometry = loads(wkt)
+            # 将WKT字符串转换为几何对象
+            geometry = loads(wkt)
 
-                # 添加到列表
-                result_list.append({"osmId":osm_id,"wkt":geometry})
+            # 添加到列表
+            result_list.append({"osmId": osm_id, "wkt": geometry})
     except:
         for result in results["results"]["bindings"]:
             result_list.append(result)
     # print(result_list)
     return result_list
-def get_geo_via_id(graph_name,id):
+
+
+def get_geo_via_id(graph_name, id):
     """
 
     :param graph_name:
@@ -190,7 +197,7 @@ def get_geo_via_id(graph_name,id):
     """
     if "soil" not in graph_name:
 
-        query="""
+        query = """
 PREFIX ns1: <http://example.org/property/>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?element ?wkt ?osmId 
@@ -203,7 +210,7 @@ WHERE {
 }
 
 
-    """%(graph_name,id)
+    """ % (graph_name, id)
     else:
         query = """
 PREFIX ns1: <http://example.org/property/>
@@ -218,14 +225,15 @@ WHERE {
 }
 
 
-    """%(graph_name,id)
+    """ % (graph_name, id)
     # print(query)
-    feed_back=ask_soil(query)
+    feed_back = ask_soil(query)
     return feed_back
 
-def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
-    print("len datalist1",len(data_list1))
-    print("len datalist2",len(data_list2))
+
+def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
+    print("len datalist1", len(data_list1))
+    print("len datalist2", len(data_list2))
     gseries1 = gpd.GeoSeries([(item['wkt']) for item in data_list1])
     gseries1.index = [item['osmId'] for item in data_list1]
 
@@ -234,8 +242,8 @@ def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
 
     # 创建空间索引
     sindex = gseries2.sindex
-    if mode=="contains":
-    # 检查包含关系
+    if mode == "contains":
+        # 检查包含关系
         for osmId1, geom1 in gseries1.items():
             possible_matches_index = list(sindex.intersection(geom1.bounds))
             possible_matches = gseries2.iloc[possible_matches_index]
@@ -244,7 +252,7 @@ def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
                 print(f"osmId {osmId1} in: {matching_osmIds}")
-    elif mode=="buffer":
+    elif mode == "buffer":
         for osmId1, geom1 in gseries1.items():
             # 创建缓冲区（100米）
             buffer = geom1.buffer(buffer_number)
@@ -257,16 +265,16 @@ def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
                 matching_osmIds = precise_matches.index.tolist()
                 print(f"osmId {osmId1} in buffer of: {matching_osmIds}")
     elif mode == "intersects":
-            # 检查交叉关系
-            for osmId1, geom1 in gseries1.items():
-                possible_matches_index = list(sindex.intersection(geom1.bounds))
-                possible_matches = gseries2.iloc[possible_matches_index]
-                precise_matches = possible_matches[possible_matches.intersects(geom1)]
+        # 检查交叉关系
+        for osmId1, geom1 in gseries1.items():
+            possible_matches_index = list(sindex.intersection(geom1.bounds))
+            possible_matches = gseries2.iloc[possible_matches_index]
+            precise_matches = possible_matches[possible_matches.intersects(geom1)]
 
-                if not precise_matches.empty:
-                    matching_osmIds = precise_matches.index.tolist()
-                    print(f"osmId {osmId1} intersects with: {matching_osmIds}")
-    elif mode=="shortest_distance":
+            if not precise_matches.empty:
+                matching_osmIds = precise_matches.index.tolist()
+                print(f"osmId {osmId1} intersects with: {matching_osmIds}")
+    elif mode == "shortest_distance":
         min_distance = float('inf')
         closest_pair = (None, None)
 
@@ -280,7 +288,7 @@ def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
                     min_distance = distance
                     closest_pair = (item1['osmId'], item2['osmId'])
         print(closest_pair, min_distance)
-    elif mode=="single_distance":
+    elif mode == "single_distance":
         distance = data_list1[0]['wkt'].distance(data_list2[0]['wkt'])
         print(distance)
 
@@ -288,13 +296,30 @@ def geo_calculate(data_list1,data_list2,mode,buffer_number=0):
 # all_graph_name=list_all_graph_name()
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
+def chat_single(messages,mode="json"):
+    if mode=="json":
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            response_format={"type": "json_object"},
+            messages=messages
+        )
+    else:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            messages=messages
+        )
+    return response.choices[0].message.content
+
 def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
     headers = {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + api_key,
     }
-    json_data = {"model": model, "messages": messages}
-    if tools is not None:
+    if tools is None:
+        json_data = {"model": model, "response_format": {"type": "json_object"}, "messages": messages}
+    else:
+        json_data = {"model": model, "messages": messages}
         json_data.update({"tools": tools})
     if tool_choice is not None:
         json_data.update({"tool_choice": tool_choice})
@@ -318,20 +343,29 @@ def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MO
         print(f"Exception: {e}")
         return e
 
+
 def build_agents():
     def execute_function_call(message):
 
-        args_=list(json.loads(message["tool_calls"][0]["function"]["arguments"]).values())
+        args_ = list(json.loads(message["tool_calls"][0]["function"]["arguments"]).values())
         print(args_)
-        function_name=message["tool_calls"][0]["function"]["name"]
+        function_name = message["tool_calls"][0]["function"]["name"]
         if function_name:
             results = globals()[function_name](*args_)
             print(results)
         else:
             results = f"Error: function  does not exist"
-        return results[:400]
-
-
+        return ("length: " + str(len(results)) + " " + str(results)[:300])
+    def execute_function_call_dict(message):
+        feed_dict=json.loads(message)
+        finish_sign=str(feed_dict['finish_sign'])
+        if "t" not in finish_sign:
+            command=feed_dict['command']['command']
+            args_=feed_dict['command']['args']
+            results = globals()[command](*args_)
+            return ("length: " + str(len(results)) + " " + str(results)[:300])
+        else:
+            return "break down"
     tools = [{
         "type": "function",
         "function": {
@@ -353,7 +387,7 @@ def build_agents():
                     },
 
                 },
-                "required": ["graph_name","single_type"]
+                "required": ["graph_name", "single_type"]
             },
         }
     },
@@ -367,7 +401,8 @@ def build_agents():
                     "properties": {
                         "graph_name": {
                             "type": "string",
-                            "enum": ['http://example.com/landuse', 'http://example.com/soil', 'http://example.com/buildings'],
+                            "enum": ['http://example.com/landuse', 'http://example.com/soil',
+                                     'http://example.com/buildings'],
                             "description": f"the graph user wants to search in database, you need to select the one has most similar semantic meaning",
                         },
 
@@ -377,69 +412,75 @@ def build_agents():
             }
         },
     ]
-    messages=[]
+    messages = []
     messages.append({"role": "system",
                      "content": """
-                     You are an AI assistant that processes complex database queries. You need to break down the user's query into several steps to complete the final query. :
-Each response should only cover one step. Your response format should be as follows, and set the finish_sign to True if you think the task is completed:
-{
-"whole_plan": ["first:...", "second:...", "third:...", ...],
-"next_step": "...",
-"command": {"command": "", "args": []},
-"finish_sign": False
-}
+                     you are a database query assistant that can use provided functions to query database
                      """})
-    messages_2=[]
+    messages_2 = []
     messages_2.append({"role": "system",
-                     "content": """
+                       "content": """
 You are an AI assistant that processes complex database queries. You need to break down the user's query into several steps to complete the final query. Below are the functions you can use:
 
 {
-    "get_all_graph_name": {
-        "Description": "Returns the names of all graphs in the current database."
-    },
-    "get_type_of_graph": {
+    "list_type_of_graph_name": {
         "Argument": "graph_name",
         "Description": "Enter the name of the graph you want to query and it returns all types of that graph. For example, for a soil graph, the types are different soil types."
     },
-    "get_id_of_type": {
+    "list_id_of_type": {
         "Arguments": ["graph_name", "type_name"],
         "Description": "Enter the graph name and type name you want to query, and it returns the corresponding element IDs."
     }
 }
 
-Each response should only cover one step. Your response format should be as follows, and set the finish_sign to True if you think the task is completed:
+Environment:
+The database has three graphs: ['http://example.com/landuse', 'http://example.com/soil', 'http://example.com/buildings']
+
+
+Constraints:
+After each step you will receive feedback from functions, which contains results length and results, but you can only receive top 500 characters due to memory limitation.
+
+
+Each response should only cover one step. Your response format should be json format as follows, and set the finish_sign to True after you get the result of last step, if the task is not finished yet please set finish_sign to False. Please always keep all the keys in response:
+Response json format:
 {
 "whole_plan": ["first:...", "second:...", "third:...", ...],
 "next_step": "...",
+
+
 "command": {"command": "", "args": []},
 "finish_sign": False
 }
                      """})
 
     while True:
-        user_content=input("input")
+        user_content = input("input")
+        results=""
         messages.append({"role": "user", "content": user_content})
         messages_2.append({"role": "user", "content": user_content})
-
-        chat_response = chat_completion_request(messages,tools=tools)
-        assistant_message = chat_response.json()["choices"][0]["message"]
-        print(assistant_message)
-        messages_2.append(assistant_message)
+        while results!="break down":
+            chat_response = chat_single(messages_2)
+            print(chat_response)
+            results=execute_function_call_dict(chat_response)
+            print(results)
+            # assistant_message = chat_response.json()["choices"][0]["message"]
+            messages_2.append({"role": "assistant", "content": chat_response})
+            messages_2.append({"role": "user", "content": results})
+        # chat_response = chat_completion_request(messages,tools=tools)
+        # assistant_message = chat_response.json()["choices"][0]["message"]
+        # print(assistant_message)
+        # messages_2.append(assistant_message)
+        # # messages.append(assistant_message)
+        #
+        # assistant_message['content'] = str(assistant_message["tool_calls"][0]["function"])
         # messages.append(assistant_message)
-
-        assistant_message['content'] = str(assistant_message["tool_calls"][0]["function"])
-        messages.append(assistant_message)
-        if assistant_message.get("tool_calls"):
-            results = str(execute_function_call(assistant_message))
-            messages.append({"role": "tool", "tool_call_id": assistant_message["tool_calls"][0]['id'],
-                             "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
-
-
+        # if assistant_message.get("tool_calls"):
+        #     results = str(execute_function_call(assistant_message))
+        #     messages.append({"role": "tool", "tool_call_id": assistant_message["tool_calls"][0]['id'],
+        #                      "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
 
 
 build_agents()
-
 
 # print(list_type_of_graph_name(all_graph_name[1]))
 # id_list_buildings=list_id_of_type(all_graph_name[2],"building")
