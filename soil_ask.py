@@ -108,6 +108,21 @@ WHERE {
 
 
 def list_id_of_type(graph_name, single_type, bounding_box_coordinats=None):
+    soil_dict={'61a': '61a: Bodenkomplex: Vorherrschend Anmoorgley und Pseudogley, gering verbreitet Podsol aus (Kryo-)Sandschutt (Granit oder Gneis) über Sandschutt bis Sandgrus (Basislage, verfestigt)', '62c': '62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)', '65c': '65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig', '66b': '66b: Fast ausschließlich Anmoorgley aus Lehm bis Schluff, selten Ton (See- oder Flusssediment); im Untergrund carbonathaltig', '67': '67: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von (Carbonat-)Lehm bis Schluff und Torf über Carbonatsandkies (Schotter)', '72c': '72c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Talsediment)', '72f': '72f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche', '64c': '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment', '73c': '73c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Talsediment)', '73f': '73f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche', '74': '74: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von Lehm und Torf über Sand bis Lehm (Talsediment)', '75': '75: Fast ausschließlich Moorgley, Anmoorgley und Oxigley aus Lehmgrus bis Sandgrus (Talsediment)', '75c': '75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf', '77': '77: Fast ausschließlich Kalkniedermoor und Kalkerdniedermoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum; verbreitet mit Wiesenkalk durchsetzt', '78': '78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum', '78a': '78a: Fast ausschließlich Niedermoor und Übergangsmoor aus Torf über kristallinen Substraten mit weitem Bodenartenspektrum', '79': '79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf', '80a': '80a: Fast ausschließlich (flacher) Gley über Niedermoor aus (flachen) mineralischen Ablagerungen mit weitem Bodenartenspektrum über Torf, vergesellschaftet mit (Kalk)Erdniedermoor', '80b': '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf', '850': '850: Bodenkomplex: Humusgleye, Moorgleye, Anmoorgleye und Niedermoore aus alpinen Substraten mit weitem Bodenartenspektrum'}
+    if isinstance(single_type,dict):
+        replace_list=[]
+        for i in single_type:
+            if i in soil_dict:
+                replace_list.append(soil_dict[i])
+            else:
+                replace_list.append(i)
+        single_type=replace_list
+    single_type=str(single_type)
+    if '[' in single_type:
+        single_type=single_type.replace("[", "(").replace("]", ")")
+
+    else:
+        single_type=f"('{single_type}')"
     """
 
     :param single_type: 需要查找的type
@@ -154,26 +169,31 @@ WHERE {
     if "soil" in graph_name:
         fclass='uebk25_l'
         osm_id='soil_id'
-
+    if "all" not in single_type:
+        fclass_filter=f'\nFILTER(?fclass IN {single_type})'
+    else:
+        fclass_filter=""
     query = """
 PREFIX ns1: <http://example.org/property/>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
-    SELECT ?osmId ?wkt
+    SELECT ?osmId ?wkt ?fclass
     WHERE {
       GRAPH <%s> {
-        ?entity ns1:%s "%s" .
+        ?entity ns1:%s ?fclass .
         ?entity ns1:%s ?osmId .
         ?entity geo:asWKT ?wkt .
+        %s
       }
         # 创建一个边界框的多边形，用指定的坐标
         %s
     }
 
 
-        """ % (graph_name, fclass,single_type,osm_id,bounding_box_str)
-    print(query)
-    feed_back = ask_soil(query,graph_name+"_"+single_type)
+        """ % (graph_name, fclass,osm_id,fclass_filter,bounding_box_str)
+    # print(query)
+    feed_back = ask_soil(query,graph_name)
+    # print(len(feed_back))
     return feed_back
 
 
@@ -197,12 +217,12 @@ def ask_soil(query,map):
 
             wkt = result['wkt']['value']
             osm_id = result['osmId']['value']
-
+            fclass = result['fclass']['value']
             # 将WKT字符串转换为几何对象
             geometry = loads(wkt)
 
             # 添加到列表
-            result_dict.update({map.split("/")[-1]+"_"+str(osm_id):  geometry})
+            result_dict.update({map.split("/")[-1]+"_"+fclass+"_"+str(osm_id):  geometry})
         return result_dict
     except:
         result_list=[]
@@ -366,22 +386,11 @@ def chat_single(messages,mode="json"):
             messages=messages
         )
     return response.choices[0].message.content
-def merge_id_list(list1,list2):
-    merged_list = list1.copy()
 
-    existing_osm_ids = set(item['osmId'] for item in list1)
+def transfer_id_list_2_geo_dict(id_list,raw_dict=None):
 
-    for item in list2:
-        if item['osmId'] not in existing_osm_ids:
-            merged_list.append(item)
-            existing_osm_ids.add(item['osmId'])
-
-    return merged_list
-def transfer_id_list_2_geo_dict(id_list,raw_dict):
     result_dict={}
     for i in tqdm(id_list,desc="transferring..."):
-        # id=i.split("_")[-1]
-        # map=i.split("_")[0]
         result_dict[i]=raw_dict[i]
     return result_dict
 def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
@@ -418,6 +427,51 @@ def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MO
 
 
 def build_agents():
+    def test_arg():
+        query_list=[
+            {
+                "description": "First need to find all types in the soil map",
+                "whole_plan": ["Step 1: Find all types in the soil map"],
+                "next_step": "Call list_type_of_graph_name function",
+                "command": {
+                    "command": "list_type_of_graph_name",
+                    "args": ["http://example.com/soil"],
+                    "variable": "soil_type"
+                },
+                "finish_sign": False
+            }
+            ,
+            {
+                "description": "Now we can get the corresponding ID list based on the soil type suitable for agriculture",
+                "whole_plan": ["Step 1: Find all types in the soil map",
+                               "Step 2: Get a list of IDs corresponding to soil types suitable for agriculture"],
+                "next_step": "Call list_id_of_type function",
+                "command": {
+                    "command": "list_id_of_type",
+                    "args": ["http://example.com/soil", [
+                        "62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)",
+                        '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
+                        '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf']],
+                    "variable": "agricultural_soil_id"
+                },
+                "finish_sign": False
+            },
+            {
+                "description": "calculate ",
+                "whole_plan": ["Step 1: Find all types in the soil map",
+                               "Step 2: Get a list of IDs corresponding to soil types suitable for agriculture"],
+                "next_step": "Call list_id_of_type function",
+                "command": {
+                    "command": "list_id_of_type",
+                    "args": ["http://example.com/soil", [
+                        "62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)",
+                        '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
+                        '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf']],
+                    "variable": "agricultural_soil_id"
+                },
+                "finish_sign": False
+            },
+        ]
     def execute_function_call(message):
 
         args_ = list(json.loads(message["tool_calls"][0]["function"]["arguments"]).values())
@@ -433,17 +487,20 @@ def build_agents():
         feed_dict=json.loads(message)
         finish_sign=str(feed_dict['finish_sign'])
 
-        print("finish_sign:",finish_sign)
-        command = feed_dict['command']['command']
-        variable=feed_dict['command']['variable']
+        # print("finish_sign:",finish_sign)
+        if "command" in feed_dict['command']:
+            command = feed_dict['command']['command']
+            variable=feed_dict['command']['variable']
 
-        args_=feed_dict['command']['args']
-        globals_dict[variable]=  globals()[command](*args_)
-        results=globals_dict[variable]
-        if command=="list_type_of_graph_name" and "soil" in str(args_):
-            return ("length: " + str(len(results)) + " " + str(results)[:1000])
+            args_=feed_dict['command']['args']
+            globals_dict[variable]=  globals()[command](*args_)
+            results=globals_dict[variable]
+            if command=="list_type_of_graph_name" and "soil" in str(args_):
+                return ("length: " + str(len(results)) + " " + str(results)[:1000])
+            else:
+                return ("length: " + str(len(results)) + " " + str(results)[:300])
         else:
-            return ("length: " + str(len(results)) + " " + str(results)[:300])
+            return "break down"
     tools = [{
         "type": "function",
         "function": {
@@ -507,7 +564,25 @@ You are an AI assistant that processes complex database queries. You need to bre
     },
     "list_id_of_type": {
         "Arguments": ["graph_name", "type_name"],
-        "Description": "Enter the graph name and type name you want to query, and it returns the corresponding element IDs."
+        "Description": "Enter the graph name and type name you want to query, and it returns the corresponding element IDs.
+                        If you want to get id_list from multi types at the same time, you can input arg type_name as a list."
+        "Example":"
+                
+        If user wants to search soil that suitable for agriculture,
+        first you need to figure out what kind of soil the soil graph have using list_type_of_graph_name,
+            "command": {
+        "command": "list_type_of_graph_name",
+        "args": ["http://example.com/soil"],
+        "variable": "soil_type"
+    },
+        then input type list you think is good for agriculture(please pick its full name but not only index of this type), and use list_id_of_type to get its id_list
+                    "command": {
+        "command": "list_id_of_type",
+        "args": ["http://example.com/soil",[type list]],
+        "variable": "soil_id"
+    },
+        
+        "
     },
 
         "geo_calculate": {
@@ -519,8 +594,8 @@ You are an AI assistant that processes complex database queries. You need to bre
         function contains: return which id in id_list_2 geographically contains which id in id_list_1
         function intersects: return which id in id_list_2 geographically intersects which id in id_list_1
         function buffer: return which id in id_list_2 geographically intersects the buffer of which id in id_list_1, if you want to call buffer, you need to specify the last argument "buffer_number" as a number.
-        Example:
-{        If user wants to search buildings in farmland, 
+        "Example":
+        If user wants to search buildings in farmland, 
         first you need to figure out farmland and buildings in which graph using function list_type_of_graph_name,
         then generate id_list for buildings and farmland using function list_id_of_type, 
         "command": {
@@ -538,16 +613,8 @@ You are an AI assistant that processes complex database queries. You need to bre
         "command": "geo_calculate",
         "args": ["id_list1", "id_list2","contains"]
         "variable":"contains_list"
-        },},{
-        If user wants to search soil that suitable for agriculture,
-        first you need to figure out what kind of soil the soil graph have using list_type_of_graph_name,
-            "command": {
-        "command": "list_type_of_graph_name",
-        "args": ["http://example.com/soil"],
-        "variable": "soil_type"
-    },
-        then pick one you think is good for agriculture(please pick its full name but not only index of this type), and use list_id_of_type to get its id_list
         }
+
         
         "
     }
@@ -574,22 +641,30 @@ Response json format:
 }
                      """})
 
+
     while True:
         user_content = input("input")
         results=""
         messages.append({"role": "user", "content": user_content})
         messages_2.append({"role": "user", "content": user_content})
+        step=0
         while results!="break down":
+            step+=1
             chat_response = chat_single(messages_2)
+            print(f'Agent step {step}:')
             print(chat_response)
             try:
                 results=execute_function_call_dict(chat_response)
             except Exception as e:
                 results="provided function or args does not correct, please check it and try again, Exception: "+str(e)
+
+            print("\n\nQuery result:")
             print(results)
+            print('\n\n')
             # assistant_message = chat_response.json()["choices"][0]["message"]
             messages_2.append({"role": "assistant", "content": chat_response})
             messages_2.append({"role": "user", "content": results})
+        print("Task finished.")
         # chat_response = chat_completion_request(messages,tools=tools)
         # assistant_message = chat_response.json()["choices"][0]["message"]
         # print(assistant_message)
@@ -604,26 +679,29 @@ Response json format:
         #                      "name": assistant_message["tool_calls"][0]["function"]["name"], "content": results})
 
 
-# build_agents()
+build_agents()
 
-all_graph_name=list_all_graph_name()
-region_name="munich Ismaning"
-bounding_coordinates,bounding_wkb=find_boundbox(region_name)
-# # print(list_type_of_graph_name(all_graph_name[1]))
-id_list_buildings=list_id_of_type(all_graph_name[2],"building",bounding_coordinates)
-id_list_landuse=list_id_of_type(all_graph_name[0],"forest",bounding_coordinates)
+# all_graph_name=list_all_graph_name()
+# all_soil=(list_type_of_graph_name(all_graph_name[1]))
+# print(all_soil)
 
-# # id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
-# # print(id_list_landuse)
-# # print(id_list_soil)
+# region_name="munich Ismaning"
+# bounding_coordinates,bounding_wkb=find_boundbox(region_name)
+# # # print(list_type_of_graph_name(all_graph_name[1]))
+# id_list_buildings=list_id_of_type(all_graph_name[2],"building",bounding_coordinates)
+# id_list_landuse=list_id_of_type(all_graph_name[0],["park",'residential'],bounding_coordinates)
 #
+# id_list_soil=list_id_of_type(all_graph_name[1],"78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum")
+# # # print(id_list_landuse)
+# # # print(id_list_soil)
+# #
+#
+# _,id_list=geo_calculate(id_list_buildings,id_list_landuse,"buffer",100)
+# geo_dict={region_name:wkb.loads(bytes.fromhex(bounding_wkb))}
+# id_list_buildings.update(id_list_landuse)
+# geo_dict=((id_list_soil))
 
-_,id_list=geo_calculate(id_list_buildings,id_list_landuse,"buffer",100)
-geo_dict={region_name:wkb.loads(bytes.fromhex(bounding_wkb))}
-id_list_buildings.update(id_list_landuse)
-geo_dict.update(transfer_id_list_2_geo_dict(id_list,id_list_buildings))
-
-draw_geo_map(geo_dict,"geo")
+# draw_geo_map(geo_dict,"geo")
 
 # print(id_list_landuse)
 # print(id_list_soil)
