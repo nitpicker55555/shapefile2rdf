@@ -41,7 +41,7 @@ def find_boundbox(name):
 
     # Send GET request
     response = requests.get(nominatim_url, params=query_params)
-
+    response_str=""
     # Handle the response
     if response.status_code == 200:
         search_results = response.json()
@@ -49,8 +49,10 @@ def find_boundbox(name):
             first_result = search_results[0]
             bounding_box = first_result.get('boundingbox', None)
             if bounding_box:
-                print(f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}")
+                response_str=f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}"
+                # print(f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}")
             else:
+                response_str="Bounding box not found for the first result."
                 print("Bounding box not found for the first result.")
         else:
             print("No results found.")
@@ -76,5 +78,5 @@ def find_boundbox(name):
     wkb = dumps(rectangle, hex=True)
     # draw_geo_map({name:wkb})
 
-    return coordinates,wkb
+    return coordinates,wkb,response_str
 # find_boundbox("garching")
