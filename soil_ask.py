@@ -14,7 +14,7 @@ from shapely.wkt import loads
 from geopandas import GeoDataFrame
 from openai import OpenAI
 load_dotenv()
-GPT_MODEL = "gpt-3.5-turbo-1106"
+GPT_MODEL = "gpt-4-1106-preview"
 api_key = os.getenv('OPENAI_API_KEY')
 client = OpenAI()
 from draw_geo import draw_geo_map
@@ -470,39 +470,71 @@ def build_agents():
     def test_arg():
         query_list=[
             {
-                "description": "First need to find all IDs in the soil graph",
-                "whole_plan": ["Find id list of soil map"],
-                "next_step": "Call list_id_of_type function",
+                "description": "First need to find all types in the soil map",
+                "whole_plan": ["Step 1: Find all types in the soil map"],
+                "next_step": "Call list_type_of_graph_name function",
                 "command": {
-                    "command": "list_id_of_type",
-                    "args": ["http://example.com/soil","all"],
-                    "variable": "soil_id_list"
+                    "command": "list_type_of_graph_name",
+                    "args": ["http://example.com/soil"],
+                    "variable": "soil_type"
                 },
                 "finish_sign": False
             }
             ,
             {
-                "description": "Now we need to find all elements in buildings graph",
-                "whole_plan": ["Find id list of soil map",
-                               "Get a list of IDs of buildings"],
+                "description": "Now we can get the corresponding ID list based on the soil type suitable for agriculture",
+                "whole_plan": ["Step 1: Find all types in the soil map",
+                               "Step 2: Get a list of IDs corresponding to soil types suitable for agriculture"],
                 "next_step": "Call list_id_of_type function",
                 "command": {
                     "command": "list_id_of_type",
-                    "args": ["http://example.com/buildings", "building"],
-                    "variable": "buildings_id_list"
+                    "args": ["http://example.com/soil", [
+                        "62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)",
+                        '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
+                        '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf']],
+                    "variable": "agricultural_soil_id"
                 },
                 "finish_sign": False
             },
             {
-                "description": "Compute element intersection with geo_calculate",
-                "whole_plan": ["Find id list of soil map",
-                               "Get a list of IDs of buildings",
-                               "Compute element intersection"],
+                "description": "I need to know which graph the residential area is in",
+                "whole_plan": ["Step 1: Find all types in the soil map",
+                               "Step 2: Get a list of IDs corresponding to soil types suitable for agriculture",
+                               "Step 3: Get types in landuse map"],
+                "next_step": "Call list_type_of_graph_name function",
+                "command": {
+                    "command": "list_type_of_graph_name",
+                    "args": ["http://example.com/landuse"],
+                    "variable": "landuse_type"
+                },
+                "finish_sign": False
+            },
+            {
+                "description": "Get id list of residential element",
+                "whole_plan": ["Step 1: Find all types in the soil map",
+                               "Step 2: Get a list of IDs corresponding to soil types suitable for agriculture",
+                               "Step 3: Get types in landuse map",
+                               "Step 4: Get id list of residential area"],
+                "next_step": "Call list_id_of_type function",
+                "command": {
+                    "command": "list_id_of_type",
+                    "args": ["http://example.com/landuse","residential"],
+                    "variable": "residential_ids"
+                },
+                "finish_sign": False
+            },
+            {
+                "description": "Now we need to calculate residential areas within 500m of these elements",
+                "whole_plan": ["Step 1: Find all types in the soil map",
+                               "Step 2: Get a list of IDs corresponding to soil types suitable for agriculture",
+                               "Step 3: Get types in landuse map",
+                               "Step 4: Get id list of residential area"
+                               "Step 5: Calculate the buffer area using geo_calculate"],
                 "next_step": "Call geo_calculate function",
                 "command": {
                     "command": "geo_calculate",
-                    "args": ["soil_id_list", "buildings_id_list","intersects"],
-                    "variable": "intersects_result"
+                    "args": ["agricultural_soil_id", "residential_ids","buffer",500],
+                    "variable": "residential_ids"
                 },
                 "finish_sign": False
             },
@@ -545,7 +577,7 @@ def build_agents():
             globals_dict[variable]=  globals()[command](*args_)
             results=globals_dict[variable]
             if command=="list_type_of_graph_name" and "soil" in str(args_):
-                return ("length: " + str(len(results)) + " " + str(results)[:1000])
+                return ("length: " + str(len(results)) + " " + str(results)[:3000])
             else:
                 if isinstance(results,list) or isinstance(results,dict):
                     return ("length: " + str(len(results)) + " " + str(results)[:300])
@@ -612,11 +644,11 @@ You are an AI assistant that processes complex database queries. You need to bre
 {
 
     "find_bounding_box": {
-        "Argument": "region_name",
-        "Description": "If user wants to get query result from a specific location, you need to first run this function with argument region_name, then the other function would limit its result in this region. Example: if user wants to search result from munich germany, input of this function would be 'munich germany'."
+        "Argument": ["region_name"],
+        "Description": "If user wants to get query result from a specific location, you need to first run this function with argument region_name, then the other function would limit its result in this region automatically (you don't need to add region name to other function). Example: if user wants to search result from munich germany, input of this function would be ['munich germany']."
     },
     "list_type_of_graph_name": {
-        "Argument": "graph_name",
+        "Argument": ["graph_name"],
         "Description": "Enter the name of the graph you want to query and it returns all types of that graph. For example, for a soil graph, the types are different soil types."
     },
     "list_id_of_type": {
@@ -706,14 +738,16 @@ Response json format:
         messages_2.append({"role": "user", "content": user_content})
         step=0
         query_list=test_arg()
-        while results!="break down":
-        # for chat_response in query_list:
-        #     delay = random.uniform(1, 2)
-
+        # while results!="break down":
+        for chat_response in query_list:
+            delay = random.uniform(1, 2)
+            #
             # 暂停执行随机生成的时间
-            # time.sleep(4+delay)
+            if step==1:
+                time.sleep(3)
+            time.sleep(4+delay)
             step+=1
-            chat_response = chat_single(messages_2)
+            # chat_response = chat_single(messages_2)
             print(f'Agent step {step}:')
 
             try:
@@ -729,7 +763,7 @@ Response json format:
             messages_2.append({"role": "user", "content": results})
         print("Task finished.")
         user_content = input("input question:")
-        time.sleep(4)
+        # time.sleep(4)
         print("Sure. ")
         # chat_response = chat_completion_request(messages,tools=tools)
         # assistant_message = chat_response.json()["choices"][0]["message"]
@@ -752,19 +786,20 @@ build_agents()
 # print(all_soil)
 
 # region_name="munich Ismaning"
-# bounding_coordinates,bounding_wkb=find_boundbox(region_name)
+# find_bounding_box(region_name)
 # # # print(list_type_of_graph_name(all_graph_name[1]))
-# id_list_buildings=list_id_of_type(all_graph_name[2],"building",bounding_coordinates)
-# id_list_landuse=list_id_of_type(all_graph_name[0],["park",'residential'],bounding_coordinates)
+# id_list_buildings=list_id_of_type(all_graph_name[2],"building")
+# id_list_landuse=list_id_of_type(all_graph_name[0],"forest")
 #
 # id_list_soil=list_id_of_type(all_graph_name[1],"all")
 
-# _,id_list=geo_calculate(id_list_buildings,id_list_soil,"intersects")
+# response,id_list=geo_calculate(id_list_buildings,id_list_landuse,"buffer",100)
+# print(len(response),response)
 # geo_dict={region_name:wkb.loads(bytes.fromhex(bounding_wkb))}
 # id_list_buildings.update(id_list_landuse)
 # geo_dict=((id_list_soil))
 
-# draw_geo_map(id_list_buildings,"geo")
+# draw_geo_map(geo_dict,"geo")
 
 # print(id_list_landuse)
 # print(id_list_soil)
