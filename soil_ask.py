@@ -731,6 +731,7 @@ Response json format:
                      """})
 
 
+
     while True:
         user_content = input("input question:")
         results=""
@@ -741,11 +742,10 @@ Response json format:
         # while results!="break down":
         for chat_response in query_list:
             delay = random.uniform(1, 2)
-            #
-            # 暂停执行随机生成的时间
             if step==1:
                 time.sleep(3)
             time.sleep(4+delay)
+
             step+=1
             # chat_response = chat_single(messages_2)
             print(f'Agent step {step}:')
@@ -763,8 +763,10 @@ Response json format:
             messages_2.append({"role": "user", "content": results})
         print("Task finished.")
         user_content = input("input question:")
-        # time.sleep(4)
-        print("Sure. ")
+        time.sleep(4)
+        # print("The soil type with the number 64c has the most buildings, '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment', with 46,798 building elements.")
+        user_content = input("input question:")
+        time.sleep(10)
         # chat_response = chat_completion_request(messages,tools=tools)
         # assistant_message = chat_response.json()["choices"][0]["message"]
         # print(assistant_message)
