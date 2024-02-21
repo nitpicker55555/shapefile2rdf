@@ -48,25 +48,40 @@
 </head>
 <body>
 <!--    <div id="markdownContainer"></div>-->
-    <div id="chatWindow"></div>
+<div id="chatWindow"></div>
 <div class="input-button-container">
     <input type="text" id="inputField" placeholder="Enter something...">
     <button id="confirmButton">Confirm</button>
 </div>
-    <script>
-        $(document).ready(function() {
+<script>
+    $(document).ready(function() {
+        document.addEventListener('DOMContentLoaded', function() {
+            var textInput = document.getElementById('inputField');
+            var submitButton = document.getElementById('confirmButton');
+
+            textInput.addEventListener('keydown', function(event) {
+                // 检查按下的键是否是Enter键
+                if (event.key === 'Enter' || event.keyCode === 13) {
+                    // 阻止Enter键的默认行为，如果有的话（例如，提交表单）
+                    event.preventDefault();
+                    // 触发Submit按钮的点击事件
+                    submitButton.click();
+                }
+            });
+        });
+
         var chatWindow = $('#chatWindow');
-            function adjustContainerHeight() {
-                var windowHeight = $(window).height(); // 获取窗口的高度
-                var containerHeight = windowHeight - 100; // 窗口高度减去100px
-                chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
-            }
+        function adjustContainerHeight() {
+            var windowHeight = $(window).height(); // 获取窗口的高度
+            var containerHeight = windowHeight - 100; // 窗口高度减去100px
+            chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
+        }
 
-            // 首次加载时调整容器高度
-            adjustContainerHeight();
+        // 首次加载时调整容器高度
+        adjustContainerHeight();
 
-            // 监听窗口大小变化事件，并调整容器高度
-            $(window).resize(adjustContainerHeight);
+        // 监听窗口大小变化事件，并调整容器高度
+        $(window).resize(adjustContainerHeight);
         // const chatWindow = document.getElementById('markdownContainer');
         function escapeHtml(html) {
             let text = document.createTextNode(html);
@@ -74,40 +89,20 @@
             div.appendChild(text);
             return div.innerHTML;
         }
-            addRequestMessage("asd")
 
-        fetch('/stream').then(response => {
-            const reader = response.body.getReader();
-            var sum_chunk=""
-            function read() {
-                reader.read().then(({done, value}) => {
-                    if (done) {
-                        console.log('Stream complete');
-                        return;
-                    }
-                    const chunk = new TextDecoder().decode(value); // 将流字节转换为字符串
-                    sum_chunk+=chunk
-                    // const tempDiv = document.createElement('div'); // 创建一个临时 div 用于解析 HTML
-                    // chatWindow.innerHTML += chunk; // 将 HTML 字符串设置为 div 的内容
-                    addResponseMessage(sum_chunk)
+        function addRequestMessage(message) {
+            // $(".answer .tips").css({"display":"none"});    // 打赏卡隐藏
+            // chatInput.val('');
+            let escapedMessage = escapeHtml(message);  // 对请求message进行转义，防止输入的是html而被浏览器渲染
+            let requestMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/avatar.png"><div class="message-text request">' +  escapedMessage + '</div></div>');
+            chatWindow.append(requestMessageElement);
+            let responseMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/chatgpt.png"><div class="message-text response"><span class="loading-icon"><i class="fa fa-spinner fa-pulse fa-2x"></i></span></div></div>');
+            chatWindow.append(responseMessageElement);
+            chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
+        }
 
-                    read(); // 继续读取下一个数据块
-                });
-            }
-            read();
-        });
-            function addRequestMessage(message) {
-                // $(".answer .tips").css({"display":"none"});    // 打赏卡隐藏
-                // chatInput.val('');
-                let escapedMessage = escapeHtml(message);  // 对请求message进行转义，防止输入的是html而被浏览器渲染
-                let requestMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/avatar.png"><div class="message-text request">' +  escapedMessage + '</div></div>');
-                chatWindow.append(requestMessageElement);
-                let responseMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/chatgpt.png"><div class="message-text response"><span class="loading-icon"><i class="fa fa-spinner fa-pulse fa-2x"></i></span></div></div>');
-                chatWindow.append(responseMessageElement);
-                chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
-            }
+        function addResponseMessage(message) {
 
-            function addResponseMessage(message) {
             // console.log(message)
             let lastResponseElement = $(".message-bubble .response").last();
             lastResponseElement.empty();
@@ -128,12 +123,59 @@
             }
             lastResponseElement.append(escapedMessage);
             chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
-        }})
+        }
+        document.getElementById('confirmButton').addEventListener('click', function() {
+            var userInput = document.getElementById('inputField').value; // 获取文本框的值
+            addRequestMessage(userInput)
+            document.getElementById('inputField').value=''
+            // 使用 fetch 发送数据
+            fetch('/submit', {
+                method: 'POST', // 指定请求方法为POST
+                headers: {
+                    'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
+                },
+                body: JSON.stringify({ text: userInput }) // 将用户输入转换为JSON字符串
+            })
+                .then(response => {
+                    // response.json()
 
-        // 添加响应消息到窗口,流式响应此方法会执行多次
 
 
-    </script>
+                        const reader = response.body.getReader();
+                        var sum_chunk=""
+                        function read() {
+                            reader.read().then(({done, value}) => {
+                                if (done) {
+                                    console.log('Stream complete');
+                                    return;
+                                }
+                                const chunk = new TextDecoder().decode(value); // 将流字节转换为字符串
+                                sum_chunk+=chunk
+                                // const tempDiv = document.createElement('div'); // 创建一个临时 div 用于解析 HTML
+                                // chatWindow.innerHTML += chunk; // 将 HTML 字符串设置为 div 的内容
+                                addResponseMessage(sum_chunk)
+
+                                read(); // 继续读取下一个数据块
+                            });
+                        }
+                        read();
+
+
+                }) // 解析JSON格式的响应
+                .then(data => {
+                    console.log('Success:', data); // 在控制台打印成功的响应
+                })
+                .catch((error) => {
+                    console.error('Error:', error); // 在控制台打印出现的错误
+                });
+        });
+
+    })
+
+    // 添加响应消息到窗口,流式响应此方法会执行多次
+
+
+</script>
 
 
 
