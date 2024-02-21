@@ -2,13 +2,12 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 load_dotenv()
-GPT_MODEL = "gpt-4-1106-preview"
 api_key = os.getenv('OPENAI_API_KEY')
 client = OpenAI()
 import sys
 from io import StringIO
 
-# 创建一个 StringIO 对象来暂存 print() 输出
+
 output = StringIO()
 original_stdout = sys.stdout
 
@@ -27,7 +26,7 @@ def chat_single(messages,mode="json"):
             model="gpt-3.5-turbo-1106",
             messages=messages
         )
-    print(response.choices[0].message.content)
+    # print(response.choices[0].message.content)
     return response.choices[0].message.content
 
 messages2 = []
@@ -46,12 +45,15 @@ while True:
     if "```python" in chat_result:
         code_str=extract_code(chat_result)
         sys.stdout = output
+        print(code_str)
         (exec(code_str))
         code_result=output.getvalue()
+        output.truncate(0)
         sys.stdout = original_stdout
         print("code_result: ",code_result)
         messages2.append({"role": "user",
-                          "content": code_result})
+                          "content": "code result:"+code_result})
         chat_result = (chat_single(messages2, ""))
+        print(chat_result)
         messages2.append({"role": "assistant",
                           "content": chat_result})

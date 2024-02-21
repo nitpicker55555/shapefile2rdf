@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="images/x-icon" href="./static/images/favicon.ico">
+    <link rel="stylesheet" href="./static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./static/css/style.css">
+    <title>3.5 镜像</title>
+  <style>
+.center {
+text-align: center; /* 垂直居中 */
+
+}
+    #myCheckbox {
+display: none;
+    }
+      pp {
+        font-size: 20px; /* 设置文字大小为20像素 */
+        
+        
+      }
+      ppa{
+        font-size: 90px; /* 设置文字大小为20像素 */
+        font-style: italic; /* 将文字设置为斜体 */
+        font-weight: bold; /* 将文字设置为加粗 */
+
+
+      }
+.input-container {
+  position: relative;
+  width: 250px;
+  height: 90px;
+  padding: 20px;
+  margin: auto;
+}
+#input-box {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+#comment {
+  position: absolute;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-12">
+        <div class="title">
+            <h2 class="text-center">3.5 Mirror</h2>
+        </div>
+        
+<div class="input-container">
+            <input type="text" class="form-control ipt-2"  id="input-box" name="input-text" placeholder="写下你的建议意见">
+<button id="comment" class="btn btn-primary" type="button" onclick="sendData()">提交</button>
+          </div>
+
+          </div>
+        </div>
+<script>
+       function sendData() {
+        var inputText = document.getElementById('input-box').value;
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+              alert(xhr.responseText);
+            } else {
+              alert('发生错误：' + xhr.status);
+            }
+          }
+        };
+        xhr.open('POST', '121.php', true);
+        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        xhr.send('input-text=' + encodeURIComponent(inputText));
+      }
+function sendData_2() {
+      var elementToHide = document.getElementById('ppas');
+        elementToHide.style.display = 'none';
+      var elementToHide = document.getElementById('ppass');
+        elementToHide.style.display = 'none';
+
+
+
+      // 获取按钮和需要隐藏的元素
+
+
+
+      }
+</script>
+        <div class="answer">
+
+<div   class="center">
+<ppa id="ppas">GPT3.5</ppa>
+</div>
+<br>
+<br>
+<div   class="center">
+<pp id="ppass">/ 上 下 文 理 解 / 代 码 框 / Markdown 显 示</pp>
+</div>
+          <div id="chatWindow"></div>
+            <div class="input-group ipt">
+              <div class="col-xs-12" >
+                <textarea id="chatInput" class="form-control" rows="1"></textarea>
+              </div>
+              <button id="chatBtn" class="btn btn-primary" name="chatBtn-text" onclick="sendData_2()" placeholder="开始提问" type="button">提问</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    <div class="row foot">
+<div   class="center">
+<a  style="display: inline-block;" class="lead text-center" onclick="window.location.href='http://130.61.253.72/gpt/static/images/reward.png'" style="color:red;">打赏   ⬅  |     </a>
+        <a style="display: inline-block;"  class="lead text-center" id="my-p">@微信号: 张咸蛋</a>
+    </div>
+      <footer class="col-xs-12" >
+        <p class="lead text-center">因为目前的API结果是生成完毕后显示，所以如果返回文字较多等候时间会较长，其他问题请联系我，或在上方留言</p>
+
+      </footer>
+    </div>
+  </div>   
+
+</body>
+<script>
+  // 获取<p>标签元素
+  const myP = document.getElementById('my-p');
+  
+  // 在<p>标签被点击时弹出"123"
+  myP.addEventListener('click', () => {
+    alert('请联系微信号: 18302921075');
+  });
+
+</script>
+<script src="./static/js/jquery-2.1.1.js"></script>
+<script src="./static/js/bootstrap.min.js"></script>
+<script src="./static/js/marked.min.js"></script>
+<script src="./static/js/layer/layer.js"></script>
+<script src="./static/js/custom.js?t=<?php echo time(); ?>"></script>
+</html>

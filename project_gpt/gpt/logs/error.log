@@ -1,0 +1,67 @@
+[2023-05-15 22:45:17 +0000] [2940204] [INFO] Starting gunicorn 20.1.0
+[2023-05-15 22:45:17 +0000] [2940204] [INFO] Listening at: http://0.0.0.0:5000 (2940204)
+[2023-05-15 22:45:17 +0000] [2940204] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-15 22:45:17 +0000] [2940221] [INFO] Booting worker with pid: 2940221
+[2023-05-15 22:47:36,117] ERROR in app: Exception on /chat [POST]
+Traceback (most recent call last):
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 2077, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1525, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1523, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1509, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/www/wwwroot/gpt/app.py", line 23, in chat
+    apiKey = app.config['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']
+KeyError: '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'
+[2023-05-15 22:47:38,675] ERROR in app: Exception on /chat [POST]
+Traceback (most recent call last):
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 2077, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1525, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1523, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1509, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/www/wwwroot/gpt/app.py", line 23, in chat
+    apiKey = app.config['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']
+KeyError: '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'
+[2023-05-15 23:17:38,784] ERROR in app: Exception on /chat [POST]
+Traceback (most recent call last):
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 2077, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1525, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1523, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/www/wwwroot/gpt/aeebd1980c6662678028fc899ba441eb_venv/lib/python3.8/site-packages/flask/app.py", line 1509, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/www/wwwroot/gpt/app.py", line 23, in chat
+    apiKey = app.config['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']
+KeyError: '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'
+[2023-05-16 00:14:18 +0000] [2975429] [INFO] Starting gunicorn 20.1.0
+[2023-05-16 00:14:18 +0000] [2975429] [INFO] Listening at: http://0.0.0.0:5000 (2975429)
+[2023-05-16 00:14:18 +0000] [2975429] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-16 00:14:18 +0000] [2975456] [INFO] Booting worker with pid: 2975456
+[2023-05-18 16:58:58 +0000] [3861648] [INFO] Starting gunicorn 20.1.0
+[2023-05-18 16:58:58 +0000] [3861648] [INFO] Listening at: http://0.0.0.0:5000 (3861648)
+[2023-05-18 16:58:58 +0000] [3861648] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-18 16:58:58 +0000] [3861655] [INFO] Booting worker with pid: 3861655
+[2023-05-18 18:22:08 +0000] [3881296] [INFO] Starting gunicorn 20.1.0
+[2023-05-18 18:22:08 +0000] [3881296] [INFO] Listening at: http://0.0.0.0:5000 (3881296)
+[2023-05-18 18:22:08 +0000] [3881296] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-18 18:22:08 +0000] [3881320] [INFO] Booting worker with pid: 3881320
+[2023-05-18 19:01:54 +0000] [3891035] [INFO] Starting gunicorn 20.1.0
+[2023-05-18 19:01:54 +0000] [3891035] [INFO] Listening at: http://0.0.0.0:5000 (3891035)
+[2023-05-18 19:01:54 +0000] [3891035] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-18 19:01:54 +0000] [3891061] [INFO] Booting worker with pid: 3891061
+[2023-05-18 20:14:26 +0000] [3910817] [INFO] Starting gunicorn 20.1.0
+[2023-05-18 20:14:26 +0000] [3910817] [INFO] Listening at: http://0.0.0.0:5000 (3910817)
+[2023-05-18 20:14:26 +0000] [3910817] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-18 20:14:26 +0000] [3910834] [INFO] Booting worker with pid: 3910834
+[2023-05-18 20:31:18 +0000] [3915584] [INFO] Starting gunicorn 20.1.0
+[2023-05-18 20:31:18 +0000] [3915584] [INFO] Listening at: http://0.0.0.0:5000 (3915584)
+[2023-05-18 20:31:18 +0000] [3915584] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2023-05-18 20:31:18 +0000] [3915601] [INFO] Booting worker with pid: 3915601

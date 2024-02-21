@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ChatGPT Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<h1>ChatGPT Demo</h1>
+<label for="input">Input:</label><br>
+<textarea id="input" name="input" rows="5" cols="50"></textarea><br>
+<label for="output">Output:</label><br>
+<textarea id="output" name="output" rows="5" cols="50" readonly></textarea><br>
+<button onclick="sendMessage()">Send</button>
+<script>
+  function sendMessage() {
+    var input = document.getElementById("input").value;
+    axios.post("https://api.openai.com/v1/engine/<engine-id>/completions", {
+      prompt: input,
+      max_tokens: 100,
+      n: 1,
+      stop: "\n"
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <api-key>"
+      }
+    })
+            .then(function(response) {
+              var output = response.data.choices[0].text;
+              document.getElementById("output").value += output + "\n";
+            })
+            .catch(function(error) {
+              console.log(error);
+            });
+  }
+</script>
+</body>
+</html>
