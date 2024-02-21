@@ -9,6 +9,8 @@ api_key = os.getenv('OPENAI_API_KEY')
 client = OpenAI()
 import sys
 from io import StringIO
+from datetime import datetime
+
 
 output = StringIO()
 original_stdout = sys.stdout
@@ -35,6 +37,8 @@ draw_heart()
 ```
 
 """
+globals_dict = {}
+locals_dict = {}
 def chat_single(messages,mode="json"):
     if mode=="json":
 
@@ -53,9 +57,8 @@ def chat_single(messages,mode="json"):
 messages2 = []
 messages2.append({"role": "system",
                  "content": """
-                 你现在拥有一个虚拟环境，你可以自由的运行python代码，并获得运行结果。你可以用python代码查看当前环境的所有信息。
-                 """})
-# 将Markdown文本渲染成HTML
+                You have a virtual environment equipped with a python environment. The python code you give will be automatically run by the system, so you can freely achieve your goals through python code. The code running results will be returned to you after the execution is completed. You can use python code to view all information about the current environment, or use matplotlib to draw charts. But note that if you want to get the value of a variable, please use print() to print it out.
+                """})
 # html_content = markdown2.markdown(markdown_text)
 
 def extract_code(code_str):
@@ -88,9 +91,15 @@ def submit():
         messages2.append({"role": "assistant",
                           "content": str(chat_result)})
         if "```python" in chat_result:
-            yield "`Code running...`\n"
+            yield "\n\n`Code running...`\n"
 
             code_str=extract_code(chat_result)
+            plt_show=False
+            if "plt.show()" in code_str:
+                plt_show=True
+                print("plt_show")
+                filename = f"plot_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
+                code_str=code_str.replace("plt.show()",f"plt.savefig('static/{filename}')")
             sys.stdout = output
             try:
                 exec(code_str)
@@ -99,11 +108,17 @@ def submit():
             code_result=output.getvalue()
             output.truncate(0)
             sys.stdout = original_stdout
-            yield "`Code result: `\n"
-            yield "```"+code_result+"```"
+            yield "\n`Code result: `\n"
+            if plt_show:
+                code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
+                yield  code_result
+            else:
+
+                yield "```" + code_result + "```"+'\n'
+            print("```" + code_result + "```"+'\n')
             # print("code_result: ",code_result)
             messages2.append({"role": "user",
-                              "content": "code result:"+code_result})
+                              "content": "code_result:"+code_result})
             chat_response_code = (chat_single(messages2, ""))
             chat_result = ''
             for chunk in chat_response_code:
@@ -135,7 +150,7 @@ def stream():
             code_str=extract_code(full_text)
             sys.stdout = output
             try:
-                exec(code_str)
+                exec(code_str, globals_dict, locals_dict)
             except Exception as e:
                 print(f"An error occurred: {e}")
             code_result=output.getvalue()
