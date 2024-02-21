@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk with DB</title>
+    <style>
+
+        #chatWindow {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px; /* 或根据需要调整 */
+            overflow-y: scroll;
+            margin: 20px auto;
+            width: 80%;
+        }
+        .input-button-container {
+            position: fixed; /* 使用固定定位 */
+            bottom: 20px; /* 距离窗口底部20px */
+            left: 50px; /* 距离窗口左边50px */
+            right: 50px; /* 距离窗口右边50px */
+            display: flex; /* 使用flex布局 */
+            justify-content: space-between; /* 使输入框和按钮分布在两端 */
+            align-items: center; /* 垂直居中对齐 */
+        }
+
+        #inputField, #confirmButton {
+            height: 40px; /* 设置输入框和按钮的高度 */
+            line-height: 40px; /* 设置行高以垂直居中文本 */
+        }
+
+        #inputField {
+            width: 80%; /* 输入框占据大部分空间 */
+            margin-right: 10px; /* 和按钮之间留出一些间隔 */
+        }
+
+        #confirmButton {
+            width: 20%; /* 按钮占据剩余空间 */
+        }
+
+    </style>
+    <script src="../static/js/jquery-2.1.1.js"></script>
+    <script src="../static/js/marked.min.js"></script>
+    <link rel="stylesheet" href="../static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../static/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/css/github-dark-dimmed.min.css">
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+<!--    <div id="markdownContainer"></div>-->
+    <div id="chatWindow"></div>
+<div class="input-button-container">
+    <input type="text" id="inputField" placeholder="Enter something...">
+    <button id="confirmButton">Confirm</button>
+</div>
+    <script>
+        $(document).ready(function() {
+        var chatWindow = $('#chatWindow');
+            function adjustContainerHeight() {
+                var windowHeight = $(window).height(); // 获取窗口的高度
+                var containerHeight = windowHeight - 100; // 窗口高度减去100px
+                chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
+            }
+
+            // 首次加载时调整容器高度
+            adjustContainerHeight();
+
+            // 监听窗口大小变化事件，并调整容器高度
+            $(window).resize(adjustContainerHeight);
+        // const chatWindow = document.getElementById('markdownContainer');
+        function escapeHtml(html) {
+            let text = document.createTextNode(html);
+            let div = document.createElement('div');
+            div.appendChild(text);
+            return div.innerHTML;
+        }
+            addRequestMessage("asd")
+
+        fetch('/stream').then(response => {
+            const reader = response.body.getReader();
+            var sum_chunk=""
+            function read() {
+                reader.read().then(({done, value}) => {
+                    if (done) {
+                        console.log('Stream complete');
+                        return;
+                    }
+                    const chunk = new TextDecoder().decode(value); // 将流字节转换为字符串
+                    sum_chunk+=chunk
+                    // const tempDiv = document.createElement('div'); // 创建一个临时 div 用于解析 HTML
+                    // chatWindow.innerHTML += chunk; // 将 HTML 字符串设置为 div 的内容
+                    addResponseMessage(sum_chunk)
+
+                    read(); // 继续读取下一个数据块
+                });
+            }
+            read();
+        });
+            function addRequestMessage(message) {
+                // $(".answer .tips").css({"display":"none"});    // 打赏卡隐藏
+                // chatInput.val('');
+                let escapedMessage = escapeHtml(message);  // 对请求message进行转义，防止输入的是html而被浏览器渲染
+                let requestMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/avatar.png"><div class="message-text request">' +  escapedMessage + '</div></div>');
+                chatWindow.append(requestMessageElement);
+                let responseMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/chatgpt.png"><div class="message-text response"><span class="loading-icon"><i class="fa fa-spinner fa-pulse fa-2x"></i></span></div></div>');
+                chatWindow.append(responseMessageElement);
+                chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
+            }
+
+            function addResponseMessage(message) {
+            // console.log(message)
+            let lastResponseElement = $(".message-bubble .response").last();
+            lastResponseElement.empty();
+            let escapedMessage;
+            // 处理流式消息中的代码块
+            let codeMarkCount = 0;
+            let index = message.indexOf('```');
+            while (index !== -1) {
+                codeMarkCount ++ ;
+                index = message.indexOf('```', index + 3);
+            }
+            if(codeMarkCount % 2 == 1  ){  // 有未闭合的 code
+                escapedMessage = marked.parse(message + '\n\n```');
+            }else if(codeMarkCount % 2 == 0 && codeMarkCount != 0){
+                escapedMessage = marked.parse(message);  // 响应消息markdown实时转换为html
+            }else if(codeMarkCount == 0){  // 输出的代码有可能不是markdown格式，所以只要没有markdown代码块的内容，都用escapeHtml处理后再转换
+                escapedMessage = marked.parse(escapeHtml(message));
+            }
+            lastResponseElement.append(escapedMessage);
+            chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
+        }})
+
+        // 添加响应消息到窗口,流式响应此方法会执行多次
+
+
+    </script>
+
+
+
+</body>
+</html>

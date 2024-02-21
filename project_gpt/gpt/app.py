@@ -18,6 +18,16 @@ app.secret_key = 'your_very_secret_key_here22'  # 设置一个安全的密钥
 # app.config.from_pyfile('settings.py')
 # apiKey = app.config['OPENAI_API_KEY']
 # 从配置文件中settings加载配置
+
+import sys
+from io import StringIO
+
+
+output = StringIO()
+original_stdout = sys.stdout
+
+
+
 app.config.from_pyfile('settings.py')
 
 @app.route("/", methods=["GET"])
@@ -146,6 +156,8 @@ def chat():
     except TimeoutError:
         return jsonify({"error": {"message": "请求超时!", "type": "timeout_error"}})
 
+    def extract_code(code_str):
+        return code_str.split("```python")[1].split("```")[0]
 
     # 迭代器实现流式响应
     def generate(now,ip_,os,browser,device_type):
@@ -174,6 +186,16 @@ def chat():
         #     f.write(f"‘len:’，{ques_length}， ‘time:’，  {now}，  ‘ip:’，  {ip_},  {query_ip_location(ip_)} \n")
         #     f.write(f"‘user:’，  {final_conv}\n")
         #     f.write(f"‘answer:’，  {response_str}\n")
+        if "```python" in response_str:
+            code_str = extract_code(response_str)
+            sys.stdout = output
+            print(code_str)
+            (exec(code_str))
+            code_result = output.getvalue()
+            output.truncate(0)
+            sys.stdout = original_stdout
+            print("code_result: ", code_result)
+
         data_with_response = {
             'len': str(ques_length),
             'time': str(now),
