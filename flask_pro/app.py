@@ -57,8 +57,8 @@ def chat_single(messages,mode="json"):
 messages2 = []
 messages2.append({"role": "system",
                  "content": """
-                You have a virtual environment equipped with a python environment. The python code you give will be automatically run by the system, so you can freely achieve your goals through python code. The code running results will be returned to you after the execution is completed. You can use python code to view all information about the current environment, or use matplotlib to draw charts. But note that if you want to get the value of a variable, please use print() to print it out.
-                """})
+                You have a virtual environment equipped with a python environment. The python code you give will be automatically run by the system, so you can freely achieve your goals through python code. The code running results will be returned to you after the execution is completed. You can use python code to view all information about the current environment, or use matplotlib to draw charts. But note that if you want to get the value of a variable, please use the print() method to print it out; the variables in the code you give will be stored in the environment and can be called directly next time.
+                 """})
 # html_content = markdown2.markdown(markdown_text)
 
 def extract_code(code_str):
