@@ -412,20 +412,7 @@ def geo_calculate(data_list1, data_list2, mode,buffer_number=0):
 #
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
-def chat_single(messages,mode="json"):
-    if mode=="json":
 
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
-            response_format={"type": "json_object"},
-            messages=messages
-        )
-    else:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
-            messages=messages
-        )
-    return response.choices[0].message.content
 
 def transfer_id_list_2_geo_dict(id_list,raw_dict=None):
 
@@ -465,7 +452,20 @@ def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MO
         print(f"Exception: {e}")
         return e
 
+def chat_single(messages,mode="json"):
+    if mode=="json":
 
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            response_format={"type": "json_object"},
+            messages=messages
+        )
+    else:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            messages=messages
+        )
+    return response.choices[0].message.content
 def build_agents():
     def test_arg():
         query_list=[
