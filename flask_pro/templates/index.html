@@ -3,44 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talk with DB</title>
+    <title>Code Interpreter</title>
     <style>
+        .container {
+            text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
 
+        .code-interpreter {
+            font-style: italic;
+            font-weight: bold;
+            font-size: 50px;
+        }
+
+        .description {
+            font-size: 14px;
+            letter-spacing: 6px; /* 增加字间距 */
+            display: block; /* 或者使用flex等其他布局方式来控制宽度 */
+            /* 设定宽度以尝试与上方文本宽度匹配 */
+            max-width: 600px; /* 假设上方文本的最大宽度为600px */
+            margin: 10px auto; /* 居中显示 */
+        }
         #chatWindow {
+
             border: 1px solid #ccc;
             padding: 10px;
-            height: 300px; /* 或根据需要调整 */
-            overflow-y: scroll;
-            margin: 20px auto;
-            width: 80%;
+            overflow-y: auto; /* 内容超出时在元素内部显示滚动条 */
+            margin: -30px 20px 5px; /* 上、左右、下的外边距 */
+            width: calc(100% - 40px); /* 调整宽度以考虑左右的边距 */
+            max-height: calc(100vh); /* 最大高度以避免窗口滚动条 */
+
+
+        }
+        .night-mode {
+            background-color: black;
+            color: white;
+        }
+
+        /* 你可能还需要为特定元素定义夜间模式的样式 */
+        .night-mode p, .night-mode h1, .night-mode h2, .night-mode h3 {
+            color: white; /* 确保所有文字都是白色 */
+        }
+        .night-mode button {
+            background-color: #757575; /* 灰色背景 */
+            color: white; /* 白色文字 */
+            /*border: none; !* 可选，移除边框 *!*/
+        }
+
+        /* 如果你有使用特定类名的按钮，也可以相应地为它们定义样式 */
+        .night-mode .your-button-class {
+            background-color: #757575; /* 灰色背景 */
+            color: white; /* 白色文字 */
         }
         .input-button-container {
             position: fixed; /* 使用固定定位 */
             bottom: 20px; /* 距离窗口底部20px */
-            left: 50px; /* 距离窗口左边50px */
-            right: 50px; /* 距离窗口右边50px */
+            left: 20px; /* 距离窗口左边50px */
+            right: 20px; /* 距离窗口右边50px */
+
             display: flex; /* 使用flex布局 */
             justify-content: space-between; /* 使输入框和按钮分布在两端 */
             align-items: center; /* 垂直居中对齐 */
         }
 
-        #inputField, #confirmButton {
+        #upload-btn,#inputField, #confirmButton {
             height: 40px; /* 设置输入框和按钮的高度 */
             line-height: 40px; /* 设置行高以垂直居中文本 */
         }
 
         #inputField {
             width: 80%; /* 输入框占据大部分空间 */
-            margin-right: 10px; /* 和按钮之间留出一些间隔 */
+            margin-right: 5px; /* 和按钮之间留出一些间隔 */
+            margin-left: 5px; /* 和按钮之间留出一些间隔 */
         }
 
         #confirmButton {
-            width: 20%; /* 按钮占据剩余空间 */
+            width: 30%; /* 按钮占据剩余空间 */
         }
+        /* 竖屏样式 */
+        /*#map-container {*/
+        /*    max-height: calc(50vh); !* 最大高度以避免窗口滚动条 *!*/
+        /*    margin-top: 20px; !* 距离上边缘20px *!*/
+        /*    margin-left: 50px; !* 距离左边缘50px *!*/
+        /*    margin-right: 50px; !* 距离右边缘50px *!*/
+        /*    z-index: 1000;*/
+        /*}*/
+
+        /*!* 横屏样式 *!*/
+        /*@media (orientation: landscape) {*/
+        /*    #map-container {*/
+        /*        width: 1000px; !* 宽度为1000px *!*/
+        /*        margin-right: 20px; !* 距离右边缘20px *!*/
+        /*        margin-top: 50px; !* 距离上边缘50px *!*/
+        /*        margin-bottom: 50px; !* 距离下边缘50px *!*/
+        /*    }*/
+        /*}*/
 
     </style>
+
     <script src="../static/js/jquery-2.1.1.js"></script>
     <script src="../static/js/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <link rel="stylesheet" href="../static/css/bootstrap.min.css">
     <link rel="stylesheet" href="../static/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" href="../static/css/github-dark-dimmed.min.css">
@@ -48,19 +114,132 @@
 </head>
 <body>
 <!--    <div id="markdownContainer"></div>-->
-<div id="chatWindow"></div>
-<div class="input-button-container">
-    <input type="text" id="inputField" placeholder="Enter something...">
-    <button id="confirmButton">Confirm</button>
+<p class="lead text-center">
+    <a  style="display: inline-block;" class="lead text-center" onclick="window.location.href='./static/images/reward.png'" style="color:red;">打赏     ⬅    |       </a>
+    <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;">@微信号: 张咸蛋</a>
+    <button id="nightModeToggle">🌙</button>
+    <br>
+    <input type="text" id="subscribe" placeholder="输入邮箱订阅更新:)...">
+    <button id="submit_email">提交</button>
+</p>
+
+<input type="file" id="file-input" style="display: none;" />
+<div id="chatWindow" style="display: none"></div>
+<div class="container" id="title">
+    <span class="code-interpreter">Code Interpreter</span>
+    <div class="description">联网查询/分析文件/绘制图表</div>
+    <button class="rectangle-btn"  onclick="showNumber('给我画一个♥心形')">给我画一个♥心形</button>
+    <br>
+    <br>
+    <button class="rectangle-btn"  onclick="showNumber('最近西安有啥新闻')">最近西安有啥新闻</button>
+    <br>
+    <br>
+    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">分析我上传的文件</button>
 </div>
+<div class="input-button-container">
+    <input type="button" id="upload-btn" class="your-button-class" value="上传文件" onclick="document.getElementById('file-input').click();" />
+
+
+    <input type="text" id="inputField" class="your-button-class" placeholder="输入问题...">
+    <button id="confirmButton" class="your-button-class">提问</button>
+</div>
+<!--<div id="map-container">{{ map_html|safe }}</div>-->
+
 <script>
+    // function uploadFile() {
+    //
+    function showNumber(text) {
+        if(text==="分析我上传的文件"){
+            document.getElementById('upload-btn').click()
+        }else {
+            var numberInput = document.getElementById("inputField");
+            numberInput.value = text;
+        }
+
+    }
+    // /}
+    document.getElementById('nightModeToggle').addEventListener('click', function() {
+        document.body.classList.toggle('night-mode');
+    });
+    var messages=[]
+    const normal_prompt = `You have a virtual environment equipped with a python environment and internet.
+    You can use python code to process user upload files, or use matplotlib to draw charts, and use 'search_internet("news")' to access
+    internet. The variables in the code you give will be stored in the environment and can be called directly next time.
+
+        Please notice: If you want to write code, please write with markdown format. If user wants to search news or
+    informations in internet, use python code: 'search_internet('what you want to search')' to get relevant information,
+        do not use other python code.
+
+        can write python code ${String.fromCharCode(96)}python
+search_internet("西安新闻")
+${String.fromCharCode(96)} to get news in 西安. Write ${String.fromCharCode(96)}python
+search_internet("Germany news")
+${String.fromCharCode(96)} to get news in Germany.`
+
+    messages.push({"role": "system",
+        "content": normal_prompt
+    })
+    var socket = io();  // 连接WebSocket服务器
+
+    socket.on('connect', function() {
+        console.log('Connected to WebSocket server!');
+    });
+
+    socket.on('text', function(data) {
+        console.log('Received message:', data);
+        if ("data" in data){
+            messages.push(...data.data)
+            console.log(messages)
+        }
+        // else if("map" in data) {
+        //
+        //     document.getElementById('map-container').innerHTML=data.map
+        // }
+
+
+        // 在这里处理接收到的数据
+    });
+    const myP = document.getElementById('my-p');
+
+    // 在<p>标签被点击时弹出"123"
+    myP.addEventListener('click', () => {
+        alert('请联系微信号: 18302921075');
+    });
     $(document).ready(function() {
+
         var chatInput=$('#inputField')
         var submitButton = $('#confirmButton')
+        var submit_email=$('#submit_email')
 
+        $('#file-input').on('change', function() {
+            var fileInput = document.getElementById('file-input');
+            var file = fileInput.files[0];
+            var formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.filename) {
+                        var filenameShort = data.filename.slice(-10);
+                        document.getElementById('upload-btn').value = ".."+filenameShort;
+                        process_input("User upload a file in: .\\uploads\\"+data.filename)
+
+                    } else {
+                        alert('Upload failed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Upload error');
+                });
+        })
         function handleEnter(e){
             if (e.keyCode===13){
-                console.log("asdasdasd")
+                console.log("enter")
                 submitButton.click();
                 e.preventDefault();  //避免回车换行
             }
@@ -123,10 +302,28 @@
             lastResponseElement.append(escapedMessage);
             chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
         }
-        document.getElementById('confirmButton').addEventListener('click', function() {
-            var userInput = document.getElementById('inputField').value; // 获取文本框的值
+        function cut_messages(originalArray){
+            if (originalArray.length > 5) {
+                // 提取第一个元素
+                const firstElement = originalArray.slice(0, 1);
+                // 提取最后四个元素
+                const lastFourElements = originalArray.slice(-4);
+                // 结合这两部分
+                const newArray = firstElement.concat(lastFourElements);
+                console.log(newArray); // 输出: [1, 7, 8, 9, 10]
+                return newArray
+            } else {
+                // 如果数组长度不超过5，直接使用原数组
+                console.log(originalArray);
+                return originalArray
+            }
+
+        }
+        function process_input(userInput){
             if (userInput!==""){
                 addRequestMessage(userInput)
+                messages=cut_messages(messages)
+                messages.push({"role":"user","content":userInput})
                 document.getElementById('inputField').value=''
                 // 使用 fetch 发送数据
                 fetch('/submit', {
@@ -134,7 +331,7 @@
                     headers: {
                         'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
                     },
-                    body: JSON.stringify({ text: userInput }) // 将用户输入转换为JSON字符串
+                    body: JSON.stringify({ text: userInput ,'messages':messages}) // 将用户输入转换为JSON字符串
                 })
                     .then(response => {
                         // response.json()
@@ -146,13 +343,15 @@
                         function read() {
                             reader.read().then(({done, value}) => {
                                 if (done) {
-                                    console.log('Stream complete');
+                                    // messages.push({"role":"assistant","content":sum_chunk})
+                                    // console.log('length',messages.length);
                                     return;
                                 }
                                 const chunk = new TextDecoder().decode(value); // 将流字节转换为字符串
                                 sum_chunk+=chunk
                                 // const tempDiv = document.createElement('div'); // 创建一个临时 div 用于解析 HTML
                                 // chatWindow.innerHTML += chunk; // 将 HTML 字符串设置为 div 的内容
+
                                 addResponseMessage(sum_chunk)
 
                                 read(); // 继续读取下一个数据块
@@ -169,6 +368,39 @@
                         console.error('Error:', error); // 在控制台打印出现的错误
                     });
             }
+        }
+        document.getElementById('confirmButton').addEventListener('click', function() {
+            document.getElementById('title').style.display="none"
+            document.getElementById('chatWindow').style.display='block'
+            document.getElementById('subscribe').style.display='none'
+            document.getElementById('submit_email').style.display='none'
+            var userInput = document.getElementById('inputField').value; // 获取文本框的值/
+            process_input(userInput)
+
+        });
+        document.getElementById('submit_email').addEventListener('click', function() {
+
+            const text=document.getElementById('subscribe').value
+            document.getElementById('subscribe').value=''
+            alert("邮箱提交成功！谢谢啦:)")
+            fetch('/submit_email', {
+                method: 'POST', // 指定请求方法为POST
+                headers: {
+                    'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
+                },
+                body: JSON.stringify({ text: text }) // 将用户输入转换为JSON字符串
+            })
+                .then(response => {
+
+
+                }) // 解析JSON格式的响应
+                .then(data => {
+                })
+                .catch((error) => {
+                    console.error('Error:', error); // 在控制台打印出现的错误
+                });
+            // var userInput = document.getElementById('inputField').value; // 获取文本框的值
+            // process_input(userInput)
 
         });
 

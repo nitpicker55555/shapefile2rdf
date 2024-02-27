@@ -22,7 +22,7 @@ globals_dict = {}
 sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 
-def find_bounding_box(region_name):
+def set_bounding_box(region_name):
     globals_dict["bounding_box_region_name"] = region_name
     globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
     return response_str
@@ -48,7 +48,7 @@ WHERE {
     return graph_list
 
 
-def list_type_of_graph_name(graph_name):
+def types_of_graph(graph_name):
     """
 
     :param graph_name: 需要查找的数据库
@@ -99,7 +99,7 @@ WHERE {
     return type_list
 
 
-def list_id_of_type(graph_name, single_type, bounding_box_coordinats=None):
+def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     """
     globals_dict["bounding_box_region_name"]=region_name
     globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
@@ -139,6 +139,10 @@ def list_id_of_type(graph_name, single_type, bounding_box_coordinats=None):
                 replace_list.append(i)
         if replace_list!=[]:
             single_type = replace_list
+    else:
+        if ":" in single_type:
+            single_type = single_type.split(":")[0]
+            single_type=soil_dict[single_type]
     single_type = str(single_type)
     if '[' in single_type:
         single_type = single_type.replace("[", "(").replace("]", ")")
@@ -220,6 +224,14 @@ PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
     # print(query)
     feed_back = ask_soil(query, graph_name)
     # print(len(feed_back))
+    if "bounding_box_region_name" in globals_dict:
+        geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
+    else:
+        geo_dict = {}
+
+    geo_dict.update((feed_back))
+    html=draw_geo_map(geo_dict, "geo")
+    print(html)
     return feed_back
 
 
@@ -314,8 +326,8 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     if isinstance(data_list1, str):
         data_list1 = globals_dict[data_list1]
         data_list2 = globals_dict[data_list2]
-    print("len datalist1", len(data_list1))
-    print("len datalist2", len(data_list2))
+    # print("len datalist1", len(data_list1))
+    # print("len datalist2", len(data_list2))
 
     data_list1 = data_list1
     # data_list1=data_list1[:300]
@@ -350,7 +362,7 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
                 id_list.extend(matching_osmIds)
                 result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
                 print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
-        print(len(osmId1_list))
+        # print(len(osmId1_list))
 
 
     elif mode == "buffer":
@@ -398,14 +410,14 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
                 if distance < min_distance:
                     min_distance = distance
                     closest_pair = (item1, item2)
-        print("distance between set1 id " + str(closest_pair[0]) + " set2 id " + str(
-            closest_pair[1]) + " is closest: " + str(min_distance) + " m")
+        # print("distance between set1 id " + str(closest_pair[0]) + " set2 id " + str(
+        #     closest_pair[1]) + " is closest: " + str(min_distance) + " m")
 
         result_list.append("distance between set1 id " + str(closest_pair[0]) + " set2 id " + str(
             closest_pair[1]) + " is closest: " + str(min_distance) + " m")
     elif mode == "single_distance":
         distance = list(data_list1[0].values())[0].distance(list(data_list2[0].values())[0])
-        print(distance)
+        # print(distance)
     """
         globals_dict["bounding_box_region_name"]=region_name
     globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
@@ -417,10 +429,11 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
         geo_dict = {}
     data_list1.update(data_list2)
     geo_dict.update(transfer_id_list_2_geo_dict(id_list, data_list1))
-    draw_geo_map(geo_dict, "geo")
-    with open('my_list.pkl', 'wb') as file:
-        pickle.dump(osmId1_list, file)
-    return result_list, id_list
+    html=draw_geo_map(geo_dict, "geo")
+    # with open('my_list.pkl', 'wb') as file:
+    #     pickle.dump(osmId1_list, file)
+
+    return html
 
 
 #

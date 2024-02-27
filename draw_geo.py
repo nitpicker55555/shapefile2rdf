@@ -44,13 +44,11 @@ def draw_geo_map(data_map,mode="str"):
                 style_function=lambda x, color=random_color(): {'fillColor': color, 'color': color},
                 tooltip=name  # Add a tooltip with the name
             ).add_to(m)
-    # Save the map to an HTML file
 
-    # Save the map to an HTML file
-    map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
-    m.save(map_path)
+    # map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
+    # m.save(map_path)
+    return m._repr_html_()
 
-    # Open the HTML file in the default web browser
-    webbrowser.open('file://' + map_path)
-    # map_path
+    # webbrowser.open('file://' + map_path)
+
 

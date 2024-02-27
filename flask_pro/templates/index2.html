@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Folium Map in Flask</title>
+</head>
+<body>
+    <h1>Folium Map Integration with Flask</h1>
+    <div id="map-container"></div>
+    <script>
+        // 使用 fetch API 请求地图的 HTML
+        fetch('/map')
+            .then(response => response.json())
+            .then(data => {
+                // 将地图的 HTML 设置到容器中
+                console.log(data.map_html)
+                document.getElementById('map-container').innerHTML = data.map_html;
+            })
+            .catch(error => console.error('Error loading the map:', error));
+    </script>
+</body>
+</html>

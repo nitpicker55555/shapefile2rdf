@@ -24,15 +24,8 @@ print(suitable_types)
 """
 chat3="""
 ```python
-suitable_for_agriculture = [
-    '61a: Bodenkomplex: Vorherrschend An',
-    '62c: Fast ausschließlich kalkhaltig',
-    '64c: Fast ausschließlich kalkhaltig'
-]
-
-# 获取这些类型的id_list
-soil_ids = list_id_of_type("http://example.com/soil", suitable_for_agriculture)
-print(soil_ids)
+id_list1=list_id_of_type("http://example.com/buildings","building")
+print(id_list1)
 ```
 """
 import ast
@@ -75,3 +68,12 @@ def main(chat_result):
 # main(chat_result)
 # main(chat2)
 main(chat3)
+# chat_response='{"complete":false}'
+# try:
+#     judge = json.loads(chat_response)
+# except:
+#     judge = (chat_response)
+#
+# if "complete" in judge:
+#     if judge['complete'] != True:
+#         print("Continue")
