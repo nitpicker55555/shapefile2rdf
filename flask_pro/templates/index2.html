@@ -1,21 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Folium Map in Flask</title>
+    <title>Leaflet WKT Polygon Display</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- 引入 wellknown 库来解析 WKT -->
+    <script src="https://unpkg.com/wellknown/wellknown.js"></script>
 </head>
 <body>
-    <h1>Folium Map Integration with Flask</h1>
-    <div id="map-container"></div>
-    <script>
-        // 使用 fetch API 请求地图的 HTML
-        fetch('/map')
-            .then(response => response.json())
-            .then(data => {
-                // 将地图的 HTML 设置到容器中
-                console.log(data.map_html)
-                document.getElementById('map-container').innerHTML = data.map_html;
-            })
-            .catch(error => console.error('Error loading the map:', error));
-    </script>
+<div id="map" style="width: 600px; height: 400px;"></div>
+<script>
+
+    function displayMapWithWKT(polygons) {
+        // 初始化地图，设置视图的中心和缩放级别
+        var map = L.map('map').setView([0, 0], 2);
+
+        // 添加OpenStreetMap瓦片图层
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 遍历多边形字典
+        Object.keys(polygons).forEach(function(label) {
+            var wkt = polygons[label];
+            // 使用 wellknown 库将 WKT 转换为 GeoJSON
+            var geojson = wellknown.parse(wkt);
+            // 将GeoJSON添加到地图上
+            var polygon = L.geoJson(geojson, {
+                onEachFeature: function(feature, layer) {
+                    // 为每个多边形添加标签作为弹窗
+                    layer.bindPopup(label);
+                }
+            }).addTo(map);
+        });
+
+        // 调整视图以适应所有的多边形
+        map.fitBounds(L.geoJson(Object.values(polygons).map(wkt => wellknown.parse(wkt))).getBounds());
+    }
+
+    // 示例使用
+    var polygons = {
+        'Label1': 'POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))',
+        'Label2': 'POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))'
+    };
+
+    // 调用函数
+    displayMapWithWKT(polygons);
+
+</script> <!-- 您的JS代码文件 -->
 </body>
 </html>

@@ -20,8 +20,14 @@ def draw_geo_map(data_map,mode="str"):
     wkb_data_list=list(data_map.values())
     geometry_names=list(data_map.keys())
     # Function to generate a random color
-    def random_color():
-        return "#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+    color_dict={}
+    def random_color(label):
+        name=label.split("_")[0]
+        if name not in color_dict:
+            color_dict[name]="#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+        return color_dict[name]
+
+        # return "#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
     # Create a Folium map
     m = folium.Map(location=[0, 0], zoom_start=2)
@@ -41,14 +47,18 @@ def draw_geo_map(data_map,mode="str"):
             geometry = wkb_data
             folium.GeoJson(
                 geometry,
-                style_function=lambda x, color=random_color(): {'fillColor': color, 'color': color},
+                style_function=lambda x, color=random_color(name): {'fillColor': color, 'color': color},
                 tooltip=name  # Add a tooltip with the name
             ).add_to(m)
-
+    for element in color_dict:
+        fg = folium.FeatureGroup(name=element, show=True)
+        fg.add_to(m)
     # map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
     # m.save(map_path)
+    # webbrowser.open('file://' + map_path)
+    # print(m._repr_html_())
     return m._repr_html_()
 
-    # webbrowser.open('file://' + map_path)
+    #
 
 

@@ -11,21 +11,26 @@ from termcolor import colored
 from dotenv import load_dotenv
 import geopandas as gpd
 from shapely.wkt import loads
-
+from shapely.geometry import Polygon
+import ast
 from draw_geo import draw_geo_map
 from SPARQLWrapper import SPARQLWrapper, JSON
 from tqdm import tqdm
 from bounding_box import find_boundbox
 from shapely import wkb
+from shapely import wkt
 globals_dict = {}
 
 sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 
 def set_bounding_box(region_name):
-    globals_dict["bounding_box_region_name"] = region_name
-    globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
-    return response_str
+    if region_name!=None:
+        globals_dict["bounding_box_region_name"] = region_name
+        globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
+        return response_str
+    else:
+        return None
 
 
 def list_all_graph_name():
@@ -224,14 +229,18 @@ PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
     # print(query)
     feed_back = ask_soil(query, graph_name)
     # print(len(feed_back))
-    if "bounding_box_region_name" in globals_dict:
-        geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
-    else:
-        geo_dict = {}
 
-    geo_dict.update((feed_back))
-    html=draw_geo_map(geo_dict, "geo")
-    print(html)
+
+
+    # if "bounding_box_region_name" in globals_dict:
+    #     geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
+    # else:
+    #     geo_dict = {}
+
+    # geo_dict.update((feed_back))
+    # html=draw_geo_map(geo_dict, "geo")
+    # print(html)
+
     return feed_back
 
 
@@ -446,3 +455,60 @@ def transfer_id_list_2_geo_dict(id_list, raw_dict=None):
     for i in tqdm(id_list, desc="generating map..."):
         result_dict[i] = raw_dict[i]
     return result_dict
+def ttl_read(path):
+    from rdflib import Graph
+    result_dict= {}
+    predicate_dict={}
+    g = Graph()
+
+    # 解析TTL文件
+    g.parse(path, format="ttl")
+
+    # 遍历图形中的所有三元组并打印它们
+    u=0
+    for subj, pred, obj in g:
+        if str(pred) not in predicate_dict:
+            predicate_dict[str(pred)]=set()
+        predicate_dict[str(pred)].add(obj)
+        if str(subj) not in result_dict:
+            result_dict[str(subj)]={}
+        result_dict[str(subj)][str(pred)]=str(obj)
+
+
+    return result_dict,predicate_dict
+def search_attribute(dict_,key,value):
+    if isinstance(value,list):
+        pass
+    else:
+        value=[value]
+    result_dict= {}
+    geo_asWKT_key=''
+
+    for subject in dict_:
+        if geo_asWKT_key=='':
+            for keys in dict_[subject]:
+                if "asWKT" in str(keys):
+                    geo_asWKT_key=keys
+                    break
+        else:
+            break
+    # print(geo_asWKT_key)
+    for subject in dict_:
+        if key in dict_[subject]:
+            for v in value:
+                if v in dict_[subject][key]:
+                # print(" as")
+                # print(dict_[subject][geo_asWKT_key],type((wkt.loads(dict_[subject][geo_asWKT_key]))))
+
+                    result_dict[f"{key}_{v}_{subject}"]=(wkt.loads(dict_[subject][geo_asWKT_key]))
+                # break
+    # print(len(result_dict))
+    html=draw_geo_map(result_dict,"geo")
+    return html
+
+# dict_,predicate_list=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
+# print(predicate_list.keys())
+# print(predicate_list['http://example.org/property/uebk25_l'])
+# print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
+# print(predicate_list)
+# ids_of_type('http://example.com/landuse','forest')

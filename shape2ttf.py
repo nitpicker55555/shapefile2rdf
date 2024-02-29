@@ -2,10 +2,13 @@ import shapefile
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS
 
-GEO = Namespace("http://www.opengis.net/ont/geosparql#")
 
-def shapefile_to_ttl(shapefile_path, output_ttl_path):
 
+def shapefile_to_ttl(shapefile_path, output_ttl_path=None):
+    shapefile_path=shapefile_path.replace('.shp','')
+    if output_ttl_path==None:
+        output_ttl_path=shapefile_path+".ttl"
+    GEO = Namespace("http://www.opengis.net/ont/geosparql#")
 
     sf = shapefile.Reader(shapefile_path)
 
@@ -38,9 +41,9 @@ def shapefile_to_ttl(shapefile_path, output_ttl_path):
     g.serialize(destination=output_ttl_path, format="turtle")
 
 # shapefile_path = r"C:\Users\Morning\Downloads\oberbayern-latest-free.shp\gis_osm_buildings_a_free_1"  # e.g., 'C:/path_to_file/filename' without .shp
-shapefile_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\shape_file\mbk25_epsg25832\shape\Moore_Bayern"  # e.g., 'C:/path_to_file/filename' without .shp
-output_ttl_path = 'ttl_file/Moore_Bayern.ttl'
-shapefile_to_ttl(shapefile_path, output_ttl_path)
+# shapefile_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\shape_file\mbk25_epsg25832\shape\Moore_Bayern"  # e.g., 'C:/path_to_file/filename' without .shp
+# output_ttl_path = 'ttl_file/Moore_Bayern.ttl'
+# shapefile_to_ttl(shapefile_path, output_ttl_path)
 
 
 

@@ -34,7 +34,7 @@
             overflow-y: auto; /* 内容超出时在元素内部显示滚动条 */
             margin: -30px 20px 5px; /* 上、左右、下的外边距 */
             width: calc(100% - 40px); /* 调整宽度以考虑左右的边距 */
-            max-height: calc(100vh); /* 最大高度以避免窗口滚动条 */
+            max-height: calc(50vh); /* 最大高度以避免窗口滚动条 */
 
 
         }
@@ -83,22 +83,20 @@
         #confirmButton {
             width: 30%; /* 按钮占据剩余空间 */
         }
-        /* 竖屏样式 */
-        /*#map-container {*/
-        /*    max-height: calc(50vh); !* 最大高度以避免窗口滚动条 *!*/
-        /*    margin-top: 20px; !* 距离上边缘20px *!*/
-        /*    margin-left: 50px; !* 距离左边缘50px *!*/
-        /*    margin-right: 50px; !* 距离右边缘50px *!*/
-        /*    z-index: 1000;*/
-        /*}*/
+         竖屏样式
+        #map-container {
+             width: 600px;
+             height: 600px;
+        }
 
-        /*!* 横屏样式 *!*/
+        /* 横屏样式 */
         /*@media (orientation: landscape) {*/
         /*    #map-container {*/
         /*        width: 1000px; !* 宽度为1000px *!*/
         /*        margin-right: 20px; !* 距离右边缘20px *!*/
         /*        margin-top: 50px; !* 距离上边缘50px *!*/
         /*        margin-bottom: 50px; !* 距离下边缘50px *!*/
+        /*        z-index: 1000;*/
         /*    }*/
         /*}*/
 
@@ -111,12 +109,16 @@
     <link rel="stylesheet" href="../static/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" href="../static/css/github-dark-dimmed.min.css">
     <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- 引入 wellknown 库来解析 WKT -->
+    <script src="https://unpkg.com/wellknown/wellknown.js"></script>
 </head>
 <body>
 <!--    <div id="markdownContainer"></div>-->
 <p class="lead text-center">
-    <a  style="display: inline-block;" class="lead text-center" onclick="window.location.href='./static/images/reward.png'" style="color:red;">打赏     ⬅    |       </a>
-    <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;">@微信号: 张咸蛋</a>
+    <a  style="display: inline-block;" class="lead text-center" onclick="window.location.href='./static/images/reward.png'" style="color:red;">      ⬅    |       </a>
+    <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;"> </a>
     <button id="nightModeToggle">🌙</button>
     <br>
     <input type="text" id="subscribe" placeholder="输入邮箱订阅更新:)...">
@@ -143,7 +145,7 @@
     <input type="text" id="inputField" class="your-button-class" placeholder="输入问题...">
     <button id="confirmButton" class="your-button-class">提问</button>
 </div>
-<!--<div id="map-container">{{ map_html|safe }}</div>-->
+<div id="map-container" style="width: 600px; height: 400px;"></div>
 
 <script>
     // function uploadFile() {
@@ -161,6 +163,63 @@
     document.getElementById('nightModeToggle').addEventListener('click', function() {
         document.body.classList.toggle('night-mode');
     });
+
+    function updateMapDataAndFitBounds(map, newPolygons) {
+        // 创建一个空的地理JSON图层，稍后用于添加新的多边形
+        var layers = {};
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        let geoJsonLayer = L.geoJSON().addTo(map);
+
+        // 遍历并添加新多边形到地图和GeoJSON图层
+        Object.keys(newPolygons).forEach(label => {
+            var color = getRandomColor();
+            var wkt = newPolygons[label];
+            var geojson = wellknown.parse(wkt); // 假设使用 wellknown 库来解析WKT
+            L.geoJson(geojson, {
+                onEachFeature: function(feature, layer) {
+                    layer.bindPopup(label);
+                }
+            }).addTo(geoJsonLayer);
+            var layer = L.geoJson(geojson, {
+                style: function(feature) {
+                    return {color: color, weight: 2};
+                }
+            }).bindPopup(label).addTo(map);
+            // 将图层添加到图层对象中
+            layers[label] = layer;
+
+        });
+        L.control.layers(null, layers, {
+            collapsed: false
+        }).addTo(map);
+
+        // 自动调整地图缩放级别和中心位置以适应所有多边形
+        map.fitBounds(geoJsonLayer.getBounds());
+
+    }
+
+    // 假设您已经有一个初始化并添加到页面上的Leaflet地图实例
+    var map = L.map('map-container').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // 示例新数据
+    var newPolygons = {
+        'Label3': 'POLYGON((10 10, 11 10, 11 11, 10 11, 10 10))',
+        'Label4': 'POLYGON((12 12, 13 12, 13 13, 12 13, 12 12))'
+    };
+
+    // 更新地图数据并自动缩放以适应所有元素
+    updateMapDataAndFitBounds(map, newPolygons);
+
+
+
     var messages=[]
     const normal_prompt = `You have a virtual environment equipped with a python environment and internet.
     You can use python code to process user upload files, or use matplotlib to draw charts, and use 'search_internet("news")' to access
@@ -191,10 +250,10 @@ ${String.fromCharCode(96)} to get news in Germany.`
             messages.push(...data.data)
             console.log(messages)
         }
-        // else if("map" in data) {
+        else if("map" in data) {
         //
-        //     document.getElementById('map-container').innerHTML=data.map
-        // }
+            document.getElementById('map-container').innerHTML=data.map
+        }
 
 
         // 在这里处理接收到的数据
@@ -205,6 +264,7 @@ ${String.fromCharCode(96)} to get news in Germany.`
     myP.addEventListener('click', () => {
         alert('请联系微信号: 18302921075');
     });
+
     $(document).ready(function() {
 
         var chatInput=$('#inputField')
@@ -404,7 +464,8 @@ ${String.fromCharCode(96)} to get news in Germany.`
 
         });
 
-    })
+    }
+    )
 
     // 添加响应消息到窗口,流式响应此方法会执行多次
 

@@ -21,6 +21,8 @@ import sys
 from io import StringIO
 from datetime import datetime
 from flask_socketio import SocketIO, emit
+from repair_data import repair,crs_transfer
+from shape2ttf import shapefile_to_ttl
 output = StringIO()
 original_stdout = sys.stdout
 app = Flask(__name__)
@@ -38,18 +40,18 @@ search = DuckDuckGoSearchResults()
 template_answer={
     "12":["""
 ```python
-set_bounding_box("munich ismaning")
+set_bounding_box("munich maxvorstadt")
 ```
     """,
           """
 ```python
-id1=ids_of_type("http://example.com/landuse","residential")
+id1=ids_of_type("http://example.com/landuse","forest")
 ```
               """
           ,
           """
 ```python
-id2=ids_of_type("http://example.com/landuse",'forest')
+id2=ids_of_type("http://example.com/buildings",'building')
 ```
               """
           ,
@@ -58,7 +60,15 @@ id2=ids_of_type("http://example.com/landuse",'forest')
 geo_calculate(id1,id2,'buffer',100)
 ```
               """
-          ]
+          ],'13':[r"""
+```python
+subject_dict,predicate_dict=ttl_read(r'.\uploads\modified_Moore_Bayern_4326.ttl')
+print(predicate_dict['http://example.org/property/kategorie'])
+search_attribute(subject_dict,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert')
+```
+          ""","""
+          
+          """]
 }
 
 markdown_text = """
@@ -101,6 +111,79 @@ can write python code '```python\nsearch_internet("西安新闻")\n```' to get n
 judge_prompt="""You are a task completion judge. I will tell you the goal and current completion status of this task. 
 You need to output whether it is completed now in json format. If it is completed, output {"complete":true}. If not, 
 output {"complete":false} """
+question_template="""
+You are an AI assistant that processes database queries. You have a virtual environment 
+equipped with python. Environment has a graph database consists of three graphs:['http://example.com/landuse', 'http://example.com/soil', 
+'http://example.com/buildings']
+
+The following functions are provided for database action: 
+
+region=set_bounding_box(address=None) #Set bounding box for a specific region
+types=types_of_graph(graph) #Get types of specific graph
+ids=ids_of_type(graph,type,region=None) #Get ids of specific graph
+geo_calculate(id_list_1=[],id_list_2=[],geo_relation,buffer_number=0) #Get ids with specific geo relation
+
+geo_relation={
+        "contains": "return which id in id_list_2 geographically contains which id in id_list_1",
+        "intersects": "return which id in id_list_2 geographically intersects which id in id_list_1",
+        "buffer": "return which id in id_list_2 geographically intersects the buffer of which id in id_list_1, if you want to 
+        call buffer, you need to specify the last argument "buffer_number" as a number"
+
+Example1:
+User: I want to know which building in 100m around the forest in munich ismaning.
+You:
+Ok, let me find out.
+```python
+region=set_bounding_box('munich ismaning')
+id1=ids_of_type('http://example.com/landuse','forest',region)
+id2=ids_of_type('http://example.com/buildings','building',region)
+geo_calculate(id1,id2,'buffer',100)
+```
+Example2:
+User: I want to know which land is suitable for agriculture.
+You:
+```python
+region=set_bounding_box(None)
+types=types_of_graph('http://example.com/soil')
+types
+```
+Based on semantic meaning of these types, I think 61a,65c is good for agriculture.
+```python
+id1=ids_of_type('http://example.com/soil',['65c','61a'],region)
+```
+Example3:
+User: Please draw ids in map
+You:
+```python
+draw_geo_map(id1, "geo")
+```
+}
+"""
+
+ttl_prompt=r"""
+You can read .ttl file by calling flowing functions.
+subject_dict,predicate_list=ttl_read(path)
+search_attribute(subject_dict,predicate,predicate_value)
+Example1:
+User: I want know which predicate the ttl file has.
+You:
+```python
+subject_dict,predicate_dict=ttl_read(r'\path\.ttl')
+predicate_dict.keys()
+```
+Example3:
+User: I want to know the value of predicate 'predicate'.
+You:
+```python
+predicate_dict['predicate']
+```
+Example2:
+User: I want to know the subject which has value 'a','b' of predicate 'predicate':
+You:
+```python
+search_attribute(subject_dict,'predicate',['a','b'])
+```
+"""
 geo_prompt = """You are an AI assistant that processes complex database queries. You have a virtual environment 
 equipped with python. The following functions are provided for database action: 
 
@@ -291,8 +374,8 @@ def short_response(text_list):
         return text_list[:1000]
 # 设置文件上传的目录和大小限制
 UPLOAD_FOLDER = './uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg','doc','docx','xlsx','csv'}
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg','doc','docx','xlsx','csv','ttl'}
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 50MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
@@ -369,7 +452,7 @@ def home():
 
 def send_data(data,mode="data"):
     # 假设这个函数在某些事件发生时被触发，并向所有客户端发送信息
-    print(data)
+    # print(data)
     socketio.emit('text', {mode: data})
 
 @app.route('/submit', methods=['POST', 'GET'])
@@ -397,11 +480,14 @@ def submit():
             yield chat_response
         else:
             if session.get('uploaded_indication') != None:
-                messages[0]['content'] += f"\n用户上传了文件，地址: .\\uploads\\{session['uploaded_indication']}"
+                messages[0]['content'] =ttl_prompt
+                messages[0]['content'] += f"\nUser uploaded a ttl file in: .\\uploads\\{session['uploaded_indication']}"
+            else:
+                messages[0]['content'] = question_template
                 # data+=f".(用户上传的文件地址: .\\uploads\\{session['uploaded_indication']})"
             # session['messages2'].append({"role": "user",
             #                              "content": data})
-
+        print(messages[0]['content'])
         while compelete!=True and steps<2 and whole_step<=5 and stop_step!=True:
                 # print(messages)
                 # print(whole_step,"whole_step")
@@ -492,13 +578,23 @@ def submit():
 
                         # last_line = [line for line in lines if '=' in line][-1]
                         if "print" not in lines[-1] and "=" not in lines[-1] and "#" not in lines[-1] and "search_internet" not in lines[-1]:
+                            if "geo_calculate" in lines[-1] or "search_attribute" in lines[-1]:
+                                new_last_line=f"""
+send_data({lines[-1]},'map')
+"""
 
-                            code_str=code_str.replace(lines[-1],f"""
+                            else:
+
+                                new_last_line = f"""
 try:
         print({lines[-1]})
 except:
         pass
-                            """)
+                            """
+                            lines[-1] = new_last_line
+
+                            # 将所有行重新连接成一个新的字符串
+                            code_str = '\n'.join(lines)
                         # var_name = last_line.split('=')[0].strip()
                     print(code_str,"code after processed")
                     sys.stdout = output
@@ -519,6 +615,8 @@ except:
                         code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
                         whole_step=5 #确保图返回结果只会被描述一次
                         yield code_result
+
+
                     else:
                         code_result=code_result
 
@@ -536,9 +634,9 @@ except:
                     steps += 1
                     if steps<2 and whole_step<5:
                         messages.append({"role": "user",
-                                          "content": "好"})
+                                          "content": "ok"})
                         processed_response.append({"role": "user",
-                                          "content": "好"})
+                                          "content": "ok"})
                         final_conv='好'
 
         send_data(processed_response)
