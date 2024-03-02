@@ -8,45 +8,62 @@
     <script src="https://unpkg.com/wellknown/wellknown.js"></script>
 </head>
 <body>
-<div id="map" style="width: 600px; height: 400px;"></div>
+<div id="map-container" style="width: 600px; height: 400px;"></div>
 <script>
 
-    function displayMapWithWKT(polygons) {
-        // 初始化地图，设置视图的中心和缩放级别
-        var map = L.map('map').setView([0, 0], 2);
+    function updateMapDataAndFitBounds(map, newPolygons) {
+        // 创建一个空的地理JSON图层，稍后用于添加新的多边形
+        var layers = {};
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        let geoJsonLayer = L.geoJSON().addTo(map);
 
-        // 添加OpenStreetMap瓦片图层
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // 遍历多边形字典
-        Object.keys(polygons).forEach(function(label) {
-            var wkt = polygons[label];
-            // 使用 wellknown 库将 WKT 转换为 GeoJSON
-            var geojson = wellknown.parse(wkt);
-            // 将GeoJSON添加到地图上
-            var polygon = L.geoJson(geojson, {
+        // 遍历并添加新多边形到地图和GeoJSON图层
+        Object.keys(newPolygons).forEach(label => {
+            var color = getRandomColor();
+            var wkt = newPolygons[label];
+            var geojson = wellknown.parse(wkt); // 假设使用 wellknown 库来解析WKT
+            L.geoJson(geojson, {
                 onEachFeature: function(feature, layer) {
-                    // 为每个多边形添加标签作为弹窗
                     layer.bindPopup(label);
                 }
-            }).addTo(map);
-        });
+            }).addTo(geoJsonLayer);
+            var layer = L.geoJson(geojson, {
+                style: function(feature) {
+                    return {color: color, weight: 2};
+                }
+            }).bindPopup(label).addTo(map);
+            // 将图层添加到图层对象中
+            layers[label] = layer;
 
-        // 调整视图以适应所有的多边形
-        map.fitBounds(L.geoJson(Object.values(polygons).map(wkt => wellknown.parse(wkt))).getBounds());
+        });
+        L.control.layers(null, layers, {
+            collapsed: false
+        }).addTo(map);
+
+        // 自动调整地图缩放级别和中心位置以适应所有多边形
+        map.fitBounds(geoJsonLayer.getBounds());
+
     }
 
-    // 示例使用
-    var polygons = {
-        'Label1': 'POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))',
-        'Label2': 'POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))'
+    // 假设您已经有一个初始化并添加到页面上的Leaflet地图实例
+    var map = L.map('map-container').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // 示例新数据
+    var newPolygons = {
+        'Label3': 'POLYGON((12.1489604 47.7441564,12.1491814 47.744167,12.1491924 47.7440642,12.1491327 47.7440613,12.1491358 47.7440317,12.1489746 47.7440239,12.1489604 47.7441564))',
+        'Label4': 'POLYGON((12 12, 13 12, 13 13, 12 13, 12 12))'
     };
 
-    // 调用函数
-    displayMapWithWKT(polygons);
+    // 更新地图数据并自动缩放以适应所有元素
+    updateMapDataAndFitBounds(map, newPolygons);
 
 </script> <!-- 您的JS代码文件 -->
 </body>

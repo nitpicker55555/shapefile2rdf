@@ -63,8 +63,7 @@ geo_calculate(id1,id2,'buffer',100)
           ],'13':[r"""
 ```python
 subject_dict,predicate_dict=ttl_read(r'.\uploads\modified_Moore_Bayern_4326.ttl')
-print(predicate_dict['http://example.org/property/kategorie'])
-search_attribute(subject_dict,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert')
+search_attribute(subject_dict,'http://example.org/property/uebk25_k','80')
 ```
           ""","""
           
@@ -334,7 +333,10 @@ def len_str2list(result):
         # 尝试使用 ast.literal_eval 解析字符串
         result = ast.literal_eval(result)
         # 检查解析结果是否为列表
-        return len(result)
+        if not isinstance(result,int):
+            return len(result)
+        else:
+            return result
     except (ValueError, SyntaxError):
         # 如果解析时发生错误，说明字符串不是有效的列表字符串
         try:
@@ -356,7 +358,7 @@ def details_span(result,run_time):
 
     aa=f"""
 <details>
-    <summary>`Code result: Length:{len_str2list(result)},Run_time:{round(run_time,2)}s`</summary>
+    <summary>`Code result: Length:{len_str2list(str(result))},Run_time:{round(run_time,2)}s`</summary>
        {str(result)}
 </details>
     """
@@ -448,12 +450,17 @@ def home():
         session['os']=None
         session['browser']=None
         session['device_type']=None
+    session['template']=True
     return render_template('index.html')
 
 def send_data(data,mode="data"):
     # 假设这个函数在某些事件发生时被触发，并向所有客户端发送信息
+    # template_poly={
+    #     'Label3': 'POLYGON((10 10, 11 10, 11 11, 10 11, 10 10))',
+    #     'Label4': 'POLYGON((12 12, 13 12, 13 13, 12 13, 12 12))'
+    # }
     # print(data)
-    socketio.emit('text', {mode: data})
+    socketio.emit('text', {mode:  data})
 
 @app.route('/submit', methods=['POST', 'GET'])
 def submit():
@@ -496,10 +503,14 @@ def submit():
                 # chat_response = str(datetime.now())+"   "+str(len(messages)) #test
 
                 if data in template_answer:
+                    session['template']=True
                     chat_response = template_answer[data]
                     template=True
                     # stop_step=True
                     # time.sleep(2)
+                elif session['template']:
+                    chat_response="```python\n"+data+"\n```"
+                    stop_step = True
                 else:
 
                     chat_response = (chat_single(messages, ""))
@@ -523,6 +534,9 @@ def submit():
                             stop_step=True
 
                         yield char
+                elif session['template']:
+                    chat_result=chat_response
+                    yield chat_response
                 else:
                     for chunk in chat_response:
                     # if chunk is not None:
@@ -578,7 +592,7 @@ def submit():
 
                         # last_line = [line for line in lines if '=' in line][-1]
                         if "print" not in lines[-1] and "=" not in lines[-1] and "#" not in lines[-1] and "search_internet" not in lines[-1]:
-                            if "geo_calculate" in lines[-1] or "search_attribute" in lines[-1]:
+                            if "geo_calculate" in lines[-1] or "search_attribute" in lines[-1] or 'ids_of_type' in lines[-1]:
                                 new_last_line=f"""
 send_data({lines[-1]},'map')
 """
@@ -607,7 +621,7 @@ except:
                         print(f"An error occurred: {repr(e)}")
                     end_time = time.time()  # 记录函数结束时间
                     run_time = end_time - start_time
-                    code_result = output.getvalue().replace('\00', '')
+                    code_result =str( output.getvalue().replace('\00', ''))
                     output.truncate(0)
                     sys.stdout = original_stdout
 
@@ -618,7 +632,7 @@ except:
 
 
                     else:
-                        code_result=code_result
+                        code_result=str(code_result)
 
                         yield details_span(code_result,run_time)
 

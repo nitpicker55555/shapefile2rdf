@@ -1,77 +1,74 @@
-import webbrowser
+import psycopg2
+import time
+from draw_geo import draw_geo_map
+globals_dict={}
+from bounding_box import find_boundbox
+def set_bounding_box(region_name):
+    if region_name!=None:
+        globals_dict["bounding_box_region_name"] = region_name
+        globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
+        return response_str
+    else:
+        return None
 
-import folium
-import random
+
+def sql_get_tabel():
+    query="""
+    SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';
+    """
 
 
-# 定义一个生成随机颜色的函数
-def random_color():
-    return "#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
 
-# 初始化地图
-m = folium.Map(location=[45.372, -121.6972], zoom_start=12, tiles='Stamen Terrain')
+# 数据库连接参数
+# engine = create_engine('postgresql://postgres:9417941@localhost:5432/osm_database')
+conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
+set_bounding_box('munich ismaning')
+# 创建连接
+conn = psycopg2.connect(conn_params)
+cur = conn.cursor()
+minLon, minLat, maxLon, maxLat = globals_dict['bounding_coordinates']
+print(globals_dict['bounding_coordinates'])
+# 定义边界框
 
-# 初始化一个字典来存储名字到颜色的映射
-name_to_color = {}
+srid = 4326  # 假设使用WGS 84
 
-# 假设有一个列表，存储你的名字和相应的几何数据
-# 这里用(name, geometry)元组的列表来模拟
-data1={
-  "type": "Polygon",
-  "coordinates": [
-    [
-      [-121.6972, 45.372],
-      [-121.696, 45.373],
-      [-121.695, 45.374],
-      [-121.694, 45.372],
-      [-121.6972, 45.372]
-    ]
-  ]
-}
-data2={
-  "type": "Polygon",
-  "coordinates": [
-    [
-      [-121.6972, 45.372],
-      [-121.696, 45.373],
-      [-121.695, 45.374],
-      [-121.694, 45.372],
-      [-121.6972, 45.372]
-    ]
-  ]
-}
+# 执行查询
+bounding_query = f"""
+SELECT ST_AsText(geom) AS geom_wkt, *
+FROM buildings
+WHERE ST_Within(geom, ST_MakeEnvelope({minLon}, {minLat}, {maxLon}, {maxLat}, {srid}));
+"""
+attribute_query = f"""
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'buildings';
+"""
 
-features = [
-    ('Name1', data1),
-    ('Name2', data2),
-    # 添加更多的名字和几何数据
-]
+query="""
+SELECT * FROM buildings;
 
-# 为每个名字创建一个FeatureGroup，并添加到地图上
-for name, geometry in features:
-    # 如果名字还没有分配颜色，则分配一个新颜色
-    if name not in name_to_color:
-        name_to_color[name] = random_color()
+"""
+start_time= time.time()
+cur.execute(bounding_query)
 
-    # 创建FeatureGroup
-    fg = folium.FeatureGroup(name=name, show=True)
+# 获取查询结果
+rows = cur.fetchall()
+end_time=time.time()
+print(end_time-start_time)
+# 打印结果
+print(len(rows))
+result_dict={}
+start_time= time.time()
+for row in rows:
+    print(row)
+    result_dict[str(row[2])+"_"+str(row[4])]=row[6]
+    print(row[6])
+    break
 
-    # 添加GeoJson到FeatureGroup
-    folium.GeoJson(
-        geometry,
-        style_function=lambda x, color=name_to_color[name]: {'fillColor': color, 'color': color},
-        tooltip=name  # 添加带有名字的提示
-    ).add_to(fg)
-
-    # 将FeatureGroup添加到地图上
-    fg.add_to(m)
-
-# 添加图层控制器
-folium.LayerControl().add_to(m)
-
-# 显示地图
-map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
-m.save(map_path)
-webbrowser.open('file://' + map_path)
-# print(m._repr_html_())
+end_time=time.time()
+print(end_time-start_time)
+draw_geo_map(result_dict,'str')
+# 关闭连接
+cur.close()
+conn.close()

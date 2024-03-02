@@ -1,7 +1,8 @@
 import pickle
 import random
 import time, os
-
+import psycopg2
+import time
 from rdflib import Graph
 import json
 import openai
@@ -23,7 +24,9 @@ globals_dict = {}
 
 sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
-
+conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
+conn = psycopg2.connect(conn_params)
+cur = conn.cursor()
 def set_bounding_box(region_name):
     if region_name!=None:
         globals_dict["bounding_box_region_name"] = region_name
@@ -438,11 +441,11 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
         geo_dict = {}
     data_list1.update(data_list2)
     geo_dict.update(transfer_id_list_2_geo_dict(id_list, data_list1))
-    html=draw_geo_map(geo_dict, "geo")
+    # html=draw_geo_map(geo_dict, "geo")
     # with open('my_list.pkl', 'wb') as file:
     #     pickle.dump(osmId1_list, file)
 
-    return html
+    return geo_dict
 
 
 #
@@ -500,11 +503,70 @@ def search_attribute(dict_,key,value):
                 # print(" as")
                 # print(dict_[subject][geo_asWKT_key],type((wkt.loads(dict_[subject][geo_asWKT_key]))))
 
-                    result_dict[f"{key}_{v}_{subject}"]=(wkt.loads(dict_[subject][geo_asWKT_key]))
+                    result_dict[f"{key}_{v}_{subject}"]=str((wkt.loads(dict_[subject][geo_asWKT_key])))
                 # break
     # print(len(result_dict))
-    html=draw_geo_map(result_dict,"geo")
-    return html
+    # html=draw_geo_map(result_dict,"geo")
+    print(len(result_dict))
+    return result_dict
+def sql():
+    def sql_get_tabel():
+        query = """
+        SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';
+        """
+
+    # 数据库连接参数
+    # engine = create_engine('postgresql://postgres:9417941@localhost:5432/osm_database')
+
+    set_bounding_box('munich ismaning')
+    # 创建连接
+
+    minLon, minLat, maxLon, maxLat = globals_dict['bounding_coordinates']
+
+    # 定义边界框
+
+    srid = 4326  # 假设使用WGS 84
+
+    # 执行查询
+    bounding_query = f"""
+    SELECT *
+    FROM buildings
+    WHERE ST_Within(geom, ST_MakeEnvelope({minLon}, {minLat}, {maxLon}, {maxLat}, {srid}));
+    """
+
+    attribute_query = f"""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'buildings';
+    """
+
+    query = """
+    SELECT * FROM buildings;
+
+    """
+    start_time = time.time()
+    cur.execute(bounding_query)
+
+    # 获取查询结果
+    rows = cur.fetchall()
+    end_time = time.time()
+    print(end_time - start_time)
+    # 打印结果
+    print(len(rows))
+    result_dict = {}
+    start_time = time.time()
+    for row in rows:
+        result_dict[row[2] + "_" + row[4]] = row[6]
+        break
+
+    end_time = time.time()
+    print(end_time - start_time)
+    draw_geo_map(result_dict, 'str')
+    # 关闭连接
+    cur.close()
+    conn.close()
+
+
 
 # dict_,predicate_list=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
 # print(predicate_list.keys())

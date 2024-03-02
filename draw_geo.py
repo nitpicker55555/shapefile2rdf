@@ -40,7 +40,7 @@ def draw_geo_map(data_map,mode="str"):
             geometry = wkb.loads(bytes.fromhex(wkb_data))
             folium.GeoJson(
                 geometry,
-                style_function=lambda x, color=random_color(): {'fillColor': color, 'color': color},
+                style_function=lambda x, color=random_color(name): {'fillColor': color, 'color': color},
                 tooltip=name  # Add a tooltip with the name
             ).add_to(m)
         else:
@@ -53,9 +53,9 @@ def draw_geo_map(data_map,mode="str"):
     for element in color_dict:
         fg = folium.FeatureGroup(name=element, show=True)
         fg.add_to(m)
-    # map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
-    # m.save(map_path)
-    # webbrowser.open('file://' + map_path)
+    map_path = r'C:\Users\Morning\Desktop\hiwi\ttl_query\visualized_geometry_map.html'
+    m.save(map_path)
+    webbrowser.open('file://' + map_path)
     # print(m._repr_html_())
     return m._repr_html_()
 

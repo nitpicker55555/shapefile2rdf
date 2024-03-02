@@ -83,11 +83,16 @@
         #confirmButton {
             width: 30%; /* 按钮占据剩余空间 */
         }
-         竖屏样式
-        #map-container {
-             width: 600px;
-             height: 600px;
-        }
+
+         #map-container {
+             position: absolute; /* 或者使用 position: fixed; 根据需要 */
+             bottom: 100px; /* 距离窗口底部100px */
+             left: 20px; /* 距离窗口左边缘50px */
+             right: 20px; /* 距离窗口右边缘50px */
+             height: 500px; /* 高度为600px */
+             background-color: #f0f0f0; /* 背景色，仅作为示例 */
+         }
+
 
         /* 横屏样式 */
         /*@media (orientation: landscape) {*/
@@ -145,7 +150,7 @@
     <input type="text" id="inputField" class="your-button-class" placeholder="输入问题...">
     <button id="confirmButton" class="your-button-class">提问</button>
 </div>
-<div id="map-container" style="width: 600px; height: 400px;"></div>
+<div id="map-container" ></div>
 
 <script>
     // function uploadFile() {
@@ -165,8 +170,47 @@
     });
 
     function updateMapDataAndFitBounds(map, newPolygons) {
-        // 创建一个空的地理JSON图层，稍后用于添加新的多边形
+        // 检查是否已经添加了geoJsonLayer图层，如果有，则移除
+        if (window.geoJsonLayer) {
+            window.geoJsonLayer.clearLayers(); // 移除之前的图层数据
+        } else {
+            window.geoJsonLayer = L.geoJSON().addTo(map); // 初始化geoJsonLayer
+            L.Control.CollapseControl = L.Control.extend({
+                onAdd: function(map) {
+                    var container = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+                    container.innerHTML = 'fold'; // 设置按钮文本
+                    container.style.backgroundColor = 'white';
+                    container.style.width = '60px';
+                    container.style.height = '30px';
+
+                    container.onclick = function() {
+                        // 切换图层控制器的可见性
+                        var layerControlElement = document.getElementsByClassName('leaflet-control-layers')[0];
+                        if (layerControlElement.style.display === 'none') {
+                            layerControlElement.style.display = 'block';
+                            container.innerHTML = 'fold';
+                        } else {
+                            layerControlElement.style.display = 'none';
+                            container.innerHTML = 'unfold';
+                        }
+                    }
+
+                    return container;
+                },
+
+                onRemove: function(map) {
+                    // Nothing to do here
+                }
+            });
+
+            L.control.collapseControl = function(opts) {
+                return new L.Control.CollapseControl(opts);
+            }
+            map.addControl(L.control.collapseControl({ position: 'topleft' }));
+        }
+
         var layers = {};
+
         function getRandomColor() {
             var letters = '0123456789ABCDEF';
             var color = '#';
@@ -175,37 +219,40 @@
             }
             return color;
         }
-        let geoJsonLayer = L.geoJSON().addTo(map);
 
         // 遍历并添加新多边形到地图和GeoJSON图层
         Object.keys(newPolygons).forEach(label => {
             var color = getRandomColor();
             var wkt = newPolygons[label];
             var geojson = wellknown.parse(wkt); // 假设使用 wellknown 库来解析WKT
+
             L.geoJson(geojson, {
                 onEachFeature: function(feature, layer) {
                     layer.bindPopup(label);
-                }
-            }).addTo(geoJsonLayer);
-            var layer = L.geoJson(geojson, {
+                },
                 style: function(feature) {
                     return {color: color, weight: 2};
                 }
-            }).bindPopup(label).addTo(map);
-            // 将图层添加到图层对象中
-            layers[label] = layer;
+            }).addTo(window.geoJsonLayer);
 
+            // 将图层添加到图层对象中，以便可以通过图层控制器管理
+            layers[label] = window.geoJsonLayer;
         });
-        L.control.layers(null, layers, {
+
+        // 如果已经添加了图层控制器，则先移除
+        if (window.layerControl) {
+            map.removeControl(window.layerControl);
+        }
+
+        // 添加新的图层控制器
+        window.layerControl = L.control.layers(null, layers, {
             collapsed: false
         }).addTo(map);
 
         // 自动调整地图缩放级别和中心位置以适应所有多边形
-        map.fitBounds(geoJsonLayer.getBounds());
-
+        map.fitBounds(window.geoJsonLayer.getBounds());
     }
 
-    // 假设您已经有一个初始化并添加到页面上的Leaflet地图实例
     var map = L.map('map-container').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -216,7 +263,7 @@
     };
 
     // 更新地图数据并自动缩放以适应所有元素
-    updateMapDataAndFitBounds(map, newPolygons);
+    // updateMapDataAndFitBounds(map, newPolygons);
 
 
 
@@ -252,7 +299,8 @@ ${String.fromCharCode(96)} to get news in Germany.`
         }
         else if("map" in data) {
         //
-            document.getElementById('map-container').innerHTML=data.map
+            updateMapDataAndFitBounds( map,data.map);
+        //     document.getElementById('map-container').innerHTML=data.map
         }
 
 
