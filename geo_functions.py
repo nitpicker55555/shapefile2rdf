@@ -3,6 +3,7 @@ import random
 import time, os
 import psycopg2
 import time
+from shapely.geometry import shape
 from rdflib import Graph
 import json
 import openai
@@ -12,6 +13,7 @@ from termcolor import colored
 from dotenv import load_dotenv
 import geopandas as gpd
 from shapely.wkt import loads
+from shapely.geometry import mapping
 from shapely.geometry import Polygon
 import ast
 from draw_geo import draw_geo_map
@@ -31,6 +33,8 @@ def set_bounding_box(region_name):
     if region_name!=None:
         globals_dict["bounding_box_region_name"] = region_name
         globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
+
+        # print(wkb.loads(bytes.fromhex(globals_dict['bounding_wkb'])))
         return response_str
     else:
         return None
@@ -108,6 +112,8 @@ WHERE {
 
 
 def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
+
+
     """
     globals_dict["bounding_box_region_name"]=region_name
     globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
@@ -115,136 +121,164 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     """
     if 'bounding_coordinates' in globals_dict:
         bounding_box_coordinats = globals_dict['bounding_coordinates']
-    soil_dict = {
-        '61a': '61a: Bodenkomplex: Vorherrschend Anmoorgley und Pseudogley, gering verbreitet Podsol aus (Kryo-)Sandschutt (Granit oder Gneis) über Sandschutt bis Sandgrus (Basislage, verfestigt)',
-        '62c': '62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)',
-        '65c': '65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig',
-        '66b': '66b: Fast ausschließlich Anmoorgley aus Lehm bis Schluff, selten Ton (See- oder Flusssediment); im Untergrund carbonathaltig',
-        '67': '67: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von (Carbonat-)Lehm bis Schluff und Torf über Carbonatsandkies (Schotter)',
-        '72c': '72c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Talsediment)',
-        '72f': '72f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
-        '64c': '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
-        '73c': '73c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Talsediment)',
-        '73f': '73f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
-        '74': '74: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von Lehm und Torf über Sand bis Lehm (Talsediment)',
-        '75': '75: Fast ausschließlich Moorgley, Anmoorgley und Oxigley aus Lehmgrus bis Sandgrus (Talsediment)',
-        '75c': '75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf',
-        '77': '77: Fast ausschließlich Kalkniedermoor und Kalkerdniedermoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum; verbreitet mit Wiesenkalk durchsetzt',
-        '78': '78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum',
-        '78a': '78a: Fast ausschließlich Niedermoor und Übergangsmoor aus Torf über kristallinen Substraten mit weitem Bodenartenspektrum',
-        '79': '79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf',
-        '80a': '80a: Fast ausschließlich (flacher) Gley über Niedermoor aus (flachen) mineralischen Ablagerungen mit weitem Bodenartenspektrum über Torf, vergesellschaftet mit (Kalk)Erdniedermoor',
-        '80b': '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf',
-        '850': '850: Bodenkomplex: Humusgleye, Moorgleye, Anmoorgleye und Niedermoore aus alpinen Substraten mit weitem Bodenartenspektrum'}
-    if isinstance(single_type, list):
-        replace_list = []
-        for i in single_type:
-            if ":" in i:
-                i = i.split(":")[0]
-            if i in soil_dict:
-                replace_list.append(soil_dict[i])
-            else:
-                replace_list.append(i)
-        if replace_list!=[]:
-            single_type = replace_list
-    else:
-        if ":" in single_type:
-            single_type = single_type.split(":")[0]
-            single_type=soil_dict[single_type]
-    single_type = str(single_type)
-    if '[' in single_type:
-        single_type = single_type.replace("[", "(").replace("]", ")")
-
-    else:
-        single_type = f"('{single_type}')"
-    """
-
-    :param single_type: 需要查找的type
-    :return: 返回id列表
-    {
-    'osmId': {'type': 'literal', 'value': '18825773'},
-    'wkt': {
-        'datatype': 'http://www.opengis.net/ont/geosparql#wktLiteral',
-        'type': 'literal', 'value': 'POLYGON ((11.6016729 48.0834...
-        }
-    }
-    """
-
-    """
-    PREFIX ns1: <http://example.org/property/>
-PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
-PREFIX sf: <http://www.opengis.net/ont/sf#>
-
-SELECT ?osmId ?wkt
-WHERE {
-  GRAPH <http://example.com/buildings> {
-    ?entity ns1:fclass "building" .
-    ?entity ns1:osm_id ?osmId .
-    ?entity geo:asWKT ?wkt .
-  }
-
-  # 创建一个边界框的多边形，用指定的坐标
-  BIND("POLYGON((11.5971976 48.2168632, 11.6851890 48.2168632, 11.6851890 48.2732260, 11.5971976 48.2732260, 11.5971976 48.2168632))"^^geo:wktLiteral AS ?bbox) .
-
-  # 检查元素是否与边界框相交
-  FILTER(geof:sfIntersects(?wkt, ?bbox))
-}
-
-    """
-    fclass = "fclass"
-    osm_id = "osm_id"
-    bounding_box_str = ""
-    building_type = ""
-    if bounding_box_coordinats is not None:
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-        polygon_wkt = f"POLYGON(({min_lon} {min_lat}, {max_lon} {min_lat}, {max_lon} {max_lat}, {min_lon} {max_lat}, {min_lon} {min_lat}))"
-        bounding_box_str = f'BIND("{polygon_wkt}"^^geo:wktLiteral AS ?bbox) .'
-        bounding_box_str += "\nFILTER(geof:sfIntersects(?wkt, ?bbox))"
-    if "soil" in graph_name:
-        fclass = 'uebk25_l'
-        osm_id = 'soil_id'
-    if "building" in graph_name:
-        building_type = "\n?entity ns1:type ?type ."
-    if "all" not in single_type:
-        fclass_filter = f'\nFILTER(?fclass IN {single_type})'
+    if single_type=="building":
+
+        # 定义边界框
+
+        srid = 4326  # 假设使用WGS 84
+        if bounding_box_coordinats is not None:
+        # 执行查询
+            bounding_query = f"""
+            SELECT *
+            FROM buildings
+            WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}));
+            """
+        else:
+            bounding_query = f"""
+            SELECT * FROM buildings;
+            """
+        cur.execute(bounding_query)
+
+        # 获取查询结果
+        rows = cur.fetchall()
+        result_dict = {}
+        for row in rows:
+            # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
+            result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
+            # break
+        feed_back=result_dict
     else:
-        fclass_filter = ""
-    query = """
-PREFIX ns1: <http://example.org/property/>
-PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
-    SELECT ?osmId ?wkt ?fclass ?type
+        soil_dict = {
+            '61a': '61a: Bodenkomplex: Vorherrschend Anmoorgley und Pseudogley, gering verbreitet Podsol aus (Kryo-)Sandschutt (Granit oder Gneis) über Sandschutt bis Sandgrus (Basislage, verfestigt)',
+            '62c': '62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)',
+            '65c': '65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig',
+            '66b': '66b: Fast ausschließlich Anmoorgley aus Lehm bis Schluff, selten Ton (See- oder Flusssediment); im Untergrund carbonathaltig',
+            '67': '67: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von (Carbonat-)Lehm bis Schluff und Torf über Carbonatsandkies (Schotter)',
+            '72c': '72c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Talsediment)',
+            '72f': '72f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
+            '64c': '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
+            '73c': '73c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Talsediment)',
+            '73f': '73f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
+            '74': '74: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von Lehm und Torf über Sand bis Lehm (Talsediment)',
+            '75': '75: Fast ausschließlich Moorgley, Anmoorgley und Oxigley aus Lehmgrus bis Sandgrus (Talsediment)',
+            '75c': '75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf',
+            '77': '77: Fast ausschließlich Kalkniedermoor und Kalkerdniedermoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum; verbreitet mit Wiesenkalk durchsetzt',
+            '78': '78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum',
+            '78a': '78a: Fast ausschließlich Niedermoor und Übergangsmoor aus Torf über kristallinen Substraten mit weitem Bodenartenspektrum',
+            '79': '79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf',
+            '80a': '80a: Fast ausschließlich (flacher) Gley über Niedermoor aus (flachen) mineralischen Ablagerungen mit weitem Bodenartenspektrum über Torf, vergesellschaftet mit (Kalk)Erdniedermoor',
+            '80b': '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf',
+            '850': '850: Bodenkomplex: Humusgleye, Moorgleye, Anmoorgleye und Niedermoore aus alpinen Substraten mit weitem Bodenartenspektrum'}
+        if isinstance(single_type, list):
+            replace_list = []
+            for i in single_type:
+                if ":" in i:
+                    i = i.split(":")[0]
+                if i in soil_dict:
+                    replace_list.append(soil_dict[i])
+                else:
+                    replace_list.append(i)
+            if replace_list!=[]:
+                single_type = replace_list
+        else:
+            if ":" in single_type:
+                single_type = single_type.split(":")[0]
+                single_type=soil_dict[single_type]
+        single_type = str(single_type)
+        if '[' in single_type:
+            single_type = single_type.replace("[", "(").replace("]", ")")
+
+        else:
+            single_type = f"('{single_type}')"
+        """
+    
+        :param single_type: 需要查找的type
+        :return: 返回id列表
+        {
+        'osmId': {'type': 'literal', 'value': '18825773'},
+        'wkt': {
+            'datatype': 'http://www.opengis.net/ont/geosparql#wktLiteral',
+            'type': 'literal', 'value': 'POLYGON ((11.6016729 48.0834...
+            }
+        }
+        """
+
+        """
+        PREFIX ns1: <http://example.org/property/>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+    PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+    PREFIX sf: <http://www.opengis.net/ont/sf#>
+    
+    SELECT ?osmId ?wkt
     WHERE {
-      GRAPH <%s> {
-        ?entity ns1:%s ?fclass .
-        ?entity ns1:%s ?osmId .
-        %s
+      GRAPH <http://example.com/buildings> {
+        ?entity ns1:fclass "building" .
+        ?entity ns1:osm_id ?osmId .
         ?entity geo:asWKT ?wkt .
-        %s
       }
-        # 创建一个边界框的多边形，用指定的坐标
-        %s
+    
+      # 创建一个边界框的多边形，用指定的坐标
+      BIND("POLYGON((11.5971976 48.2168632, 11.6851890 48.2168632, 11.6851890 48.2732260, 11.5971976 48.2732260, 11.5971976 48.2168632))"^^geo:wktLiteral AS ?bbox) .
+    
+      # 检查元素是否与边界框相交
+      FILTER(geof:sfIntersects(?wkt, ?bbox))
     }
+    
+        """
+        fclass = "fclass"
+        osm_id = "osm_id"
+        bounding_box_str = ""
+        building_type = ""
+        if bounding_box_coordinats is not None:
+            min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
+            polygon_wkt = f"POLYGON(({min_lon} {min_lat}, {max_lon} {min_lat}, {max_lon} {max_lat}, {min_lon} {max_lat}, {min_lon} {min_lat}))"
+            bounding_box_str = f'BIND("{polygon_wkt}"^^geo:wktLiteral AS ?bbox) .'
+            bounding_box_str += "\nFILTER(geof:sfIntersects(?wkt, ?bbox))"
+        if "soil" in graph_name:
+            fclass = 'uebk25_l'
+            osm_id = 'soil_id'
+        if "building" in graph_name:
+            building_type = "\n?entity ns1:type ?type ."
+        if "all" not in single_type:
+            fclass_filter = f'\nFILTER(?fclass IN {single_type})'
+        else:
+            fclass_filter = ""
+        query = """
+    PREFIX ns1: <http://example.org/property/>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+    PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+        SELECT ?osmId ?wkt ?fclass ?type
+        WHERE {
+          GRAPH <%s> {
+            ?entity ns1:%s ?fclass .
+            ?entity ns1:%s ?osmId .
+            %s
+            ?entity geo:asWKT ?wkt .
+            %s
+          }
+            # 创建一个边界框的多边形，用指定的坐标
+            %s
+        }
+    
+    
+            """ % (graph_name, fclass, osm_id, fclass_filter, building_type, bounding_box_str)
+        # print(query)
+        feed_back = ask_soil(query, graph_name)
+    print(len(feed_back))
 
 
-        """ % (graph_name, fclass, osm_id, fclass_filter, building_type, bounding_box_str)
-    # print(query)
-    feed_back = ask_soil(query, graph_name)
-    # print(len(feed_back))
 
+    if "bounding_box_region_name" in globals_dict:
+        geo_dict = {globals_dict["bounding_box_region_name"]:  mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+    else:
+        geo_dict = {}
 
-
-    # if "bounding_box_region_name" in globals_dict:
-    #     geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
-    # else:
-    #     geo_dict = {}
-
-    # geo_dict.update((feed_back))
+    geo_dict.update((feed_back))
     # html=draw_geo_map(geo_dict, "geo")
     # print(html)
 
-    return feed_back
+    return geo_dict
 
 
 def ask_soil(query, map):
@@ -270,7 +304,7 @@ def ask_soil(query, map):
             fclass = result['fclass']['value']
 
             # 将WKT字符串转换为几何对象
-            geometry = loads(wkt)
+            geometry = mapping(loads(wkt))
 
             # 添加到列表
             if "type" in result:
@@ -340,12 +374,13 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
         data_list2 = globals_dict[data_list2]
     # print("len datalist1", len(data_list1))
     # print("len datalist2", len(data_list2))
+    gseries1=gpd.GeoSeries(shape((geojson)) for geojson in data_list1.values())
+    gseries2=gpd.GeoSeries(shape((geojson)) for geojson in data_list2.values())
 
-    data_list1 = data_list1
     # data_list1=data_list1[:300]
-    gseries1 = gpd.GeoSeries(list(data_list1.values()))
+    # gseries1 = gpd.GeoSeries(list(data_list1.values()))
     gseries1.index = list(data_list1.keys())
-    gseries2 = gpd.GeoSeries(list(data_list2.values()))
+    # gseries2 = gpd.GeoSeries(list(data_list2.values()))
     gseries2.index = list(data_list2.keys())
     gseries1 = gseries1.set_crs("EPSG:4326", allow_override=True)
     gseries1 = gseries1.to_crs("EPSG:32632")
@@ -436,11 +471,13 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
     """
     if "bounding_box_region_name" in globals_dict:
-        geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
+        # geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
+        geo_dict = {globals_dict["bounding_box_region_name"]: mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
         geo_dict = {}
     data_list1.update(data_list2)
     geo_dict.update(transfer_id_list_2_geo_dict(id_list, data_list1))
+    print(len(geo_dict))
     # html=draw_geo_map(geo_dict, "geo")
     # with open('my_list.pkl', 'wb') as file:
     #     pickle.dump(osmId1_list, file)
@@ -503,7 +540,7 @@ def search_attribute(dict_,key,value):
                 # print(" as")
                 # print(dict_[subject][geo_asWKT_key],type((wkt.loads(dict_[subject][geo_asWKT_key]))))
 
-                    result_dict[f"{key}_{v}_{subject}"]=str((wkt.loads(dict_[subject][geo_asWKT_key])))
+                    result_dict[f"{key}_{v}_{subject}"]=mapping((wkt.loads(dict_[subject][geo_asWKT_key])))
                 # break
     # print(len(result_dict))
     # html=draw_geo_map(result_dict,"geo")
@@ -518,11 +555,10 @@ def sql():
     # 数据库连接参数
     # engine = create_engine('postgresql://postgres:9417941@localhost:5432/osm_database')
 
-    set_bounding_box('munich ismaning')
+    set_bounding_box('munich maxvorstadt')
     # 创建连接
-
-    minLon, minLat, maxLon, maxLat = globals_dict['bounding_coordinates']
-
+    bounding_box_coordinats = globals_dict['bounding_coordinates']
+    min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
     # 定义边界框
 
     srid = 4326  # 假设使用WGS 84
@@ -531,8 +567,9 @@ def sql():
     bounding_query = f"""
     SELECT *
     FROM buildings
-    WHERE ST_Within(geom, ST_MakeEnvelope({minLon}, {minLat}, {maxLon}, {maxLat}, {srid}));
+    WHERE ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}));
     """
+    print(bounding_query)
 
     attribute_query = f"""
     SELECT column_name
@@ -545,8 +582,9 @@ def sql():
 
     """
     start_time = time.time()
+    from shapely.wkb import loads
     cur.execute(bounding_query)
-
+    from pyproj import CRS
     # 获取查询结果
     rows = cur.fetchall()
     end_time = time.time()
@@ -556,12 +594,19 @@ def sql():
     result_dict = {}
     start_time = time.time()
     for row in rows:
-        result_dict[row[2] + "_" + row[4]] = row[6]
-        break
+        result_dict[row[2] + "_" + row[3]+"_" + row[4]] = (wkb.loads(bytes.fromhex(row[6])))
+        # print(row)
+        # crs = CRS.from_user_input(loads((row[6]), hex=True).srid)
+        # print(crs.to_epsg())
 
+        break
+    print(result_dict)
     end_time = time.time()
     print(end_time - start_time)
-    draw_geo_map(result_dict, 'str')
+    geo_dict = {
+        globals_dict["bounding_box_region_name"]: mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+    geo_dict.update(result_dict)
+    draw_geo_map(geo_dict, 'geo')
     # 关闭连接
     cur.close()
     conn.close()
@@ -573,4 +618,13 @@ def sql():
 # print(predicate_list['http://example.org/property/uebk25_l'])
 # print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
 # print(predicate_list)
-# ids_of_type('http://example.com/landuse','forest')
+# set_bounding_box("munich ismaning")
+# id1=(ids_of_type('http://example.com/landuse', 'forest'))
+# id2=(ids_of_type('http://example.com/landuse', 'residential'))
+# geo_calculate(id1,id2,'intersects')
+# start_time = time.time()
+#
+# (ids_of_type('http://example.com/buildings', 'building'))
+# end_time = time.time()
+# print(end_time - start_time)
+# sql()

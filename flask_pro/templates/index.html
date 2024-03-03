@@ -30,11 +30,17 @@
         #chatWindow {
 
             border: 1px solid #ccc;
-            padding: 10px;
+            /*padding: 10px;*/
             overflow-y: auto; /* 内容超出时在元素内部显示滚动条 */
-            margin: -30px 20px 5px; /* 上、左右、下的外边距 */
-            width: calc(100% - 40px); /* 调整宽度以考虑左右的边距 */
-            max-height: calc(50vh); /* 最大高度以避免窗口滚动条 */
+            position: absolute; /* 或者使用 position: fixed; 根据需要 */
+            bottom: 100px; /* 距离窗口底部100px */
+            left: 20px; /* 距离窗口左边缘50px */
+            /*right: 20px; !* 距离窗口右边缘50px *!*/
+            width: 600px;
+            height: 500px; /* 高度为600px */
+            /*margin: -30px 20px 5px; !* 上、左右、下的外边距 *!*/
+            /*width: calc(100% - 40px); !* 调整宽度以考虑左右的边距 *!*/
+            /*max-height: calc(50vh); !* 最大高度以避免窗口滚动条 *!*/
 
 
         }
@@ -87,9 +93,15 @@
          #map-container {
              position: absolute; /* 或者使用 position: fixed; 根据需要 */
              bottom: 100px; /* 距离窗口底部100px */
-             left: 20px; /* 距离窗口左边缘50px */
+             /*left: 20px; !* 距离窗口左边缘50px *!*/
              right: 20px; /* 距离窗口右边缘50px */
+             width: 600px;
              height: 500px; /* 高度为600px */
+             /*position: absolute; !* 或者使用 position: fixed; 根据需要 *!*/
+             /*bottom: 100px; !* 距离窗口底部100px *!*/
+             /*left: 20px; !* 距离窗口左边缘50px *!*/
+             /*right: 20px; !* 距离窗口右边缘50px *!*/
+             /*height: 500px; !* 高度为600px *!*/
              background-color: #f0f0f0; /* 背景色，仅作为示例 */
          }
 
@@ -210,25 +222,37 @@
         }
 
         var layers = {};
+        var color_dict={}
 
-        function getRandomColor() {
-            var letters = '0123456789ABCDEF';
-            var color = '#';
-            for (var i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 16)];
+        function getRandomColor(label) {
+            const label_belong =label.split("_").slice(0, 2).join("_");
+            if (label_belong in color_dict){
+                return color_dict[label_belong]
             }
-            return color;
+            else
+            {
+                var letters = '0123456789ABCDEF';
+                var color = '#';
+                for (var i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                color_dict[label_belong]=color
+                return color;
+            }
+
+
         }
 
         // 遍历并添加新多边形到地图和GeoJSON图层
         Object.keys(newPolygons).forEach(label => {
-            var color = getRandomColor();
+            const label_belong =label.split("_").slice(0, 2).join("_");
+            var color = getRandomColor(label);
             var wkt = newPolygons[label];
-            var geojson = wellknown.parse(wkt); // 假设使用 wellknown 库来解析WKT
+            var geojson = (wkt); // 假设使用 wellknown 库来解析WKT
 
             L.geoJson(geojson, {
                 onEachFeature: function(feature, layer) {
-                    layer.bindPopup(label);
+                    layer.bindPopup(label_belong);
                 },
                 style: function(feature) {
                     return {color: color, weight: 2};
@@ -236,7 +260,7 @@
             }).addTo(window.geoJsonLayer);
 
             // 将图层添加到图层对象中，以便可以通过图层控制器管理
-            layers[label] = window.geoJsonLayer;
+            layers[label_belong] = window.geoJsonLayer;
         });
 
         // 如果已经添加了图层控制器，则先移除
@@ -360,7 +384,7 @@ ${String.fromCharCode(96)} to get news in Germany.`
         function adjustContainerHeight() {
             var windowHeight = $(window).height(); // 获取窗口的高度
             var containerHeight = windowHeight - 100; // 窗口高度减去100px
-            chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
+            // chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
         }
 
         // 首次加载时调整容器高度
