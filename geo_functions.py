@@ -145,7 +145,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
         result_dict = {}
         for row in rows:
             # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
-            result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
+            result_dict["Buildings" + "_" + "building"+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
             # break
         feed_back=result_dict
     else:
@@ -546,7 +546,12 @@ def search_attribute(dict_,key,value):
     # html=draw_geo_map(result_dict,"geo")
     print(len(result_dict))
     return result_dict
-def sql():
+def get_table_for_sql():
+    query = """
+            SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';
+            """
+
+def sql_debug():
     def sql_get_tabel():
         query = """
         SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';

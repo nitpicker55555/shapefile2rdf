@@ -38,35 +38,30 @@ socketio =SocketIO(app,async_mode='threading')
 
 search = DuckDuckGoSearchResults()
 template_answer={
-    "12":["""
-```python
-set_bounding_box("munich maxvorstadt")
-```
+    "Talk to my SPARQL endpoint":["""
+Please input your endpoint address.
     """,
           """
-```python
-id1=ids_of_type("http://example.com/landuse","forest")
-```
+Get it! Please input your problem.
               """
-          ,
-          """
+          ],'The building around forest 100m in munich Ismaning':[r"""
 ```python
-id2=ids_of_type("http://example.com/buildings",'building')
+set_bounding_box("munich ismaning")
 ```
-              """
-          ,
-          """
+          ""","""
+```python
+id1=(ids_of_type('http://example.com/landuse', 'forest'))
+```
+          ""","""
+```python
+id2=(ids_of_type('sql/buildings', 'building'))
+```
+          ""","""
 ```python
 geo_calculate(id1,id2,'buffer',100)
 ```
-              """
-          ],'13':[r"""
-```python
-subject_dict,predicate_dict=ttl_read(r'.\uploads\modified_Moore_Bayern_4326.ttl')
-search_attribute(subject_dict,'http://example.org/property/uebk25_k','80')
-```
           ""","""
-          
+Map showing buildings within 100m of forests in Munich Ismaning created.
           """]
 }
 
@@ -77,35 +72,27 @@ asdasdafsdfsdfsafasfasf
 """
 
 # normal_prompt = r"""
-# You have a virtual environment equipped with a python environment. The python code you
-# give will be automatically run by the system, so you can freely achieve your goals through python
-# code. The code running results will be returned to you after the execution is completed. You can use
-# python code to view all information about the current environment, or use matplotlib to draw charts.
-# But note that if you want to get the value of a variable, please use print() to print it out; the
-# variables in the code you give will be stored in the environment and can be called directly next
-# time.
+# You have a virtual environment equipped with a python environment and internet.
+# You can use python code to process user upload files, or use matplotlib to draw charts, and use 'search_internet("news")' to access
+# internet. The variables in the code you give will be stored in the environment and can be called directly next time.
 #
-# Process upload file:
-# User can upload file in location: .\uploads\
-# You can use python code to read and process it.
+# Please notice: If you want to write code, please write with markdown format. If user wants to search news or
+# informations in internet, use python code: 'search_internet('what you want to search')' to get relevant information,
+# do not use other python code.
 #
-# Finish tag:
-# When you think no further reply needed, please add ```status_complete``` at the end of response, if you think further
-# response is needed, please add ```status_running``` at the end of response.
-#
-# Writing Python:
-# If you want to get the value of a variable, please use print() to print it out.
+# Access internet: You can access internet to search information by calling function search_internet("news"), Example: you
+# can write python code '```python\nsearch_internet("西安新闻")\n```' to get news in 西安. Write '```python\nsearch_internet("Germany news")\n```' to get news in germany.
 # """
-normal_prompt = r"""You have a virtual environment equipped with a python environment and internet.
-You can use python code to process user upload files, or use matplotlib to draw charts, and use 'search_internet("news")' to access 
-internet. The variables in the code you give will be stored in the environment and can be called directly next time. 
+normal_prompt = r"""
+Question1:
+现在有一个sparql查询端口，输入端口
+sql
+ttl file
 
-Please notice: If you want to write code, please write with markdown format. If user wants to search news or 
-informations in internet, use python code: 'search_internet('what you want to search')' to get relevant information, 
-do not use other python code. 
+2:
+告诉我这个数据库是关于什么的
 
-Access internet: You can access internet to search information by calling function search_internet("news"), Example: you 
-can write python code '```python\nsearch_internet("西安新闻")\n```' to get news in 西安. Write '```python\nsearch_internet("Germany news")\n```' to get news in germany."""
+"""
 
 judge_prompt="""You are a task completion judge. I will tell you the goal and current completion status of this task. 
 You need to output whether it is completed now in json format. If it is completed, output {"complete":true}. If not, 

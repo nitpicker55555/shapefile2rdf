@@ -103,6 +103,7 @@
              /*right: 20px; !* 距离窗口右边缘50px *!*/
              /*height: 500px; !* 高度为600px *!*/
              background-color: #f0f0f0; /* 背景色，仅作为示例 */
+             display: none;
          }
 
 
@@ -145,22 +146,22 @@
 <input type="file" id="file-input" style="display: none;" />
 <div id="chatWindow" style="display: none"></div>
 <div class="container" id="title">
-    <span class="code-interpreter">Code Interpreter</span>
-    <div class="description">联网查询/分析文件/绘制图表</div>
-    <button class="rectangle-btn"  onclick="showNumber('给我画一个♥心形')">给我画一个♥心形</button>
+    <span class="code-interpreter">Talk to DB</span>
+    <div class="description"></div>
+    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning')">The building around forest 100m in munich Ismaning</button>
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('最近西安有啥新闻')">最近西安有啥新闻</button>
+<!--    <button class="rectangle-btn"  onclick="showNumber('最近西安有啥新闻')">最近西安有啥新闻</button>-->
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">分析我上传的文件</button>
+<!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">分析我上传的文件</button>-->
 </div>
 <div class="input-button-container">
-    <input type="button" id="upload-btn" class="your-button-class" value="上传文件" onclick="document.getElementById('file-input').click();" />
+    <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />
 
 
-    <input type="text" id="inputField" class="your-button-class" placeholder="输入问题...">
-    <button id="confirmButton" class="your-button-class">提问</button>
+    <input type="text" id="inputField" class="your-button-class" placeholder="Input question...">
+    <button id="confirmButton" class="your-button-class">submit</button>
 </div>
 <div id="map-container" ></div>
 
@@ -506,6 +507,7 @@ ${String.fromCharCode(96)} to get news in Germany.`
             document.getElementById('chatWindow').style.display='block'
             document.getElementById('subscribe').style.display='none'
             document.getElementById('submit_email').style.display='none'
+            document.getElementById('map-container').style.display='block'
             var userInput = document.getElementById('inputField').value; // 获取文本框的值/
             process_input(userInput)
 
