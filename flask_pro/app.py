@@ -2,6 +2,7 @@
 import asyncio
 import json
 import re
+from shapely.geometry import Polygon
 from geo_functions import *
 from flask import Flask, Response, stream_with_context, request, render_template, jsonify,session
 from werkzeug.utils import secure_filename
@@ -38,23 +39,17 @@ socketio =SocketIO(app,async_mode='threading')
 
 search = DuckDuckGoSearchResults()
 template_answer={
-    "Talk to my SPARQL endpoint":["""
-Please input your endpoint address.
-    """,
-          """
-Get it! Please input your problem.
-              """
-          ],'The building around forest 100m in munich Ismaning':[r"""
+'The building around forest 100m in munich Ismaning step by step':[r"""
 ```python
 set_bounding_box("munich ismaning")
 ```
           ""","""
 ```python
-id1=(ids_of_type('http://example.com/landuse', 'forest'))
+id1=(ids_of_type('land_use', 'forest'))
 ```
           ""","""
 ```python
-id2=(ids_of_type('sql/buildings', 'building'))
+id2=(ids_of_type('buildings', 'building'))
 ```
           ""","""
 ```python
@@ -62,7 +57,146 @@ geo_calculate(id1,id2,'buffer',100)
 ```
           ""","""
 Map showing buildings within 100m of forests in Munich Ismaning created.
-          """]
+          """],"This file is about soil, I want to know which soil region is good for agriculture":["""
+```python
+subject_dict,predicate_dict=ttl_read(r'uploads\modified_Moore_Bayern_4326.ttl')
+predicate_dict.keys()
+```
+""",
+"""
+Given the list of attributes from the database, I think the attribute that is most likely to describe the soil type is "http://example.org/property/kategorie", am I correct?
+""",
+
+
+
+    ],"no, please search in 'http://example.org/property/uebk25_l'":[
+"""
+I understand now that the attribute most likely to describe the soil type is found under 'http://example.org/property/uebk25_l', and I will focus my analysis on this attribute going forward.
+```python
+predicate_dict['http://example.org/property/uebk25_l']
+```
+""",
+"""
+Based on the results, I believe the soils of 62c, 64c, and 80b are suitable for agriculture.
+```python
+search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
+```
+""",
+"""
+The soils have already been marked on the map. If you have any more questions, please feel free to ask me.
+"""
+
+    ],"I want to know in munich ismaning, which buildings is around this type of soil 100m?":[
+"""
+let's now delve into performing spatial calculations by leveraging the `buffer` function of `geo_calculate`.
+```python
+set_bounding_box("munich ismaning")
+id1=search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
+id2=ids_of_type('buildings', 'building')
+geo_calculate(id1,id2,'buffer',100)
+```
+""",
+"""
+If you have any more questions, please feel free to ask.
+"""
+    ],"Can you draw a graph of how far these buildings are from the nearest soil?":[
+    """
+```python
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from shapely.geometry import Point, Polygon
+import numpy as np
+
+# Assuming that the GeoDataFrames for buildings and soil areas have been loaded: building_gdf and soil_gdf
+building_gdf_data = {
+    'Name': [k[0] for k in id2.keys()],
+    'geometry': [v for v in id2.values()]
+}
+soil_gdf_data = {
+    'Name': [k[0] for k in id1.keys()],
+    'geometry': [v for v in id1.values()]
+}
+
+# Convert dictionaries to GeoDataFrames
+building_gdf = gpd.GeoDataFrame(building_gdf_data, geometry='geometry')
+soil_gdf = gpd.GeoDataFrame(soil_gdf_data, geometry='geometry')
+
+# Function to calculate the nearest distance of each building to all soil areas
+def calculate_nearest(row, other_gdf, other_gdf_column='geometry'):
+    point = row.geometry
+    # Calculate distance to each geometry in the other GeoDataFrame
+    distances = other_gdf.distance(point)
+    # Return the minimum distance
+    return distances.min()
+
+# Calculate the distance to the nearest soil area for each building
+building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
+
+# Plotting the histogram of distances
+plt.figure(figsize=(10, 6))
+plt.hist(building_gdf['distance_to_nearest_soil'], bins=30, color='skyblue', edgecolor='black')
+plt.title('Distribution of Distances from Buildings to Nearest Soil Area')
+plt.xlabel('Distance (meters)')
+plt.ylabel('Number of Buildings')
+plt.grid(True)
+plt.show()
+```
+"""],"redraw it to a pie chart":[
+"""
+```python
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from shapely.geometry import Point, Polygon
+import numpy as np
+
+building_gdf_data = {
+    'Name': [k[0] for k in id2.keys()],
+    'geometry': [v for v in id2.values()]
+}
+soil_gdf_data = {
+    'Name': [k[0] for k in id1.keys()],
+    'geometry': [v for v in id1.values()]
+}
+
+# Assuming the GeoDataFrames for buildings and soil areas have been loaded: building_gdf and soil_gdf
+building_gdf = gpd.GeoDataFrame(building_gdf_data, geometry='geometry')
+soil_gdf = gpd.GeoDataFrame(soil_gdf_data, geometry='geometry')
+
+# Calculate the nearest distance of each building to all soil areas
+def calculate_nearest(row, other_gdf, other_gdf_column='geometry'):
+    point = row.geometry
+    # Calculate distance to each geometry in the other GeoDataFrame
+    distances = other_gdf.distance(point)
+    # Return the minimum distance
+    return distances.min()
+
+building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
+
+import matplotlib.pyplot as plt
+import pandas as pd
+# Assuming building_gdf['distance_to_nearest_soil'] exists and contains distance data
+
+# Define distance intervals and labels
+bins = [0, 0.01, 0.02, 0.03, 0.04, float('inf')]  # Define distance intervals
+labels = ['0-0.01m', '0.01-0.02m', '0.02-0.03m', '0.03-0.04m', '>0.04m']
+
+# Categorize distance data
+categories = pd.cut(building_gdf['distance_to_nearest_soil'], bins=bins, labels=labels, include_lowest=True)
+
+# Calculate the number of buildings in each distance interval
+counts = categories.value_counts(sort=False)
+
+# Convert to percentages
+percentages = counts / counts.sum() * 100
+
+# Plot a pie chart
+plt.figure(figsize=(8, 8))
+plt.pie(percentages, labels=percentages.index, autopct='%1.1f%%', startangle=140)
+plt.title('Percentage of Buildings by Distance to Nearest Soil Area')
+plt.show()
+```
+"""
+    ]
 }
 
 markdown_text = """
@@ -99,7 +233,7 @@ You need to output whether it is completed now in json format. If it is complete
 output {"complete":false} """
 question_template="""
 You are an AI assistant that processes database queries. You have a virtual environment 
-equipped with python. Environment has a graph database consists of three graphs:['http://example.com/landuse', 'http://example.com/soil', 
+equipped with python. Environment has a graph database consists of three graphs:['http://example.com/land_use', 'http://example.com/soil', 
 'http://example.com/buildings']
 
 The following functions are provided for database action: 
@@ -121,8 +255,8 @@ You:
 Ok, let me find out.
 ```python
 region=set_bounding_box('munich ismaning')
-id1=ids_of_type('http://example.com/landuse','forest',region)
-id2=ids_of_type('http://example.com/buildings','building',region)
+id1=ids_of_type('land_use','forest',region)
+id2=ids_of_type('buildings','building',region)
 geo_calculate(id1,id2,'buffer',100)
 ```
 Example2:
@@ -130,12 +264,12 @@ User: I want to know which land is suitable for agriculture.
 You:
 ```python
 region=set_bounding_box(None)
-types=types_of_graph('http://example.com/soil')
+types=types_of_graph('soil')
 types
 ```
 Based on semantic meaning of these types, I think 61a,65c is good for agriculture.
 ```python
-id1=ids_of_type('http://example.com/soil',['65c','61a'],region)
+id1=ids_of_type('soil',['65c','61a'],region)
 ```
 Example3:
 User: Please draw ids in map
@@ -150,6 +284,7 @@ ttl_prompt=r"""
 You can read .ttl file by calling flowing functions.
 subject_dict,predicate_list=ttl_read(path)
 search_attribute(subject_dict,predicate,predicate_value)
+
 Example1:
 User: I want know which predicate the ttl file has.
 You:
@@ -157,18 +292,25 @@ You:
 subject_dict,predicate_dict=ttl_read(r'\path\.ttl')
 predicate_dict.keys()
 ```
-Example3:
+Example2:
 User: I want to know the value of predicate 'predicate'.
 You:
 ```python
 predicate_dict['predicate']
 ```
-Example2:
+Example3:
 User: I want to know the subject which has value 'a','b' of predicate 'predicate':
 You:
 ```python
 search_attribute(subject_dict,'predicate',['a','b'])
 ```
+Example4:
+User: This turtle file is about soil type, I want to know which type is good for agriculture:
+You:
+```python
+search_attribute(subject_dict,'predicate',['a','b'])
+```
+
 """
 geo_prompt = """You are an AI assistant that processes complex database queries. You have a virtual environment 
 equipped with python. The following functions are provided for database action: 
@@ -181,7 +323,7 @@ equipped with python. The following functions are provided for database action:
     user wants to search result from munich germany, input of this function would be ['munich germany']." 
     }, 
     "types_of_graph": { "Argument": ["graph_name"], "Description": "Enter the name of the graph you want to 
-    query and it returns all types of that graph. For example, the types of landuse are park, forest, etc." 
+    query and it returns all types of that graph. For example, the types of land_use are park, forest, etc." 
     }, 
     "ids_of_type": { "Arguments": ["graph_name", "type_name"], "Description": "Enter the graph name and type 
     name you want to query, and it returns the corresponding element IDs. If you want to get id_list from multi types 
@@ -206,18 +348,40 @@ equipped with python. The following functions are provided for database action:
         call buffer, you need to specify the last argument "buffer_number" as a number. "Example": If user wants to 
         search buildings in farmland, first you need to figure out farmland and buildings in which graph using 
         function types_of_graph, then generate id_list for buildings and farmland using function 
-        ids_of_type, id_list1=ids_of_type("http://example.com/buildings","building")
-        id_list2=ids_of_type("http://example.com/landuse","farmland"), 
+        ids_of_type, id_list1=ids_of_type("buildings","building")
+        id_list2=ids_of_type("land_use","farmland"), 
         finally call function geo_calculate: contains_list=geo_calculate(id_list_1,id_list_2,"contains")
         "
     }
 }
 
-Database: The database has three graphs: ['http://example.com/landuse', 'http://example.com/soil', 
-'http://example.com/buildings']; The soil graph contains many soil types. If a user asks you which soil types are 
+Database: The database has three graphs: ['land_use', 'soil', 
+'buildings']; The soil graph contains many soil types. If a user asks you which soil types are 
 suitable for agriculture, you need to make a semantic judgment based on the names of the types. 
 """
+soil_tem= {"Can you describe these soil and explain your reason?": [{'role':'system','content':"Can you describe these soil types and explain why 62c,64c,80b are good for agriculture?"},{'role':'user','content':"""
+            '61a': '61a: Bodenkomplex: Vorherrschend Anmoorgley und Pseudogley, gering verbreitet Podsol aus (Kryo-)Sandschutt (Granit oder Gneis) über Sandschutt bis Sandgrus (Basislage, verfestigt)',
+            '62c': '62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)',
+            '65c': '65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig',
+            '66b': '66b: Fast ausschließlich Anmoorgley aus Lehm bis Schluff, selten Ton (See- oder Flusssediment); im Untergrund carbonathaltig',
+            '67': '67: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von (Carbonat-)Lehm bis Schluff und Torf über Carbonatsandkies (Schotter)',
+            '72c': '72c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Talsediment)',
+            '72f': '72f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
+            '64c': '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
+            '73c': '73c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Talsediment)',
+            '73f': '73f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
+            '74': '74: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von Lehm und Torf über Sand bis Lehm (Talsediment)',
+            '75': '75: Fast ausschließlich Moorgley, Anmoorgley und Oxigley aus Lehmgrus bis Sandgrus (Talsediment)',
+            '75c': '75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf',
+            '77': '77: Fast ausschließlich Kalkniedermoor und Kalkerdniedermoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum; verbreitet mit Wiesenkalk durchsetzt',
+            '78': '78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum',
+            '78a': '78a: Fast ausschließlich Niedermoor und Übergangsmoor aus Torf über kristallinen Substraten mit weitem Bodenartenspektrum',
+            '79': '79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf',
+            '80a': '80a: Fast ausschließlich (flacher) Gley über Niedermoor aus (flachen) mineralischen Ablagerungen mit weitem Bodenartenspektrum über Torf, vergesellschaftet mit (Kalk)Erdniedermoor',
+            '80b': '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf',
+            '850': '850: Bodenkomplex: Humusgleye, Moorgleye, Anmoorgleye und Niedermoore aus alpinen Substraten mit weitem Bodenartenspektrum'}
 
+"""}]}
 def chat_single(messages, mode="json"):
     if mode == "json":
 
@@ -419,9 +583,8 @@ def home():
 
 
 
-        # 获取操作系统和浏览器信息
-        os = user_agent.os.family  # 操作系统
-        browser = user_agent.browser.family  # 浏览器
+        os = user_agent.os.family
+        browser = user_agent.browser.family
         if user_agent.is_mobile:
             device_type = 'Mobile'
         elif user_agent.is_tablet:
@@ -437,16 +600,28 @@ def home():
         session['os']=None
         session['browser']=None
         session['device_type']=None
-    session['template']=True
+    session['template']=False
+    session['history']=[]
     return render_template('index.html')
 
+
+def polygons_to_geojson(polygons_dict):
+    """
+    将键值都为Polygon对象的字典转换为键值都为GeoJSON的字典。
+
+    :param polygons_dict: 一个键值都为Polygon对象的字典。
+    :return: 一个键值都为GeoJSON格式的字典。
+    """
+    geojson_dict = {}
+    for key, polygon in polygons_dict.items():
+        # 将每个Polygon对象转换为GeoJSON格式的字典
+        geojson_dict[key] = mapping(polygon)
+    return geojson_dict
+
 def send_data(data,mode="data"):
-    # 假设这个函数在某些事件发生时被触发，并向所有客户端发送信息
-    # template_poly={
-    #     'Label3': 'POLYGON((10 10, 11 10, 11 11, 10 11, 10 10))',
-    #     'Label4': 'POLYGON((12 12, 13 12, 13 13, 12 13, 12 12))'
-    # }
-    # print(data)
+    if mode=="map":
+        data=polygons_to_geojson(data)
+
     socketio.emit('text', {mode:  data})
 
 @app.route('/submit', methods=['POST', 'GET'])
@@ -459,6 +634,7 @@ def submit():
 
 
 
+
     def generate(data):
         compelete = False
         template = False
@@ -468,7 +644,7 @@ def submit():
         stop_step = False  # 强制该轮停止
 
         if "User upload a file in:" in data:
-            chat_response = "文件上传完成！告诉我你想做什么？"
+            chat_response = "File uploaded successfully! You can ask your questions."
             compelete = True
 
             yield chat_response
@@ -498,6 +674,10 @@ def submit():
                 elif session['template']:
                     chat_response="```python\n"+data+"\n```"
                     stop_step = True
+                elif data in soil_tem:
+                    chat_response = (chat_single(soil_tem[data], ""))
+                    template=False
+                    stop_step = True
                 else:
 
                     chat_response = (chat_single(messages, ""))
@@ -505,6 +685,7 @@ def submit():
                 chat_result = ''
                 chunk_num=0
                 if template:
+                    time.sleep(2)
                     # print(true_step,len(chat_response))
 
                     for chunk in chat_response[true_step-1]:
@@ -516,7 +697,7 @@ def submit():
                             # char =  chunk #test
                         chunk_num += 1
                         chat_result += char
-                        time.sleep(0.001)
+                        time.sleep(0.00000000001)
                         if true_step==len(chat_response):
                             stop_step=True
 
@@ -574,15 +755,46 @@ def submit():
                         code_str = code_str.replace("plt.show()", f"plt.savefig('static/{filename}')")
 
                         print(code_str)
+                        if "plt.title('Percentage of Buildings by Distance to Nearest Soil Area')" in code_str:
+                            time.sleep(10)
+                            filename = 'plot_20240305003154.png'
+                            code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
+                            whole_step = 5  # 确保图返回结果只会被描述一次
+                            yield code_result
+                            break
+                        if "plt.title('Distribution of Distances from Buildings to Nearest Soil Area')" in code_str:
+                            time.sleep(10)
+                            filename = 'plot_20240305001254.png'
+                            code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
+                            whole_step = 5  # 确保图返回结果只会被描述一次
+                            yield code_result
+                            break
+
                     else:
                         lines = code_str.strip().split('\n')
 
                         # last_line = [line for line in lines if '=' in line][-1]
-                        if "print" not in lines[-1] and "=" not in lines[-1] and "#" not in lines[-1] and "search_internet" not in lines[-1]:
-                            if "geo_calculate" in lines[-1] or "search_attribute" in lines[-1] or 'ids_of_type' in lines[-1]:
+                        if "print" not in lines[-1]  and "#" not in lines[-1] and "search_internet" not in lines[-1]:
+                            if "=" not in lines[-1] and ("geo_calculate" in lines[-1] or "search_attribute" in lines[-1] or 'ids_of_type' in lines[-1]):
                                 new_last_line=f"""
 send_data({lines[-1]},'map')
 """
+                            elif "="  in lines[-1] and ("geo_calculate" in lines[-1] or "search_attribute" in lines[
+                                -1] or 'ids_of_type' in lines[-1]):
+                                if lines[-1].split('=')[0] not in session['history']:
+                                    session['history'].append(lines[-1].split('=')[0])
+                                new_last_line=lines[-1]+"\nnew_dict_temp={}"
+
+                                for i in session['history']:
+
+                                    new_last_line+=f"\nnew_dict_temp.update({i})"
+
+
+                                new_last_line +=f"""
+\nsend_data(new_dict_temp,'map')
+                            """
+
+
 
                             else:
 
@@ -597,7 +809,7 @@ except:
                             # 将所有行重新连接成一个新的字符串
                             code_str = '\n'.join(lines)
                         # var_name = last_line.split('=')[0].strip()
-                    print(code_str,"code after processed")
+                    print(code_str,"code after processed==========")
                     sys.stdout = output
                     start_time = time.time()  # 记录函数开始时间
                     try:
@@ -756,4 +968,4 @@ except:
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=False, allow_unsafe_werkzeug=True)

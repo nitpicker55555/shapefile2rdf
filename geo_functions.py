@@ -1,27 +1,17 @@
-import pickle
-import random
-import time, os
+
 import psycopg2
 import time
 from shapely.geometry import shape
-from rdflib import Graph
-import json
-import openai
-import requests
-from tenacity import retry, wait_random_exponential, stop_after_attempt
-from termcolor import colored
-from dotenv import load_dotenv
 import geopandas as gpd
 from shapely.wkt import loads
 from shapely.geometry import mapping
-from shapely.geometry import Polygon
-import ast
 from draw_geo import draw_geo_map
 from SPARQLWrapper import SPARQLWrapper, JSON
 from tqdm import tqdm
 from bounding_box import find_boundbox
 from shapely import wkb
 from shapely import wkt
+from shapely.geometry import base
 globals_dict = {}
 
 sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
@@ -122,7 +112,8 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     if 'bounding_coordinates' in globals_dict:
         bounding_box_coordinats = globals_dict['bounding_coordinates']
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-    if single_type=="building":
+    if single_type!=None:
+    # if single_type=="building":
 
         # 定义边界框
 
@@ -131,12 +122,14 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
         # 执行查询
             bounding_query = f"""
             SELECT *
-            FROM buildings
-            WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}));
+            FROM {graph_name}
+            WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}))
+            AND fclass = '{single_type}';
             """
         else:
             bounding_query = f"""
-            SELECT * FROM buildings;
+            SELECT * FROM {graph_name};
+            AND fclass = '{single_type}';
             """
         cur.execute(bounding_query)
 
@@ -145,7 +138,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
         result_dict = {}
         for row in rows:
             # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
-            result_dict["Buildings" + "_" + "building"+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
+            result_dict[single_type+ "_" + row[2]+"_"+row[4]] = (wkb.loads(bytes.fromhex(row[6])))
             # break
         feed_back=result_dict
     else:
@@ -270,7 +263,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
 
 
     if "bounding_box_region_name" in globals_dict:
-        geo_dict = {globals_dict["bounding_box_region_name"]:  mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+        geo_dict = {globals_dict["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
         geo_dict = {}
 
@@ -278,7 +271,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     # html=draw_geo_map(geo_dict, "geo")
     # print(html)
 
-    return geo_dict
+    return feed_back
 
 
 def ask_soil(query, map):
@@ -304,7 +297,7 @@ def ask_soil(query, map):
             fclass = result['fclass']['value']
 
             # 将WKT字符串转换为几何对象
-            geometry = mapping(loads(wkt))
+            geometry = (loads(wkt))
 
             # 添加到列表
             if "type" in result:
@@ -366,21 +359,57 @@ WHERE {
     # print(query)
     feed_back = ask_soil(query, graph_name)
     return feed_back
+def geojson_to_wkt(geojson_dict):
+    """
+    Convert a dictionary of GeoJSON objects to a list of WKT strings.
 
+    :param geojson_dict: Dictionary with GeoJSON objects as values.
+    :return: List of WKT strings.
+    """
+    wkt_list = []
+
+    for geojson in geojson_dict.values():
+        # Convert the GeoJSON object to a Shapely geometry
+        geometry = shape(geojson)
+        # Convert the Shapely geometry to a WKT string
+        wkt_list.append(geometry)
+    for i in wkt_list:
+        print(i)
+        break
+        # if not isinstance(geometry, base.BaseGeometry):
+        #     print(f"对象 {geometry} 不是有效的 shapely 几何类型。")
+        # else:
+        #     # 有效性检查
+        #     if not geometry.is_valid:
+        #         print(f"几何对象 {geometry} 无效。")
+        #     # 简单性检查（仅对 LineString 和 Polygon 有效）
+        #     if hasattr(geometry, "is_simple") and not geometry.is_simple:
+        #         print(f"几何对象 {geometry} 不是简单的。")
+        #
+        # # 类型检查
+
+    return wkt_list
 
 def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
+    #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
     if isinstance(data_list1, str):
         data_list1 = globals_dict[data_list1]
         data_list2 = globals_dict[data_list2]
     # print("len datalist1", len(data_list1))
     # print("len datalist2", len(data_list2))
-    gseries1=gpd.GeoSeries(shape((geojson)) for geojson in data_list1.values())
-    gseries2=gpd.GeoSeries(shape((geojson)) for geojson in data_list2.values())
+    # gseries1 = gpd.GeoSeries([shape(geojson) for geojson in data_list1.values()])
+    # gseries2= gpd.GeoSeries([shape(geojson) for geojson in data_list2.values()])
 
     # data_list1=data_list1[:300]
-    # gseries1 = gpd.GeoSeries(list(data_list1.values()))
+    # for i in data_list1:
+    #     print(type(data_list1[i]))
+    #     break
+    # for i in data_list2:
+    #     print(data_list2[i])
+    #     break
+    gseries1 = gpd.GeoSeries(list(data_list1.values()))
     gseries1.index = list(data_list1.keys())
-    # gseries2 = gpd.GeoSeries(list(data_list2.values()))
+    gseries2 = gpd.GeoSeries(list(data_list2.values()))
     gseries2.index = list(data_list2.keys())
     gseries1 = gseries1.set_crs("EPSG:4326", allow_override=True)
     gseries1 = gseries1.to_crs("EPSG:32632")
@@ -472,15 +501,17 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     """
     if "bounding_box_region_name" in globals_dict:
         # geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
-        geo_dict = {globals_dict["bounding_box_region_name"]: mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+        geo_dict = {globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
         geo_dict = {}
     data_list1.update(data_list2)
     geo_dict.update(transfer_id_list_2_geo_dict(id_list, data_list1))
     print(len(geo_dict))
+
     # html=draw_geo_map(geo_dict, "geo")
     # with open('my_list.pkl', 'wb') as file:
     #     pickle.dump(osmId1_list, file)
+
 
     return geo_dict
 
@@ -540,7 +571,7 @@ def search_attribute(dict_,key,value):
                 # print(" as")
                 # print(dict_[subject][geo_asWKT_key],type((wkt.loads(dict_[subject][geo_asWKT_key]))))
 
-                    result_dict[f"{key}_{v}_{subject}"]=mapping((wkt.loads(dict_[subject][geo_asWKT_key])))
+                    result_dict[f"{key}_{v}_{subject}"]=((wkt.loads(dict_[subject][geo_asWKT_key])))
                 # break
     # print(len(result_dict))
     # html=draw_geo_map(result_dict,"geo")
@@ -616,16 +647,24 @@ def sql_debug():
     cur.close()
     conn.close()
 
-
-
+# set_bounding_box("munich ismaning")
+# subject_dict,predicate_dict=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
+# id1=search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
+# id2=ids_of_type('buildings', 'building')
+# geo_calculate(id1,id2,'buffer',100)
+# search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
 # dict_,predicate_list=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
 # print(predicate_list.keys())
 # print(predicate_list['http://example.org/property/uebk25_l'])
 # print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
 # print(predicate_list)
 # set_bounding_box("munich ismaning")
-# id1=(ids_of_type('http://example.com/landuse', 'forest'))
-# id2=(ids_of_type('http://example.com/landuse', 'residential'))
+# id1=ids_of_type('http://example.com/landuse','forest')
+# id2=ids_of_type('buildings','building')
+# geo_calculate(id1,id2,'buffer',50)
+# for i in aa:
+#     print(shape(aa[i]).wkt)
+#     break
 # geo_calculate(id1,id2,'intersects')
 # start_time = time.time()
 #
@@ -633,3 +672,65 @@ def sql_debug():
 # end_time = time.time()
 # print(end_time - start_time)
 # sql()
+# import geopandas as gpd
+# import matplotlib.pyplot as plt
+# from shapely.geometry import Point, Polygon
+# import numpy as np
+# building_gdf_data = {
+#     'Name': [k[0] for k in id2.keys()],
+#     'geometry': [(v) for v in id2.values()]
+# }
+# soil_gdf_data = {
+#     'Name': [k[0] for k in id1.keys()],
+#     'geometry': [(v) for v in id1.values()]
+# }
+# # 假设已经加载了建筑和土壤区域的GeoDataFrame：building_gdf 和 soil_gdf
+# building_gdf=gpd.GeoDataFrame(building_gdf_data, geometry='geometry')
+# soil_gdf=gpd.GeoDataFrame(soil_gdf_data, geometry='geometry')
+# # 计算每个建筑到所有土壤区域的最近距离
+# def calculate_nearest(row, other_gdf, other_gdf_column='geometry'):
+#     """计算GeoDataFrame中每一行与另一个GeoDataFrame中所有几何形状的最近距离"""
+#     point = row.geometry
+#     # 计算到另一个GeoDataFrame中每个几何形状的距离
+#     distances = other_gdf.distance(point)
+#     # 返回最小距离
+#     return distances.min()
+# building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
+#
+# import matplotlib.pyplot as plt
+# import pandas as pd
+# # 假设 building_gdf['distance_to_nearest_soil'] 存在且包含距离数据
+#
+# # 定义距离区间和标签
+# bins = [0, 0.01, 0.02, 0.03, 0.04, float('inf')]  # 定义距离区间
+# labels = ['0-0.01m', '0.01-0.02m', '0.02-0.03m', '0.03-0.04m', '>0.04m']
+#
+# # 对距离数据进行分类
+# categories = pd.cut(building_gdf['distance_to_nearest_soil'], bins=bins, labels=labels, include_lowest=True)
+#
+# # 计算每个距离区间的建筑数量
+# counts = categories.value_counts(sort=False)
+#
+# # 转换为百分比
+# percentages = counts / counts.sum() * 100
+#
+# # 绘制饼图
+# plt.figure(figsize=(8, 8))
+# plt.pie(percentages, labels=percentages.index, autopct='%1.1f%%', startangle=140)
+# plt.title('Percentage of Buildings by Distance to Nearest Soil Area')
+# plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305003154.png')
+#
+
+
+#
+# # # 对每个建筑应用函数，计算到最近土壤区域的距离
+# building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
+#
+# # 绘制距离的直方图
+# plt.figure(figsize=(10, 6))
+# plt.hist(building_gdf['distance_to_nearest_soil'], bins=30, color='skyblue', edgecolor='black')
+# plt.title('Distribution of Distances from Buildings to Nearest Soil Area')
+# plt.xlabel('Distance (meters)')
+# plt.ylabel('Number of Buildings')
+# plt.grid(True)
+# plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305001254.png')

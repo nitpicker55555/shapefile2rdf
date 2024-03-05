@@ -1,0 +1,6 @@
+shapely
+psycopg2
+rdflib
+tqdm
+SPARQLWrapper
+geopandas

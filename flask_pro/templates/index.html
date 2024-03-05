@@ -103,7 +103,7 @@
              /*right: 20px; !* 距离窗口右边缘50px *!*/
              /*height: 500px; !* 高度为600px *!*/
              background-color: #f0f0f0; /* 背景色，仅作为示例 */
-             display: none;
+             visibility : hidden;
          }
 
 
@@ -139,8 +139,8 @@
     <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;"> </a>
     <button id="nightModeToggle">🌙</button>
     <br>
-    <input type="text" id="subscribe" placeholder="输入邮箱订阅更新:)...">
-    <button id="submit_email">提交</button>
+<!--    <input type="text" id="subscribe" placeholder="输入邮箱订阅更新:)...">-->
+<!--    <button id="submit_email">提交</button>-->
 </p>
 
 <input type="file" id="file-input" style="display: none;" />
@@ -148,13 +148,13 @@
 <div class="container" id="title">
     <span class="code-interpreter">Talk to DB</span>
     <div class="description"></div>
-    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning')">The building around forest 100m in munich Ismaning</button>
+    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning step by step')">The building around forest 100m in munich Ismaning step by step</button>
     <br>
     <br>
 <!--    <button class="rectangle-btn"  onclick="showNumber('最近西安有啥新闻')">最近西安有啥新闻</button>-->
     <br>
     <br>
-<!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">分析我上传的文件</button>-->
+    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>
 </div>
 <div class="input-button-container">
     <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />
@@ -181,7 +181,7 @@
     document.getElementById('nightModeToggle').addEventListener('click', function() {
         document.body.classList.toggle('night-mode');
     });
-
+    var color_dict={}
     function updateMapDataAndFitBounds(map, newPolygons) {
         // 检查是否已经添加了geoJsonLayer图层，如果有，则移除
         if (window.geoJsonLayer) {
@@ -223,7 +223,7 @@
         }
 
         var layers = {};
-        var color_dict={}
+
 
         function getRandomColor(label) {
             const label_belong =label.split("_").slice(0, 2).join("_");
@@ -505,38 +505,38 @@ ${String.fromCharCode(96)} to get news in Germany.`
         document.getElementById('confirmButton').addEventListener('click', function() {
             document.getElementById('title').style.display="none"
             document.getElementById('chatWindow').style.display='block'
-            document.getElementById('subscribe').style.display='none'
-            document.getElementById('submit_email').style.display='none'
-            document.getElementById('map-container').style.display='block'
+            // document.getElementById('subscribe').style.display='none'
+            // document.getElementById('submit_email').style.display='none'
+            document.getElementById('map-container').style.visibility='visible'
             var userInput = document.getElementById('inputField').value; // 获取文本框的值/
             process_input(userInput)
 
         });
-        document.getElementById('submit_email').addEventListener('click', function() {
-
-            const text=document.getElementById('subscribe').value
-            document.getElementById('subscribe').value=''
-            alert("邮箱提交成功！谢谢啦:)")
-            fetch('/submit_email', {
-                method: 'POST', // 指定请求方法为POST
-                headers: {
-                    'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
-                },
-                body: JSON.stringify({ text: text }) // 将用户输入转换为JSON字符串
-            })
-                .then(response => {
-
-
-                }) // 解析JSON格式的响应
-                .then(data => {
-                })
-                .catch((error) => {
-                    console.error('Error:', error); // 在控制台打印出现的错误
-                });
-            // var userInput = document.getElementById('inputField').value; // 获取文本框的值
-            // process_input(userInput)
-
-        });
+        // document.getElementById('submit_email').addEventListener('click', function() {
+        //
+        //     const text=document.getElementById('subscribe').value
+        //     document.getElementById('subscribe').value=''
+        //     alert("邮箱提交成功！谢谢啦:)")
+        //     fetch('/submit_email', {
+        //         method: 'POST', // 指定请求方法为POST
+        //         headers: {
+        //             'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
+        //         },
+        //         body: JSON.stringify({ text: text }) // 将用户输入转换为JSON字符串
+        //     })
+        //         .then(response => {
+        //
+        //
+        //         }) // 解析JSON格式的响应
+        //         .then(data => {
+        //         })
+        //         .catch((error) => {
+        //             console.error('Error:', error); // 在控制台打印出现的错误
+        //         });
+        //     // var userInput = document.getElementById('inputField').value; // 获取文本框的值
+        //     // process_input(userInput)
+        //
+        // });
 
     }
     )

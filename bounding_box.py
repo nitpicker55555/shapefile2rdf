@@ -1,7 +1,5 @@
 import requests
-import re
 from shapely.geometry import Polygon
-from draw_geo import draw_geo_map
 from shapely.wkb import dumps
 # Nominatim API endpoint for search
 def modify_region_advanced(region, horizontal_range, vertical_range):
