@@ -5,7 +5,7 @@ from shapely.geometry import shape
 import geopandas as gpd
 from shapely.wkt import loads
 from shapely.geometry import mapping
-from draw_geo import draw_geo_map
+# from draw_geo import draw_geo_map
 from SPARQLWrapper import SPARQLWrapper, JSON
 from tqdm import tqdm
 from bounding_box import find_boundbox
