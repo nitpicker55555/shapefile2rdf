@@ -1,15 +1,72 @@
-from rdflib import Graph
+from geo_functions import *
+a=time.time()
+def residential_near_swamp():
+    set_bounding_box("munich ismaning")
+    id1=(ids_of_type('land_use', 'residential'))
+    #
+    id2 = (ids_of_type('buildings', 'building'))
+    id_soil = (ids_of_type('http://example.com/soil', 'all'))
+    # id3=geo_calculate(id1,id2,'buffer',10)
+    # 65c, 66b, 73c, 73f, 74
+    # 75, 75c,79,61a
+    # ['77','78','78a']
+    (geo_calculate(id2, id_soil, 'contains'))
+def buildings_in_forest():
+    set_bounding_box("munich ismaning")
+    # id1=(ids_of_type('land_use', 'farmland'))
+    #
+    id2 = (ids_of_type('buildings', 'building'))
+    id_soil = (ids_of_type('http://example.com/soil', 'all'))
+    # id3=geo_calculate(id1,id2,'buffer',10)
+    # 65c, 66b, 73c, 73f, 74
+    # 75, 75c,79,61a
+    # ['77','78','78a']
+    print(geo_calculate(id2, id_soil, 'contains'))
+def buildings_in_farmland_soil_type():
+    set_bounding_box("munich ismaning")
+    # id1=(ids_of_type('land_use', 'farmland'))
+    #
+    id2 = (ids_of_type('buildings', 'building'))
+    id_soil = (ids_of_type('http://example.com/soil', 'all'))
+    # id3=geo_calculate(id1,id2,'buffer',10)
+    # 65c, 66b, 73c, 73f, 74
+    # 75, 75c,79,61a
+    # ['77','78','78a']
+    print(geo_calculate(id2, id_soil, 'contains'))
+def farmland_in_wrong_soil_type():
+    set_bounding_box("munich ismaning")
+    # id1=(ids_of_type('land_use', 'farmland'))
+    #
+    id2 = (ids_of_type('buildings', 'building'))
+    id_soil = (ids_of_type('http://example.com/soil', 'all'))
+    # id3=geo_calculate(id1,id2,'buffer',10)
+    # 65c, 66b, 73c, 73f, 74
+    # 75, 75c,79,61a
+    # ['77','78','78a']
+    print(geo_calculate(id2, id_soil, 'contains'))
+def buildings_in_wrong_soil_type():
+    set_bounding_box("munich ismaning")
+    # id1=(ids_of_type('land_use', 'farmland'))
+    #
+    id2 = (ids_of_type('buildings', 'building'))
+    id_soil = (ids_of_type('http://example.com/soil', 'all'))
+    # id3=geo_calculate(id1,id2,'buffer',10)
+    # 65c, 66b, 73c, 73f, 74
+    # 75, 75c,79,61a
+    # ['77','78','78a']
+    print(geo_calculate(id2, id_soil, 'contains'))
 
-# 加载Shapefile转换得到的RDF数据
-shapefile_graph = Graph()
-shapefile_graph.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm.ttl")
+# print(types_of_graph('http://example.com/landuse'))
+# ['meadow', 'park', 'forest', 'farmland', 'farmyard', 'residential', 'grass', 'scrub', 'recreation_ground', 'industrial', 'commercial', 'allotments', 'retail', 'nature_reserve', 'cemetery', 'quarry', 'orchard', 'heath', 'military', 'vineyard']
 
-# 加载OSM转换得到的RDF数据
-osm_graph = Graph()
-osm_graph.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern.ttl")
-
-# 融合两个图
-merged_graph = shapefile_graph + osm_graph
-
-# 保存融合后的RDF文件
-merged_graph.serialize(destination="merged_building_soil.ttl", format="turtle")
+set_bounding_box("munich ismaning")
+# id1=(ids_of_type('land_use', 'farmland'))
+#
+id2=(ids_of_type('buildings', 'building'))
+id_soil=(ids_of_type('http://example.com/soil','all'))
+# id3=geo_calculate(id1,id2,'buffer',10)
+#65c, 66b, 73c, 73f, 74
+# 75, 75c,79,61a
+# ['77','78','78a']
+print(geo_calculate(id2, id_soil, 'contains'))
+print(time.time()-a)

@@ -600,7 +600,7 @@ def home():
         session['os']=None
         session['browser']=None
         session['device_type']=None
-    session['template']=False
+    session['template']=True
     session['history']=[]
     return render_template('index.html')
 
@@ -776,12 +776,19 @@ def submit():
                         # last_line = [line for line in lines if '=' in line][-1]
                         if "print" not in lines[-1]  and "#" not in lines[-1] and "search_internet" not in lines[-1]:
                             if "=" not in lines[-1] and ("geo_calculate" in lines[-1] or "search_attribute" in lines[-1] or 'ids_of_type' in lines[-1]):
-                                new_last_line=f"""
+                                if 'geo_calculate' not in lines[-1]:
+                                    new_last_line=f"""
+
 send_data({lines[-1]},'map')
 """
+                                else:
+                                    new_last_line = f"""
+child_list,parent_list,geo_dict={lines[-1]}
+send_data(geo_dict,'map')
+                                    """
                             elif "="  in lines[-1] and ("geo_calculate" in lines[-1] or "search_attribute" in lines[
                                 -1] or 'ids_of_type' in lines[-1]):
-                                if lines[-1].split('=')[0] not in session['history']:
+                                if lines[-1].split('=')[0] not in session['history']: #检查变量是否被使用过
                                     session['history'].append(lines[-1].split('=')[0])
                                 new_last_line=lines[-1]+"\nnew_dict_temp={}"
 
@@ -791,6 +798,7 @@ send_data({lines[-1]},'map')
 
 
                                 new_last_line +=f"""
+
 \nsend_data(new_dict_temp,'map')
                             """
 
@@ -968,4 +976,4 @@ except:
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

@@ -1,79 +1,25 @@
-chat_result="""
-```python
-soil_types = list_type_of_graph_name("http://example.com/soil")
-print(soil_types)
+import time
 
-```
-"""
-chat2="""
-```python
-# 对土壤类型进行语义判断，筛选适合农业的类型
-agricultural_soil_types = [
-    "Anmoorgley",
-    "Pseudogley",
-    "Podsol",
-    "Lehm",
-    "Torf",
-    "Humusreicher Gley"
-]
+import psycopg2
 
-# 利用语义判断，筛选出适合农业的土壤类型
-suitable_types = [soil_type for soil_type in soil_types if any(agri_type in soil_type for agri_type in agricultural_soil_types)]
-print(suitable_types)
-```
-"""
-chat3="""
-```python
-id_list1=list_id_of_type("http://example.com/buildings","building")
-print(id_list1)
-```
-"""
-import ast
+conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
+conn = psycopg2.connect(conn_params)
+cur = conn.cursor()
+a=time.time()
+# cur = conn.cursor()
 
-from geo_functions import *
-import inspect
-import sys
-from io import StringIO
-locals_dict = {}
-globals_dict = globals()
-output = StringIO()
-original_stdout = sys.stdout
+# 执行SQL查询
+cur.execute("SELECT * FROM soilnoraml WHERE uebk25_k = '66b';")
 
-# 筛选出所有的函数
-functions_dict = {name: obj for name, obj in globals_dict.items() if inspect.isfunction(obj)}
-def main(chat_result):
-    def extract_code(code_str):
-        return code_str.split("```python")[1].split("```")[0]
-    code_str=extract_code(chat_result)
-    plt_show=False
-    if "plt.show()" in code_str:
-        plt_show=True
-        print("plt_show")
-        code_str=code_str.replace("plt.show()","plt.savefig('static/mat.png')")
-    sys.stdout = output
-    try:
-        exec(code_str, functions_dict)
-    except Exception as e:
-        print(f"An error occurred: {e}")
+# 获取并打印列名称（标签）
+column_names = [desc[0] for desc in cur.description]
+print("Column names:", column_names)
 
-    code_result = output.getvalue().replace('\00', '')
-    output.truncate(0)
-    sys.stdout = original_stdout
-    if chat_result==chat2:
+# 遍历查询结果
+for row in cur.fetchall():
+    for col_name, value in zip(column_names, row):
+        print(f"{col_name}: {value}")
 
-        print(code_result[:20])
-
-
-    print(len((code_result)))
-# main(chat_result)
-# main(chat2)
-main(chat3)
-# chat_response='{"complete":false}'
-# try:
-#     judge = json.loads(chat_response)
-# except:
-#     judge = (chat_response)
-#
-# if "complete" in judge:
-#     if judge['complete'] != True:
-#         print("Continue")
+# 关闭游标和连接
+cur.close()
+conn.close()

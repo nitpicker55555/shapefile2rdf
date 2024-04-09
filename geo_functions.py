@@ -11,9 +11,11 @@ from tqdm import tqdm
 from bounding_box import find_boundbox
 from shapely import wkb
 from shapely import wkt
+
 from shapely.geometry import base
 globals_dict = {}
-
+global_id_attribute={}
+global_id_geo={}
 sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
@@ -99,8 +101,26 @@ WHERE {
     for i in feed_back:
         type_list.append(i['fclass']['value'])
     return type_list
+def ids_of_attribute(graph_name,attribute_name,attribute_value):
+    bounding_query =  f"SELECT id, uebk25_l FROM ss WHERE id IN ({','.join('?' for _ in attribute_value)})"
 
 
+
+    cur.execute(bounding_query)
+
+    # 获取查询结果
+    rows = cur.fetchall()
+    result_dict = {}
+    for row in rows:
+        print(row)
+        # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
+        # if graph_name == 'bayern_soil_map_25832':
+        #     result_dict[graph_name + "_" + str(row[1]) + "_" + str(row[6])] = (wkb.loads(bytes.fromhex(row[-1])))
+        # else:
+        #     result_dict[graph_name + "_" + str(row[2]) + "_" + str(row[4])] = (wkb.loads(bytes.fromhex(row[6])))
+        # break
+    # feed_back = result_dict
+    # return feed_back
 def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
 
 
@@ -112,25 +132,41 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     if 'bounding_coordinates' in globals_dict:
         bounding_box_coordinats = globals_dict['bounding_coordinates']
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-    if single_type!=None:
+    if '..' not in graph_name:
     # if single_type=="building":
 
         # 定义边界框
 
         srid = 4326  # 假设使用WGS 84
+
+        if graph_name=='soil':
+            fclass='uebk25_k'
+            graph_name='soilnoraml'
+            srid=25832
+        else:
+            fclass='fclass'
         if bounding_box_coordinats is not None:
+            if single_type!='all':
+                fclass_row=f"AND {fclass} = '{single_type}';"
+            else:fclass_row=''
         # 执行查询
             bounding_query = f"""
             SELECT *
             FROM {graph_name}
             WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}))
-            AND fclass = '{single_type}';
-            """
+            %s
+            """%fclass_row
         else:
+            if single_type!='all':
+                fclass_row=f"WHERE {fclass} = '{single_type}';"
+            else:fclass_row=''
             bounding_query = f"""
-            SELECT * FROM {graph_name};
-            AND fclass = '{single_type}';
-            """
+            SELECT * 
+            FROM {graph_name}
+            %s
+            """%fclass_row
+        # print(bounding_query)
+
         cur.execute(bounding_query)
 
         # 获取查询结果
@@ -138,8 +174,19 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
         result_dict = {}
         for row in rows:
             # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
-            result_dict[single_type+ "_" + row[2]+"_"+row[4]] = (wkb.loads(bytes.fromhex(row[6])))
+            if graph_name=='soilnoraml':
+                result_dict['soil' + "_" + str(row[6]) + "_" + str(row[0])] = (wkb.loads(bytes.fromhex(row[-1]))) #result_dict _分割的前两位是展示在地图上的
+                global_id_attribute['soil' + "_" + str(row[6]) + "_" + str(row[0])]=  str(row[6])
+
+                """
+                'Vorherrschend Anmoorgley und Moorgley, gering verbreitet Gley über Niedermoor, humusreicher Gley und Nassgley, teilweise degradiert'
+                '66b: Fast ausschließlich Anmoorgley aus Lehm bis Schluff, selten Ton (See- oder Flusssediment); im Untergrund carbonathaltig'
+                """
+            else:
+                global_id_attribute[graph_name+ "_" + str(row[2])+"_"+str(row[4])] =  str(row[2]+str(row[3]))
+                result_dict[graph_name+ "_" + str(row[2])+"_"+str(row[4])] = (wkb.loads(bytes.fromhex(row[6])))
             # break
+            global_id_geo.update(result_dict)
         feed_back=result_dict
     else:
         soil_dict = {
@@ -256,7 +303,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     
     
             """ % (graph_name, fclass, osm_id, fclass_filter, building_type, bounding_box_str)
-        # print(query)
+        print(query)
         feed_back = ask_soil(query, graph_name)
     print(len(feed_back))
 
@@ -389,12 +436,26 @@ def geojson_to_wkt(geojson_dict):
         # # 类型检查
 
     return wkt_list
+def osmid_attribute():
+    query="""
+    SELECT id, uebk25_l
+    FROM bayern_soil_map_25832
+    WHERE id IN (1, 2, 3);
 
+    """
 def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
+
     if isinstance(data_list1, str):
         data_list1 = globals_dict[data_list1]
         data_list2 = globals_dict[data_list2]
+    elif isinstance(data_list1,list):
+        list_2_geo1 = {i:global_id_geo[i] for i in data_list1}
+        data_list1=list_2_geo1
+    if  isinstance(data_list2,list):
+        list_2_geo2 = {i:global_id_geo[i] for i in data_list2}
+        data_list2=list_2_geo2
+
     # print("len datalist1", len(data_list1))
     # print("len datalist2", len(data_list2))
     # gseries1 = gpd.GeoSeries([shape(geojson) for geojson in data_list1.values()])
@@ -409,8 +470,11 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     #     break
     gseries1 = gpd.GeoSeries(list(data_list1.values()))
     gseries1.index = list(data_list1.keys())
+    # print(gseries1.index)
     gseries2 = gpd.GeoSeries(list(data_list2.values()))
     gseries2.index = list(data_list2.keys())
+
+
     gseries1 = gseries1.set_crs("EPSG:4326", allow_override=True)
     gseries1 = gseries1.to_crs("EPSG:32632")
     gseries2 = gseries2.set_crs("EPSG:4326", allow_override=True)
@@ -421,8 +485,10 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     # 创建空间索引
     sindex = gseries2.sindex
     result_list = []
-    id_list = []
-    osmId1_list = []
+    all_id_list = []
+    osmId1_dict = {}
+    parent_dict=[]
+    child_dict=[]
     if mode == "contains":
         # 检查包含关系
 
@@ -433,12 +499,14 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                id_list.append(osmId1)
-                osmId1_list.append(osmId1)
-                id_list.extend(matching_osmIds)
-                result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
+                all_id_list.append(osmId1)
+                osmId1_dict[osmId1]=geom1
+                all_id_list.extend(matching_osmIds)
+                parent_dict.extend(matching_osmIds)
+                child_dict.append(osmId1)
+                # result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
                 print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
-        # print(len(osmId1_list))
+        print(len(osmId1_dict))
 
 
     elif mode == "buffer":
@@ -452,10 +520,12 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                id_list.append(osmId1)
-                osmId1_list.append(osmId1)
-                id_list.extend(matching_osmIds)
-                result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
+                all_id_list.append(osmId1)
+                osmId1_dict[osmId1]=geom1
+                all_id_list.extend(matching_osmIds)
+                parent_dict.extend(matching_osmIds)
+                child_dict.append(osmId1)
+                # result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
                 # print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
 
     elif mode == "intersects":
@@ -467,10 +537,12 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                result_list.append(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
-                id_list.append(osmId1)
-                osmId1_list.append(osmId1)
-                id_list.extend(matching_osmIds)
+                # result_list.append(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
+                all_id_list.append(osmId1)
+                osmId1_dict[osmId1]=geom1
+                all_id_list.extend(matching_osmIds)
+                parent_dict.extend(matching_osmIds)
+                child_dict.append(osmId1)
                 # print(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
 
     elif mode == "shortest_distance":
@@ -499,13 +571,15 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
 
     """
+
     if "bounding_box_region_name" in globals_dict:
         # geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
         geo_dict = {globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
         geo_dict = {}
     data_list1.update(data_list2)
-    geo_dict.update(transfer_id_list_2_geo_dict(id_list, data_list1))
+    geo_dict.update(transfer_id_list_2_geo_dict(all_id_list, data_list1))
+
     print(len(geo_dict))
 
     # html=draw_geo_map(geo_dict, "geo")
@@ -513,13 +587,27 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     #     pickle.dump(osmId1_list, file)
 
 
-    return geo_dict
+    return child_dict,parent_dict,geo_dict
+    # return geo_dict
 
 
 #
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
+def id_2_attributes(id_list):
+    element_count = {}
 
+    # Iterate over each element in the input list
+    for element in id_list:
+        # If the element is already in the dictionary, increment its count
+        attribute=global_id_attribute[element]
+        if attribute in element_count:
+            element_count[attribute] += 1
+        # If the element is not in the dictionary, add it with a count of 1
+        else:
+            element_count[attribute] = 1
+
+    return element_count
 
 def transfer_id_list_2_geo_dict(id_list, raw_dict=None):
     result_dict = {}
@@ -642,7 +730,7 @@ def sql_debug():
     geo_dict = {
         globals_dict["bounding_box_region_name"]: mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     geo_dict.update(result_dict)
-    draw_geo_map(geo_dict, 'geo')
+    # draw_geo_map(geo_dict, 'geo')
     # 关闭连接
     cur.close()
     conn.close()
@@ -658,10 +746,18 @@ def sql_debug():
 # print(predicate_list['http://example.org/property/uebk25_l'])
 # print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
 # print(predicate_list)
-# set_bounding_box("munich ismaning")
-# id1=ids_of_type('http://example.com/landuse','forest')
-# id2=ids_of_type('buildings','building')
-# geo_calculate(id1,id2,'buffer',50)
+
+set_bounding_box("munich ismaning")
+id2=ids_of_type('buildings','building')
+id1=ids_of_type('land_use','farmland')
+id3=ids_of_type('soil','all')
+a,v,c=geo_calculate(id1,id2,'buffer',10)
+# print(a)
+cc,_,_=geo_calculate(id3,a,'contains')
+
+print(id_2_attributes(cc))
+# print(a)
+# print(b)
 # for i in aa:
 #     print(shape(aa[i]).wkt)
 #     break

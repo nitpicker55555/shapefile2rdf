@@ -77,4 +77,6 @@ def find_boundbox(name):
     # draw_geo_map({name:wkb})
 
     return coordinates,wkb,response_str
-# find_boundbox("garching")
+
+
+# print(find_boundbox("garching"))

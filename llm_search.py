@@ -386,8 +386,8 @@ while True:
         # 创建一个 cursor 对象
 
         map_dict={}
-        # 定义 SQL 查询
-        # nquery = input("input:")
+
+        nquery = input("input:")
         # if extract_num(nquery)!=False and "ismaning" not in nquery:
         #     query=number_query.replace("383499448",extract_num(nquery))
         #     indication="Intersection problem: show specific intersected element (Building id:%s)"%extract_num(nquery)

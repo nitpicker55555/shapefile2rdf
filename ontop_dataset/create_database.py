@@ -8,7 +8,7 @@ Base = declarative_base()
 
 
 class Building(Base):
-    __tablename__ = 'bayern_soil_map_25832'
+    __tablename__ = 'soilnoraml'
     # id = Column(Integer, primary_key=True)
     # code = Column(Integer)
     # fclass = Column(String)
@@ -47,7 +47,7 @@ session = Session()
 
 
 g = rdflib.Graph()
-g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern.ttl", format="turtle")
+g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl", format="turtle")
 # g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm_buildings.ttl", format="turtle")
 print("finds")
 
