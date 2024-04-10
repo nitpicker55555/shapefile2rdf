@@ -16,7 +16,7 @@ from shapely.geometry import base
 globals_dict = {}
 global_id_attribute={}
 global_id_geo={}
-sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
+# sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
 conn = psycopg2.connect(conn_params)
@@ -27,7 +27,13 @@ def set_bounding_box(region_name):
         globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
 
         # print(wkb.loads(bytes.fromhex(globals_dict['bounding_wkb'])))
-        return response_str
+
+        geo_dict = {
+                globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+
+
+
+        return {'geo_map':geo_dict}
     else:
         return None
 
@@ -318,7 +324,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     # html=draw_geo_map(geo_dict, "geo")
     # print(html)
 
-    return feed_back
+    return {'id_list':feed_back,'geo_map':geo_dict}
 
 
 def ask_soil(query, map):
@@ -449,9 +455,15 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     if isinstance(data_list1, str):
         data_list1 = globals_dict[data_list1]
         data_list2 = globals_dict[data_list2]
-    elif isinstance(data_list1,list):
+
+    elif isinstance(data_list1,list): #list是geo_calculate return的subject或Object的键值
         list_2_geo1 = {i:global_id_geo[i] for i in data_list1}
         data_list1=list_2_geo1
+    if isinstance(data_list1, dict) and 'id_list' in data_list1: #ids_of_type return的id_list是可以直接计算的字典
+        data_list1 = data_list1['id_list']
+
+    if isinstance(data_list2,dict) and 'id_list' in data_list2:
+        data_list2=data_list2['id_list']
     if  isinstance(data_list2,list):
         list_2_geo2 = {i:global_id_geo[i] for i in data_list2}
         data_list2=list_2_geo2
@@ -587,7 +599,9 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
     #     pickle.dump(osmId1_list, file)
 
 
-    return child_dict,parent_dict,geo_dict
+    return {'subject':{'id_list':parent_dict},'object':{'id_list':child_dict},'geo_map':geo_dict}
+    # return {'subject_id_list':parent_dict,'object_id_list':child_dict,'geo_map':geo_dict}
+    # return child_dict,parent_dict,geo_dict
     # return geo_dict
 
 
@@ -595,6 +609,8 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
 def id_2_attributes(id_list):
+    if isinstance(id_list,dict):
+        id_list=list(id_list.keys())
     element_count = {}
 
     # Iterate over each element in the input list
@@ -607,7 +623,7 @@ def id_2_attributes(id_list):
         else:
             element_count[attribute] = 1
 
-    return element_count
+    return dict(sorted(element_count.items(), key=lambda item: item[1], reverse=True))
 
 def transfer_id_list_2_geo_dict(id_list, raw_dict=None):
     result_dict = {}
@@ -749,14 +765,13 @@ def sql_debug():
 
 set_bounding_box("munich ismaning")
 id2=ids_of_type('buildings','building')
-id1=ids_of_type('land_use','farmland')
+id1=ids_of_type('landuse','farmland')
 id3=ids_of_type('soil','all')
-a,v,c=geo_calculate(id1,id2,'buffer',10)
-# print(a)
-cc,_,_=geo_calculate(id3,a,'contains')
-
-print(id_2_attributes(cc))
-# print(a)
+a=geo_calculate(id1,id2,'buffer',10)
+cc=geo_calculate(id3,a['subject'],'intersects')
+print(cc)
+# print(id_2_attributes(cc['object']['id_list']))
+# # print(a)
 # print(b)
 # for i in aa:
 #     print(shape(aa[i]).wkt)

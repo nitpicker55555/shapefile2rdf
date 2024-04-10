@@ -30,7 +30,7 @@ app = Flask(__name__)
 # app.logger.setLevel(logging.WARNING)
 app.secret_key = 'secret_key' # 用于启用 flash() 方法发送消息
 
-
+global_variables={}
 
 # 示例的 Markdown 文本（包含图片链接）
 # ![示例图片](/static/data.png "这是一个示例图片")
@@ -45,7 +45,7 @@ set_bounding_box("munich ismaning")
 ```
           ""","""
 ```python
-id1=(ids_of_type('land_use', 'forest'))
+id1=(ids_of_type('landuse', 'forest'))
 ```
           ""","""
 ```python
@@ -233,7 +233,7 @@ You need to output whether it is completed now in json format. If it is complete
 output {"complete":false} """
 question_template="""
 You are an AI assistant that processes database queries. You have a virtual environment 
-equipped with python. Environment has a graph database consists of three graphs:['http://example.com/land_use', 'http://example.com/soil', 
+equipped with python. Environment has a graph database consists of three graphs:['http://example.com/landuse', 'http://example.com/soil', 
 'http://example.com/buildings']
 
 The following functions are provided for database action: 
@@ -255,7 +255,7 @@ You:
 Ok, let me find out.
 ```python
 region=set_bounding_box('munich ismaning')
-id1=ids_of_type('land_use','forest',region)
+id1=ids_of_type('landuse','forest',region)
 id2=ids_of_type('buildings','building',region)
 geo_calculate(id1,id2,'buffer',100)
 ```
@@ -323,7 +323,7 @@ equipped with python. The following functions are provided for database action:
     user wants to search result from munich germany, input of this function would be ['munich germany']." 
     }, 
     "types_of_graph": { "Argument": ["graph_name"], "Description": "Enter the name of the graph you want to 
-    query and it returns all types of that graph. For example, the types of land_use are park, forest, etc." 
+    query and it returns all types of that graph. For example, the types of landuse are park, forest, etc." 
     }, 
     "ids_of_type": { "Arguments": ["graph_name", "type_name"], "Description": "Enter the graph name and type 
     name you want to query, and it returns the corresponding element IDs. If you want to get id_list from multi types 
@@ -349,13 +349,13 @@ equipped with python. The following functions are provided for database action:
         search buildings in farmland, first you need to figure out farmland and buildings in which graph using 
         function types_of_graph, then generate id_list for buildings and farmland using function 
         ids_of_type, id_list1=ids_of_type("buildings","building")
-        id_list2=ids_of_type("land_use","farmland"), 
+        id_list2=ids_of_type("landuse","farmland"), 
         finally call function geo_calculate: contains_list=geo_calculate(id_list_1,id_list_2,"contains")
         "
     }
 }
 
-Database: The database has three graphs: ['land_use', 'soil', 
+Database: The database has three graphs: ['landuse', 'soil', 
 'buildings']; The soil graph contains many soil types. If a user asks you which soil types are 
 suitable for agriculture, you need to make a semantic judgment based on the names of the types. 
 """
@@ -772,57 +772,37 @@ def submit():
 
                     else:
                         lines = code_str.strip().split('\n')
-
-                        # last_line = [line for line in lines if '=' in line][-1]
-                        if "print" not in lines[-1]  and "#" not in lines[-1] and "search_internet" not in lines[-1]:
-                            if "=" not in lines[-1] and ("geo_calculate" in lines[-1] or "search_attribute" in lines[-1] or 'ids_of_type' in lines[-1]):
-                                if 'geo_calculate' not in lines[-1]:
-                                    new_last_line=f"""
-
-send_data({lines[-1]},'map')
+                        new_line=''
+                        if '=' in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1]):
+                            variable_str=lines[-1].split('=')[0]
+                            new_line=f"""
+send_data({variable_str}['geo_map'],'map')
 """
-                                else:
-                                    new_last_line = f"""
-child_list,parent_list,geo_dict={lines[-1]}
-send_data(geo_dict,'map')
-                                    """
-                            elif "="  in lines[-1] and ("geo_calculate" in lines[-1] or "search_attribute" in lines[
-                                -1] or 'ids_of_type' in lines[-1]):
-                                if lines[-1].split('=')[0] not in session['history']: #检查变量是否被使用过
-                                    session['history'].append(lines[-1].split('=')[0])
-                                new_last_line=lines[-1]+"\nnew_dict_temp={}"
+                            lines.append(new_line)
+                        elif '=' not in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1]):
 
-                                for i in session['history']:
+                            new_line=f"""
+temp_result={lines[-1]}
+send_data(temp_result['geo_map'],'map')
+"""
+                            lines[-1] = new_line
+                        else:
+                            new_line = f"""
+print({lines[-1]})
+"""
+                            lines[-1]=new_line
 
-                                    new_last_line+=f"\nnew_dict_temp.update({i})"
-
-
-                                new_last_line +=f"""
-
-\nsend_data(new_dict_temp,'map')
-                            """
-
-
-
-                            else:
-
-                                new_last_line = f"""
-try:
-        print({lines[-1]})
-except:
-        pass
-                            """
-                            lines[-1] = new_last_line
-
-                            # 将所有行重新连接成一个新的字符串
-                            code_str = '\n'.join(lines)
-                        # var_name = last_line.split('=')[0].strip()
-                    print(code_str,"code after processed==========")
+                        code_str = '\n'.join(lines)
+                    print(code_str)
                     sys.stdout = output
                     start_time = time.time()  # 记录函数开始时间
+
                     try:
 
+                        # global_variables[function_variable] = globals()[function_name](*mapped_arg_list)
                         exec(code_str, globals())
+                        # if 'geo_map' in global_variables[function_variable]:
+                        #     send_data(global_variables[function_variable]['geo_map'],'map')
 
                     except Exception as e:
                         print(f"An error occurred: {repr(e)}")
@@ -886,7 +866,7 @@ except:
 def query_ip_location(ip):
     try:
         ip = ip.replace(" ", "")
-        url = f"http://ip-api.com/json/{ip}"  # 使用ip-api.com提供的API
+        url = f"http://ip-api.com/json/{ip}"
         response = requests.get(url)
         data = json.loads(response.text)
 
@@ -902,77 +882,6 @@ def query_ip_location(ip):
     except:
         return ip
 
-@app.route('/stream', methods=['POST', 'GET'])
-def stream():
-    # 生成逐字输出的HTML
-
-    # data = request.get_json().get('text')  # 获取JSON数据
-    # print(data)  # 输出查看，实际应用中你可能会做其他处理
-    def generate():
-        full_text = ''
-        content_str = ""
-        code_indicator=False
-        for char in markdown_text:
-
-            full_text += char
-            yield char
-            print(char,end="")
-            time.sleep(0.001)
-        # yield "\n```\n"
-        # json_response=json.loads(full_text)
-        # yield f"\n`{str(json_response['complete'])}`\n"
-        # yield "json_response['complete']"
-        if "```python" in full_text:
-            yield "\n\n`Code running...`\n"
-
-            # code_str = re.sub(r'(?<!\\)\\n', r'\\\\n', extract_code(json_response['content']))
-            code_str = extract_code(full_text)
-            print(code_str,"code")
-            plt_show = False
-            if "plt.show()" in code_str:
-                plt_show = True
-                print("plt_show")
-
-                filename = f"plot_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
-                code_str=code_str.replace("import matplotlib.pyplot as plt","import matplotlib.pyplot as plt\nfrom matplotlib.font_manager import FontProperties\nfont = FontProperties(fname=r'static\msyh.ttc')\n")
-                code_str = code_str.replace("plt.show()", f"plt.savefig('static/{filename}')")
-
-            # elif "search.run" in code_str:
-            #     code_str="search = DuckDuckGoSearchResults()\n"+code_str
-            else:
-                lines = code_str.strip().split('\n')
-                # last_line = [line for line in lines if '=' in line][-1]
-                if "print" not in lines[-1] and "=" not in lines[-1] and "#" not in lines[-1]:
-                    # if "search.run" in code_str:
-                    #     code_str=code_str.replace("search.run","print(search.run")+")"
-                    # else:
-                    code_str += f"""
-try:
-                   print({lines[-1]})
-except:
-                   pass
-                                        """
-                # var_name = last_line.split('=')[0].strip()
-            print(code_str,"code_after_process")
-            sys.stdout = output
-            try:
-                exec(code_str, globals())
-            except Exception as e:
-                print(f"An error occurred: {str(e)}")
-                print(f"An error occurred: {repr(e)}")
-            code_result = output.getvalue().replace('\00', '')
-            output.truncate(0)
-            sys.stdout = original_stdout
-
-            if plt_show and "An error occurred: " not in code_result:
-                code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
-                yield code_result
-            else:
-                code_result = code_result
-
-                yield details_span(code_result)
-
-    return Response(stream_with_context(generate()))
 
 
 if __name__ == '__main__':
