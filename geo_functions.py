@@ -146,15 +146,26 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
 
         srid = 4326  # 假设使用WGS 84
 
+        single_type = str(single_type)
+        if '[' in single_type:
+
+            single_type = single_type.replace("[", "(").replace("]", ")")
+
+        else:
+            single_type = f"{single_type}"
+
         if graph_name=='soil':
-            fclass='uebk25_k'
+            fclass='uebk25_l'
             graph_name='soilnoraml'
             srid=25832
         else:
             fclass='fclass'
         if bounding_box_coordinats is not None:
             if single_type!='all':
-                fclass_row=f"AND {fclass} = '{single_type}';"
+                if '(' in single_type:
+                    fclass_row = f"AND {fclass} in {single_type};"
+                else:
+                    fclass_row=f"AND {fclass} = '{single_type}';"
             else:fclass_row=''
         # 执行查询
             bounding_query = f"""
@@ -165,7 +176,10 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
             """%fclass_row
         else:
             if single_type!='all':
-                fclass_row=f"WHERE {fclass} = '{single_type}';"
+                if '(' in single_type:
+                    fclass_row = f"WHERE {fclass} in {single_type};"
+                else:
+                    fclass_row=f"WHERE {fclass} = '{single_type}';"
             else:fclass_row=''
             bounding_query = f"""
             SELECT * 
@@ -784,8 +798,12 @@ def sql_debug():
 # print(predicate_list['http://example.org/property/uebk25_l'])
 # print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
 # print(predicate_list)
-
-
+# aa=["78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum",
+#         "79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf",
+#         "65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig",
+#         "75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf"
+# ]
+# ids_of_type('soil',aa)
 # set_bounding_box("munich ismaning")
 # id2=ids_of_type('buildings','building')
 # id1=ids_of_type('landuse','farmland')
