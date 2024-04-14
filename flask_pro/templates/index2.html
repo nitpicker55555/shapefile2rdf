@@ -79,7 +79,7 @@
                 var average = Math.max(...values); // 计
 
 
-                var date_str=cumulativeMedianDate(input_dict[key])
+                var date_str=modeDate(input_dict[key])
                 console.log(average,date_str)
                 circles.push({'name':key,'time':date_str,'value':average*1000})
             }
@@ -100,7 +100,7 @@
         const colors = d3.scaleOrdinal(d3.schemeCategory10); // 使用D3的分类颜色比例尺
 
         const parseTime = d3.timeParse("%Y-%m");
-        const startTime = parseTime("2016-12"); // 假设我们希望时间轴从2021年12月开始
+        const startTime = parseTime("2014-12"); // 假设我们希望时间轴从2021年12月开始
         const endTime = d3.max(circles, d => parseTime(d.time));
 
         const x = d3.scaleTime()

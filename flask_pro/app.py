@@ -773,13 +773,13 @@ def submit():
                     else:
                         lines = code_str.strip().split('\n')
                         new_line=''
-                        if '=' in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1]):
+                        if '=' in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1] or 'area_calculate' in lines[-1]):
                             variable_str=lines[-1].split('=')[0]
                             new_line=f"""
 send_data({variable_str}['geo_map'],'map')
 """
                             lines.append(new_line)
-                        elif '=' not in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1]):
+                        elif '=' not in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1]  or 'area_calculate' in lines[-1]):
 
                             new_line=f"""
 temp_result={lines[-1]}

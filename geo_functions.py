@@ -11,7 +11,8 @@ from tqdm import tqdm
 from bounding_box import find_boundbox
 from shapely import wkb
 from shapely import wkt
-
+from itertools import islice
+import copy
 from shapely.geometry import base
 globals_dict = {}
 global_id_attribute={}
@@ -449,8 +450,28 @@ def osmid_attribute():
     WHERE id IN (1, 2, 3);
 
     """
-def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
+def area_calculate(data_list1_original,top_num=None):
+
+    data_list1 = copy.deepcopy(data_list1_original)
+    if isinstance(data_list1, dict) and 'id_list' in data_list1: #ids_of_type return的id_list是可以直接计算的字典
+        data_list1 = data_list1['id_list']
+
+        list_2_geo1 = {i:[(global_id_geo[i]).area,global_id_geo[i]] for i in data_list1}
+        data_list1=list_2_geo1
+        sorted_dict=dict(sorted(data_list1.items(), key=lambda item: item[1][0], reverse=True))
+        if top_num!=None:
+            top_dict=dict(islice(sorted_dict.items(), top_num))
+        else:
+            top_dict=sorted_dict
+        area_list = {key: value[0] for key, value in top_dict.items()}
+        geo_dict = {key: value[1] for key, value in top_dict.items()}
+
+        return {'area_list':area_list,'geo_map':geo_dict,'id_list':geo_dict}
+
+def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0):
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
+    data_list1=copy.deepcopy(data_list1_original)
+    data_list2=copy.deepcopy(data_list2_original)
 
     if isinstance(data_list1, str):
         data_list1 = globals_dict[data_list1]
@@ -609,8 +630,9 @@ def geo_calculate(data_list1, data_list2, mode, buffer_number=0):
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
 def id_2_attributes(id_list):
-    if isinstance(id_list,dict):
-        id_list=list(id_list.keys())
+    if isinstance(id_list, dict) and 'id_list' in id_list: #ids_of_type return的id_list是可以直接计算的字典
+        id_list = id_list['id_list']
+    # print(id_list)
     element_count = {}
 
     # Iterate over each element in the input list
@@ -763,13 +785,19 @@ def sql_debug():
 # print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
 # print(predicate_list)
 
-set_bounding_box("munich ismaning")
-id2=ids_of_type('buildings','building')
-id1=ids_of_type('landuse','farmland')
-id3=ids_of_type('soil','all')
-a=geo_calculate(id1,id2,'buffer',10)
-cc=geo_calculate(id3,a['subject'],'intersects')
-print(cc)
+
+# set_bounding_box("munich ismaning")
+# id2=ids_of_type('buildings','building')
+# id1=ids_of_type('landuse','farmland')
+# id3=ids_of_type('landuse','forest')
+# area=area_calculate(id3,5)
+# print(area['id_list'])
+# print(id3)
+# a=geo_calculate(id1,id2,'buffer',10)
+# cc=geo_calculate(id3,a['subject'],'intersects')
+# print(id3)
+# print(id_2_attributes(id3))
+
 # print(id_2_attributes(cc['object']['id_list']))
 # # print(a)
 # print(b)
