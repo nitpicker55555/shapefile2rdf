@@ -48,7 +48,7 @@ def find_boundbox(name):
             bounding_box = first_result.get('boundingbox', None)
             if bounding_box:
                 response_str=f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}"
-                # print(f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}")
+                print(f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}")
             else:
                 response_str="Bounding box not found for the first result."
                 print("Bounding box not found for the first result.")

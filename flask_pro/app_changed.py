@@ -3,7 +3,7 @@ import asyncio
 import json
 import re
 from shapely.geometry import Polygon
-# from geo_functions import *
+from geo_functions import *
 from ask_functions import *
 from flask import Flask, Response, stream_with_context, request, render_template, jsonify,session
 from werkzeug.utils import secure_filename
@@ -631,7 +631,7 @@ def submit():
     data = request.get_json().get('text')  # 获取JSON数据
     messages = request.get_json().get('messages')  # 获取JSON数据
     processed_response=[]
-    print(len(messages))
+
 
 
 
@@ -658,190 +658,87 @@ def submit():
                 # data+=f".(用户上传的文件地址: .\\uploads\\{session['uploaded_indication']})"
             # session['messages2'].append({"role": "user",
             #                              "content": data})
-        print(messages[0]['content'])
-        while compelete!=True and steps<2 and whole_step<=5 and stop_step!=True:
-                # print(messages)
-                # print(whole_step,"whole_step")
-                whole_step+=1
-                true_step+=1
-                # chat_response = str(datetime.now())+"   "+str(len(messages)) #test
 
-                if data in template_answer:
-                    session['template']=True
-                    chat_response = template_answer[data]
-                    template=True
-                    # stop_step=True
-                    # time.sleep(2)
-                elif session['template']:
-                    chat_response="```python\n"+data+"\n```"
-                    stop_step = True
-                elif data in soil_tem:
-                    chat_response = (chat_single(soil_tem[data], ""))
-                    template=False
-                    stop_step = True
-                else:
+        code_list=[]
+        bounding_box_indicate=judge_bounding_box(data)
+        if bounding_box_indicate!=None:
+            code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
+        code_list.append("""
+graph_dict={}
+graph_type_list={}
+type_dict={}
+element_list={'primary_subject':None,'related_geographic_feature':None}
+        """)
+        code_list.append(f"geo_relation_dict=judge_geo_relation('{data}')")
+        object_subject=judge_object_subject(data) #primary_subject,related_geographic_feature
+        yield f"\n\n`{object_subject}`\n"
+        # graph_dict={}
+        # graph_type_list={}
+        # type_dict={}
+        # element_list={}
+        for item_,value in object_subject.items():
+            if value!=None:
+                code_list.append(f"""
+graph_dict['{item_}']=judge_type('{value}')['database']
+graph_type_list['{item_}']=ids_of_attribute(graph_dict['{item_}'])
+type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'])
+                """)
+                code_list.append(f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
+                # graph_dict[item_]=judge_type(object_subject[item_])['database']
+                # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])
+                # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])
+                # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])
 
-                    chat_response = (chat_single(messages, ""))
-                content_str=''
-                chat_result = ''
-                chunk_num=0
-                if template:
-                    time.sleep(2)
-                    # print(true_step,len(chat_response))
+        code_list.append("geo_result=geo_calculate(element_list['related_geographic_feature'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])")
 
-                    for chunk in chat_response[true_step-1]:
-                        if chunk_num == 0:
-                            char = "\n" + chunk
-                            # char = "\n"+chunk #test
-                        else:
-                            char = chunk
-                            # char =  chunk #test
-                        chunk_num += 1
-                        chat_result += char
-                        time.sleep(0.00000000001)
-                        if true_step==len(chat_response):
-                            stop_step=True
 
-                        yield char
-                elif session['template']:
-                    chat_result=chat_response
-                    yield chat_response
-                else:
-                    for chunk in chat_response:
-                    # if chunk is not None:
-                        if chunk.choices[0].delta.content is not None:
-                            if chunk_num==0:
-                                char = "\n"+chunk.choices[0].delta.content
-                                # char = "\n"+chunk #test
-                            else:
-                                char =  chunk.choices[0].delta.content
-                                # char =  chunk #test
-                            chunk_num+=1
 
-                            print(char, end="")
-                            chat_result += char
+        lines_list = code_list
+        for lines in lines_list:
+            yield f"\n\n```python\n{lines}\n```"
+            yield "\n\n`Code running...`\n"
 
-                            yield char
-                        # try:
-                        #     json_str = complete_json(chat_result)
-                        #     new_content = json_str['content']
-                        #     if new_content != content_str:
-                        #         char_content = new_content[len(content_str):]
-                        #         content_str = new_content
-                        #         print(char_content, end="")
-                        #
-                        #         yield char_content
-                        # except:
-                        #     pass
-                full_result=(chat_result)
-                processed_response.append({'role':'assistant','content':chat_result})
-                messages.append({'role':'assistant','content':chat_result})
-
-                compelete=False
-                print("complete: ",compelete)
-
-                if "```python" in full_result and ".env" not in full_result and "pip install" not in full_result:
-                    yield "\n\n`Code running...`\n"
-
-                    # code_str = re.sub(r'(?<!\\)\\n', r'\\\\n', extract_code(full_result['content']))
-                    code_str = extract_code(full_result)
-                    print(code_str, "code_original")
-                    plt_show = False
-                    if "plt.show()" in code_str:
-                        plt_show = True
-                        print("plt_show")
-                        filename = f"plot_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
-                        code_str = code_str.replace("import matplotlib.pyplot as plt",
-                                                    "import matplotlib.pyplot as plt\nfrom matplotlib.font_manager import FontProperties\nfont = FontProperties(fname=r'static\msyh.ttc')\n")
-                        code_str = code_str.replace("plt.show()", f"plt.savefig('static/{filename}')")
-
-                        print(code_str)
-                        if "plt.title('Percentage of Buildings by Distance to Nearest Soil Area')" in code_str:
-                            time.sleep(10)
-                            filename = 'plot_20240305003154.png'
-                            code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
-                            whole_step = 5  # 确保图返回结果只会被描述一次
-                            yield code_result
-                            break
-                        if "plt.title('Distribution of Distances from Buildings to Nearest Soil Area')" in code_str:
-                            time.sleep(10)
-                            filename = 'plot_20240305001254.png'
-                            code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
-                            whole_step = 5  # 确保图返回结果只会被描述一次
-                            yield code_result
-                            break
-
-                    else:
-                        lines = code_str.strip().split('\n')
-                        new_line=''
-                        if '=' in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1] or 'area_calculate' in lines[-1]):
-                            variable_str=lines[-1].split('=')[0]
-                            new_line=f"""
+            lines=[lines]
+            if '=' in lines[-1] and (
+                    'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
+                -1] or 'area_calculate' in lines[-1]):
+                variable_str = lines[-1].split('=')[0]
+                new_line = f"""
 send_data({variable_str}['geo_map'],'map')
-"""
-                            lines.append(new_line)
-                        elif '=' not in lines[-1] and  ('geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[-1]  or 'area_calculate' in lines[-1]):
+            """
+                lines.append(new_line)
+            elif '=' not in lines[-1] and (
+                    'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
+                -1] or 'area_calculate' in lines[-1]):
 
-                            new_line=f"""
+                new_line = f"""
 temp_result={lines[-1]}
 send_data(temp_result['geo_map'],'map')
-"""
-                            lines[-1] = new_line
-                        else:
-                            new_line = f"""
-print({lines[-1]})
-"""
-                            lines[-1]=new_line
-
-                        code_str = '\n'.join(lines)
-                    print(code_str)
-                    sys.stdout = output
-                    start_time = time.time()  # 记录函数开始时间
-
-                    try:
-
-                        # global_variables[function_variable] = globals()[function_name](*mapped_arg_list)
-                        exec(code_str, globals())
-                        # if 'geo_map' in global_variables[function_variable]:
-                        #     send_data(global_variables[function_variable]['geo_map'],'map')
-
-                    except Exception as e:
-                        print(f"An error occurred: {repr(e)}")
-                    end_time = time.time()  # 记录函数结束时间
-                    run_time = end_time - start_time
-                    code_result =str( output.getvalue().replace('\00', ''))
-                    output.truncate(0)
-                    sys.stdout = original_stdout
-
-                    if plt_show and "An error occurred: " not in code_result:
-                        code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
-                        whole_step=5 #确保图返回结果只会被描述一次
-                        yield code_result
+            """
+                lines[-1] = new_line
 
 
-                    else:
-                        code_result=str(code_result)
+            code_str = '\n'.join(lines)
 
-                        yield details_span(code_result,run_time)
+            print(code_str)
+            sys.stdout = output
+            start_time = time.time()  # 记录函数开始时间
 
-                    send_result= "code_result:"+short_response(code_result)
-                    print(send_result)
-                    messages.append({"role": "user",
-                                  "content": send_result})
-                    processed_response.append({'role':'user','content':send_result})
-                    compelete=False
-                    final_conv=send_result
+            try:
 
-                else:
-                    steps += 1
-                    if steps<2 and whole_step<5:
-                        messages.append({"role": "user",
-                                          "content": "ok"})
-                        processed_response.append({"role": "user",
-                                          "content": "ok"})
-                        final_conv='好'
+                exec(code_str, globals())
+            except Exception as e:
+                print(f"An error occurred: {repr(e)}")
+            end_time = time.time()  # 记录函数结束时间
+            run_time = end_time - start_time
+            code_result = str(output.getvalue().replace('\00', ''))
+            output.truncate(0)
+            sys.stdout = original_stdout
+            code_result = str(code_result)
+            yield details_span(code_result, run_time)
 
-        send_data(processed_response)
+
+
         data_with_response = {
             'len': str(len(messages)),
             'time': str(datetime.now()),

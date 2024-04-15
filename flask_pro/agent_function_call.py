@@ -72,7 +72,7 @@ tools = [{
     "type": "function",
     "function": {
         "name": "element_list_of_type",
-        "description": "get element id list of specific type in specific category",
+        "description": "get element_list of specific type in specific category",
         "parameters": {
             "type": "object",
             "properties": {
@@ -135,13 +135,13 @@ tools = [{
                         "type": "list",
                         "description": f"the list you want to search in",
                     },
-                    "descriptive_phrase": {
+                    "paring_phrase": {
                         "type": "string",
                         "description": f"the type of element you want to get",
                     },
 
                 },
-                "required": ["input_list",'descriptive_phrase'],
+                "required": ["input_list",'paring_phrase'],
             },
         }
     },
@@ -245,4 +245,4 @@ for i in tools:
     # print(i['function'])
     simiplified_tools.append({'function':i['function']['name'],'description':i['function']['description'],'arguments':i['function']['parameters']['required']})
 
-    print(simiplified_tools[-1])
+    # print(simiplified_tools[-1])

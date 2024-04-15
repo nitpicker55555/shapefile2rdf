@@ -108,26 +108,46 @@ WHERE {
     for i in feed_back:
         type_list.append(i['fclass']['value'])
     return type_list
-def ids_of_attribute(graph_name,attribute_name,attribute_value):
-    bounding_query =  f"SELECT id, uebk25_l FROM ss WHERE id IN ({','.join('?' for _ in attribute_value)})"
+def ids_of_attribute(graph_name, bounding_box_coordinats=None):
+    if 'bounding_coordinates' in globals_dict:
+        bounding_box_coordinats = globals_dict['bounding_coordinates']
+        min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
+    attributes_set = set()
+    # if single_type=="building":
+
+    # 定义边界框
+
+    srid = 4326  # 假设使用WGS 84
 
 
+    if graph_name=='soil':
+        fclass='uebk25_l'
+        graph_name='soilnoraml'
+        srid=25832
+    else:
+        fclass='fclass'
+    if bounding_box_coordinats is not None:
+    # 执行查询
+        bounding_query = f"""
+        SELECT DISTINCT {fclass}
+        FROM {graph_name}
+        WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}))
+        """
+    else:
+        bounding_query = f"""
+        SELECT DISTINCT {fclass} 
+        FROM {graph_name}
+        """
+    # print(bounding_query)
 
     cur.execute(bounding_query)
 
     # 获取查询结果
     rows = cur.fetchall()
-    result_dict = {}
+
     for row in rows:
-        print(row)
-        # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
-        # if graph_name == 'bayern_soil_map_25832':
-        #     result_dict[graph_name + "_" + str(row[1]) + "_" + str(row[6])] = (wkb.loads(bytes.fromhex(row[-1])))
-        # else:
-        #     result_dict[graph_name + "_" + str(row[2]) + "_" + str(row[4])] = (wkb.loads(bytes.fromhex(row[6])))
-        # break
-    # feed_back = result_dict
-    # return feed_back
+        attributes_set.add(row[0])
+    return attributes_set
 def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
 
 
@@ -483,7 +503,18 @@ def area_calculate(data_list1_original,top_num=None):
         return {'area_list':area_list,'geo_map':geo_dict,'id_list':geo_dict}
 
 def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0):
+    if mode=='area_calculate':
+        return area_calculate(data_list2_original,buffer_number)
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
+    """
+    buildings in forest
+
+    :param data_list1_original:  bigger element as object forest 宾语
+    :param data_list2_original:  smaller element as subject buildings 主语
+    :param mode:
+    :param buffer_number:
+    :return:
+    """
     data_list1=copy.deepcopy(data_list1_original)
     data_list2=copy.deepcopy(data_list2_original)
 
@@ -558,6 +589,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
     elif mode == "buffer":
         for osmId1, geom1 in tqdm(gseries1.items(), desc="buffer"):
+            # osmId1 is smaller element : subject
+            # matching_osmIds is bigger element : object
             # 创建缓冲区（100米）
             buffer = geom1.buffer(buffer_number)
 
@@ -634,7 +667,7 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     #     pickle.dump(osmId1_list, file)
 
 
-    return {'subject':{'id_list':parent_dict},'object':{'id_list':child_dict},'geo_map':geo_dict}
+    return {'object':{'id_list':parent_dict},'subject':{'id_list':child_dict},'geo_map':geo_dict}
     # return {'subject_id_list':parent_dict,'object_id_list':child_dict,'geo_map':geo_dict}
     # return child_dict,parent_dict,geo_dict
     # return geo_dict
@@ -788,6 +821,12 @@ def sql_debug():
     conn.close()
 
 # set_bounding_box("munich ismaning")
+# a=[
+#     "forest",
+#     "nature_reserve",
+#     "scrub"
+#   ]
+# ids_of_type('landuse',a)
 # subject_dict,predicate_dict=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
 # id1=search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
 # id2=ids_of_type('buildings', 'building')
@@ -811,6 +850,7 @@ def sql_debug():
 # area=area_calculate(id3,5)
 # print(area['id_list'])
 # print(id3)
+
 # a=geo_calculate(id1,id2,'buffer',10)
 # cc=geo_calculate(id3,a['subject'],'intersects')
 # print(id3)
