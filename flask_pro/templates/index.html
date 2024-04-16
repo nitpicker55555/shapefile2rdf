@@ -148,7 +148,7 @@
 <div class="container" id="title">
     <span class="code-interpreter">Talk to DB</span>
     <div class="description"></div>
-    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning step by step')">The building around forest 100m in munich Ismaning step by step</button>
+    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning')">The building around forest 100m in munich Ismaning step by step</button>
     <br>
     <br>
 <!--    <button class="rectangle-btn"  onclick="showNumber('最近西安有啥新闻')">最近西安有啥新闻</button>-->
@@ -182,6 +182,7 @@
         document.body.classList.toggle('night-mode');
     });
     var color_dict={}
+    var map_index=0
     function add_map_button(map_data){
         // 选择所有类名为'message-text response'的元素
         const elements = document.querySelectorAll('.message-text.response');
@@ -194,9 +195,10 @@
 
             // 创建一个新的button元素
             const button = document.createElement('button');
+            map_index+=1
 
             // 设置按钮的文本内容
-            button.textContent = 'Map';
+            button.textContent = 'Map'+map_index.toString();
 
             // 设置按钮的样式（可选）
             button.style.marginLeft = '10px'; // 举例，根据需要设置

@@ -124,6 +124,8 @@ def ids_of_attribute(graph_name, bounding_box_coordinats=None):
         fclass='uebk25_l'
         graph_name='soilnoraml'
         srid=25832
+    elif graph_name=="buildings":
+        fclass='name'
     else:
         fclass='fclass'
     if bounding_box_coordinats is not None:
@@ -159,6 +161,8 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
     if 'bounding_coordinates' in globals_dict:
         bounding_box_coordinats = globals_dict['bounding_coordinates']
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
+    if isinstance(single_type,set):
+        single_type=list(single_type)
     if '..' not in graph_name:
     # if single_type=="building":
 
@@ -178,6 +182,9 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
             fclass='uebk25_l'
             graph_name='soilnoraml'
             srid=25832
+        elif graph_name=='buildings' and isinstance(single_type,list):
+            fclass='name'
+
         else:
             fclass='fclass'
         if bounding_box_coordinats is not None:
@@ -677,9 +684,11 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
 def id_2_attributes(id_list):
+
     if isinstance(id_list, dict) and 'id_list' in id_list: #ids_of_type return的id_list是可以直接计算的字典
         id_list = id_list['id_list']
     # print(id_list)
+
     element_count = {}
 
     # Iterate over each element in the input list
@@ -819,8 +828,18 @@ def sql_debug():
     # 关闭连接
     cur.close()
     conn.close()
-
+#
 # set_bounding_box("munich ismaning")
+#
+#
+# # id_buildings=ids_of_type('buildings','building')
+# id_farmland=ids_of_type('landuse','farmland')
+# id_soil=ids_of_type('soil','62c')
+# buildings_near_farmland=geo_calculate(id_soil,id_farmland,'contains',10)
+# print(id_2_attributes(buildings_near_farmland['subject']))
+# id1=ids_of_type('buildings','building')
+
+
 # a=[
 #     "forest",
 #     "nature_reserve",
@@ -931,3 +950,5 @@ def sql_debug():
 # plt.ylabel('Number of Buildings')
 # plt.grid(True)
 # plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305001254.png')
+# set_bounding_box("munich ismaning")
+# print(ids_of_attribute('buildings'))

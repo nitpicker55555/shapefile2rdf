@@ -6,7 +6,7 @@ def pick_match(query,given_list,messages=None):
     print(given_list)
     if query in given_list:
         return query
-    if 'building' in query:
+    if 'building' in query and ' ' not in query:
         return 'building'
     ask_prompt="""
     You are tasked that selects one or more elements from a given list that semantically match the user's request. 
@@ -41,6 +41,7 @@ def pick_match(query,given_list,messages=None):
         ]
     }
     In this example, "Space Odyssey: A Journey to the Cosmos" and "Rocket Science: The Ultimate Guide to Space Exploration" are the closest semantic matches to the user's request.
+    if User asked about which type of soil not good for building constructions, you can take the type of soil as swamp.
     """
     if messages==None:
         messages=[]
@@ -50,7 +51,7 @@ def pick_match(query,given_list,messages=None):
     result=chat_single(messages,'json')
     # print(result)
     json_result=json.loads(result)
-    if 'matches' in json_result:
+    if 'matches' in json_result and json_result['matches']!=[] :
         return json_result['matches']
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
@@ -110,6 +111,7 @@ If the query includes sections about geospatial calculations such as intersects,
 ```
 If query is about 'near/close', geospatial calculations should be buffer with num 10.
 If query is about largest n elements, geospatial calculations should be area_calculate with num n.
+If query is about 'in/on', geospatial calculations should be contains.
 If these calculations are not included in the query, respond with:
 
 ```json
@@ -144,17 +146,20 @@ def judge_object_subject(query,messages=None):
     if messages==None:
         messages=[]
     ask_prompt="""Please provide information in the following json format: {'primary_subject':primary_subject, 
-    'related_geographic_feature':related_geographic_feature}. For example, when I ask, 'I want to know the 
+    'related_geographic_element':related_geographic_element}. For example, when I ask, 'I want to know the 
     residential area near the swamp,' you should respond with: {'primary_subject':'residential area', 
-    'related_geographic_feature':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
-    ' the response should be:  {'primary_subject':'buildings', 'related_geographic_feature':'forests'}. 
+    'related_geographic_element':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
+    ' the response should be:  {'primary_subject':'buildings', 'related_geographic_element':'forests'}, 
+    for 'buildings for commercial in munich ismaning',the response should be:  {'primary_subject':'buildings', 
+    'related_geographic_element':'commercial'}. 
     
-    If there is no related_geographic_feature, related_geographic_feature should be set as None, example: 
+    
+    If there is no related_geographic_element, related_geographic_element should be set as None, example: 
     for 'the 
-    largest 5 forest in munich ismaning', related_geographic_feature is None. 
+    largest 5 forest in munich ismaning', related_geographic_element is None. 
     
-    Please do not include place name (like in munich ismaning) and adjective in 
-    primary_subject or related_geographic_feature. """
+    Please do not include place name (like in munich ismaning) in 
+    primary_subject and related_geographic_element. """
     if messages==None:
         messages=[]
 
@@ -165,7 +170,7 @@ def judge_object_subject(query,messages=None):
     json_result=json.loads(result)
     if 'primary_subject' in json_result:
 
-        return {'primary_subject':json_result['primary_subject'],'related_geographic_feature':json_result['related_geographic_feature']}
+        return {'primary_subject':json_result['primary_subject'],'related_geographic_element':json_result['related_geographic_element']}
 
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
@@ -203,10 +208,116 @@ def judge_type(query,messages=None):
 
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
+def judge_query_first(query,messages=None):
+    if query==None:
+        return None
+    if messages==None:
+        messages=[]
 
+    ask_prompt="""
+    if the query is one of the three questions below:
+    ['What soil types are the houses near the farm on?','Which farmlands are on soil unsuitable for agriculture?','Which buildings are on soil unsuitable for buildings?']
+    response in json format like:
+    {
+    'judge':True
+    }
+    else:
+        {
+    'judge':False
+    }
+    """
+    if messages==None:
+        messages=[]
+
+    messages.append(message_template('system',ask_prompt))
+    messages.append(message_template('user',query))
+    result=chat_single(messages,'json')
+    # print(result)
+    json_result=json.loads(result)
+    if 'judge' in json_result:
+
+
+
+        return {'judge':json_result['judge']}
+
+    else:
+        raise Exception('no relevant item found for: ' +query + ' in given list.')
+
+def judge_query(query,messages=None):
+    if query==None:
+        return None
+    if messages==None:
+        messages=[]
+    if 'building' in query:
+        return {'database': 'buildings'}
+    ask_prompt="""
+    
+    If this query is about What soil types are the houses near the farm on?
+    
+    response in json format like:
+    {
+    'code':"
+set_bounding_box("munich ismaning")
+id_buildings=ids_of_type('buildings','building')
+id_farmland=ids_of_type('landuse','farmland')
+id_soil=ids_of_type('soil','all')
+buildings_near_farmland=geo_calculate(id_farmland,id_buildings,'buffer',10)
+soil_under_buildings=geo_calculate(id_soil,buildings_near_farmland['subject'],'intersects')
+print(id_2_attributes(soil_under_buildings['subject']))
+    "
+    }
+  If this query is about Which farmlands are on soil unsuitable for agriculture?
+    
+    response in json format like:
+    {
+    'code':"
+set_bounding_box("munich ismaning")
+id_farmland=ids_of_type('landuse','farmland')
+soil_type_list = ids_of_attribute('soil') # Get soil types
+soil_type_list_not_good_for_agriculture = pick_match('not good for agriculture', soil_type_list) # Get soil types which not good for agriculture
+id_soil=ids_of_type('soil',soil_type_list_not_good_for_agriculture)
+farmlands_on_soil=geo_calculate(id_soil,id_farmland,'contains')
+print(id_2_attributes(farmlands_on_soil['subject']))
+    "
+    }
+  If this query is about Which buildings are on soil unsuitable for buildings?
+    
+    response in json format like:
+    {
+    'code':"
+set_bounding_box("munich ismaning")
+id_buildings=ids_of_type('buildings','building')
+soil_type_list = ids_of_attribute('soil') # Get soil types
+soil_type_list_not_good_for_buildings = pick_match('not good for buildings', soil_type_list) # Get soil types which not good for buildings
+id_soil=ids_of_type('soil',soil_type_list_not_good_for_buildings)
+buildings_on_soil=geo_calculate(id_soil,id_buildings,'contains')
+print(id_2_attributes(buildings_on_soil['subject']))
+    "
+    }
+    """
+    if messages==None:
+        messages=[]
+
+    messages.append(message_template('system',ask_prompt))
+    messages.append(message_template('user',query))
+    result=chat_single(messages,'json')
+    # print(result)
+    json_result=json.loads(result)
+    if 'code' in json_result:
+
+
+
+        return {'code':json_result['code']}
+
+    else:
+        raise Exception('no relevant item found for: ' +query + ' in given list.')
+
+
+# print(judge_query_first('Which farmlands are on soil unsuitable for agriculture?'))
 # query="I want to know buildings around 100m of forest in munich ismaning."
 # judge_bounding_box(query)
-# object_subject=judge_object_subject(query) #primary_subject,related_geographic_feature
+# object_subject=judge_geo_relation('What soil types are the houses on the farm on?') #primary_subject,related_geographic_element
+# print(object_subject)
 # graph_dict={}
 # graph_type_list={}
 # type_dict={}
@@ -219,7 +330,7 @@ def judge_type(query,messages=None):
 #         element_list[item_]=ids_of_type(graph_dict[item_],type_dict[item_])
 #
 # geo_relation_dict=judge_geo_relation(query)
-# geo_calculate(element_list['related_geographic_feature'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])
+# geo_calculate(element_list['related_geographic_element'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])
 # print(judge_type('swamp'))
 # id1=ids_of_attribute('soil')
 # print(id1)
@@ -229,6 +340,16 @@ def judge_type(query,messages=None):
 # a=pick_match(query,att)
 # id2=ids_of_type('soil',a)
 # from geo_functions import *
+# # set_bounding_box("munich ismaning")
+# # id_buildings=ids_of_type('buildings','building')
+# set_bounding_box("munich")
+# soil_type_list = ids_of_attribute('soil') # Get soil types
+# soil_type_list_not_good_for_buildings = pick_match('not good for building construction', soil_type_list) # Get soil types which not good for buildings
+# print(soil_type_list_not_good_for_buildings,'soil_type_list_not_good_for_buildings')
+#
+# id_soil=ids_of_type('soil',soil_type_list_not_good_for_buildings)
+# buildings_on_soil=geo_calculate(id_soil,id_buildings,'contains')
+# print(id_2_attributes(buildings_on_soil['subject']))
 # graph_type_list=ids_of_attribute('soil')
 # aa=pick_match('swamp',graph_type_list)
 # print(aa)

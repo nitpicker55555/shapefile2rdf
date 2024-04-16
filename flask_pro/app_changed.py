@@ -496,7 +496,7 @@ def len_str2list(result):
             return len(dict_result)
         except:
 
-            return len(result)
+            return str(len(result))+"(String)"
 def judge_list(result):
         try:
             # 尝试使用 ast.literal_eval 解析字符串
@@ -660,36 +660,59 @@ def submit():
             #                              "content": data})
 
         code_list=[]
-        bounding_box_indicate=judge_bounding_box(data)
-        if bounding_box_indicate!=None:
-            code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
-        code_list.append("""
+        if judge_query_first(data)['judge']:
+            code_list=judge_query(data)['code'].split("\n")
+        else:
+
+            bounding_box_indicate = judge_bounding_box(data)
+            if bounding_box_indicate != None:
+                code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
+
+
+            object_subject = judge_object_subject(data)  # primary_subject,related_geographic_element
+            yield f"\n\n`{object_subject}`\n"
+            geo_relation_dict = judge_geo_relation(data)
+            yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
+            code_list.append("""
 graph_dict={}
 graph_type_list={}
 type_dict={}
-element_list={'primary_subject':None,'related_geographic_feature':None}
-        """)
-        code_list.append(f"geo_relation_dict=judge_geo_relation('{data}')")
-        object_subject=judge_object_subject(data) #primary_subject,related_geographic_feature
-        yield f"\n\n`{object_subject}`\n"
-        # graph_dict={}
-        # graph_type_list={}
-        # type_dict={}
-        # element_list={}
-        for item_,value in object_subject.items():
-            if value!=None:
+element_list={'primary_subject':None,'related_geographic_element':None}
+                    """)
+            if geo_relation_dict==None:                                                                     #没有地理关系
+
                 code_list.append(f"""
+graph_dict['primary_subject'] = judge_type('{object_subject['primary_subject']}')["database"]
+graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
+type_dict['primary_subject'] = pick_match('for {object_subject['related_geographic_element']}', graph_type_list['primary_subject'])
+                        """)
+                code_list.append(
+                    f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
+            else:
+
+                code_list.append(f"geo_relation_dict={geo_relation_dict}")
+
+
+                # graph_dict={}
+                # graph_type_list={}
+                # type_dict={}
+                # element_list={}
+
+                for item_, value in object_subject.items():
+                    if value != None:
+                        code_list.append(f"""
 graph_dict['{item_}']=judge_type('{value}')['database']
 graph_type_list['{item_}']=ids_of_attribute(graph_dict['{item_}'])
 type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'])
-                """)
-                code_list.append(f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
-                # graph_dict[item_]=judge_type(object_subject[item_])['database']
-                # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])
-                # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])
-                # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])
+                                    """)
+                        code_list.append(
+                            f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
+                        # graph_dict[item_]=judge_type(object_subject[item_])['database']               #判断图名
+                        # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])                    #得到该图所有的属性
+                        # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
+                        # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
 
-        code_list.append("geo_result=geo_calculate(element_list['related_geographic_feature'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])")
+                code_list.append("geo_result=geo_calculate(element_list['related_geographic_element'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])")
 
 
 
@@ -783,4 +806,4 @@ def query_ip_location(ip):
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True,host='0.0.0.0',port=9090)
