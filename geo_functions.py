@@ -24,11 +24,13 @@ conn = psycopg2.connect(conn_params)
 cur = conn.cursor()
 def cur_action(query):
     try:
-        rows = cur.execute(query)
+        cur.execute(query)
+        rows =cur.fetchall()
         return rows
     except psycopg2.Error as e:
         cur.execute("ROLLBACK;")
         raise Exception(f"SQL error: {e}")
+
 
 
 def set_bounding_box(region_name):
@@ -964,4 +966,4 @@ try:
     print(ids_of_attribute('landuseaa'))
 except:
     pass
-print(ids_of_attribute('landuseaa'))
+print(ids_of_attribute('landuse'))
