@@ -22,6 +22,15 @@ global_id_geo={}
 conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
 conn = psycopg2.connect(conn_params)
 cur = conn.cursor()
+def cur_action(query):
+    try:
+        rows = cur.execute(query)
+        return rows
+    except psycopg2.Error as e:
+        cur.execute("ROLLBACK;")
+        raise Exception(f"SQL error: {e}")
+
+
 def set_bounding_box(region_name):
     if region_name!=None:
         globals_dict["bounding_box_region_name"] = region_name
@@ -142,10 +151,9 @@ def ids_of_attribute(graph_name, bounding_box_coordinats=None):
         """
     # print(bounding_query)
 
-    cur.execute(bounding_query)
 
-    # 获取查询结果
-    rows = cur.fetchall()
+    rows = cur_action(bounding_query)
+
 
     for row in rows:
         attributes_set.add(row[0])
@@ -182,7 +190,7 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
             fclass='uebk25_l'
             graph_name='soilnoraml'
             srid=25832
-        elif graph_name=='buildings' and isinstance(single_type,list):
+        elif graph_name=='buildings' and '(' in single_type:
             fclass='name'
 
         else:
@@ -215,7 +223,8 @@ def ids_of_type(graph_name, single_type, bounding_box_coordinats=None):
             """%fclass_row
         # print(bounding_query)
 
-        cur.execute(bounding_query)
+        rows = cur_action(bounding_query)
+
 
         # 获取查询结果
         rows = cur.fetchall()
@@ -801,10 +810,8 @@ def sql_debug():
     """
     start_time = time.time()
     from shapely.wkb import loads
-    cur.execute(bounding_query)
-    from pyproj import CRS
-    # 获取查询结果
-    rows = cur.fetchall()
+    rows = cur_action(bounding_query)
+
     end_time = time.time()
     print(end_time - start_time)
     # 打印结果
@@ -829,6 +836,7 @@ def sql_debug():
     cur.close()
     conn.close()
 #
+
 # set_bounding_box("munich ismaning")
 #
 #
@@ -952,3 +960,8 @@ def sql_debug():
 # plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305001254.png')
 # set_bounding_box("munich ismaning")
 # print(ids_of_attribute('buildings'))
+try:
+    print(ids_of_attribute('landuseaa'))
+except:
+    pass
+print(ids_of_attribute('landuseaa'))

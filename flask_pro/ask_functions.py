@@ -1,6 +1,18 @@
 from chat_py import *
 
 import json
+def limit_total_words(lst, max_length=10000):
+    total_length = 0
+    result = []
+
+    for item in lst:
+        current_length = len(item)
+        if total_length + current_length > max_length:
+            break
+        result.append(item)
+        total_length += current_length
+
+    return result
 def pick_match(query,given_list,messages=None):
     print(query)
     print(given_list)
@@ -8,6 +20,7 @@ def pick_match(query,given_list,messages=None):
         return query
     if 'building' in query and ' ' not in query:
         return 'building'
+    given_list=limit_total_words(given_list)
     ask_prompt="""
     You are tasked that selects one or more elements from a given list that semantically match the user's request. 
     
@@ -353,3 +366,9 @@ print(id_2_attributes(buildings_on_soil['subject']))
 # graph_type_list=ids_of_attribute('soil')
 # aa=pick_match('swamp',graph_type_list)
 # print(aa)
+from geo_functions import *
+set_bounding_box("munich garching")
+id_buildings=ids_of_type('buildings','building')
+id_farmland=ids_of_type('landuse','forest')
+buildings_near_farmland=geo_calculate(id_farmland,id_buildings,'contains',10)
+# print(id_2_attributes(soil_under_buildings['subject']))
