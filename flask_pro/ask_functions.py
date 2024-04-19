@@ -137,6 +137,7 @@ def pick_match(query,given_list):
         print('\n\nmatch_list:', match_list)
         if match_list==[]:
             raise Exception('no relevant item found for: ' +query + ' in given list.')
+        return match_list
     # messages.append(message_template('assistant',result))
 def judge_bounding_box(query,messages=None):
     if messages==None:
@@ -433,9 +434,9 @@ print(id_2_attributes(buildings_on_soil['subject']))
 # graph_type_list=ids_of_attribute('soil')
 # aa=pick_match('swamp',graph_type_list)
 # print(aa)
-from geo_functions import *
-iii=ids_of_attribute('landuse')
-print(pick_match('parks', iii))
+# from geo_functions import *
+# iii=ids_of_attribute('landuse')
+# print(pick_match('parks', iii))
 # set_bounding_box("munich garching")
 # id_buildings=ids_of_type('buildings','building')
 # id_farmland=ids_of_type('landuse','forest')

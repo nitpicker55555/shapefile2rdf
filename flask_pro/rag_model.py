@@ -31,7 +31,7 @@ def calculate_similarity(words, key_word):
     # Create a dictionary to store the similarities, only include words with similarity > 0.7
     similarity_dict = {word: float(similarity) for word, similarity in zip(words, similarity_scores) if
                        similarity > 0.7}
-    sorted_items = sorted(similarity_dict.items(), key=lambda x: x[1])
+    sorted_items = sorted(similarity_dict.items(), key=lambda x: x[1],reverse=True)
     sorted_dict_by_values = {k: v for k, v in sorted_items}
     return sorted_dict_by_values
 

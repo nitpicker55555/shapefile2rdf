@@ -217,7 +217,7 @@ def debug_mode():
         session['template']=True
     else:
         session['template'] = False
-
+    return jsonify({"text": True}), 400
 @app.route('/submit_email', methods=['POST'])
 def submit_email():
     data=request.get_json().get('text')
@@ -267,7 +267,7 @@ def home():
         session['os']=None
         session['browser']=None
         session['device_type']=None
-    session['template']=True
+    session['template']=False
     session['history']=[]
     return render_template('index.html')
 
@@ -412,6 +412,11 @@ send_data({variable_str}['geo_map'],'map')
 temp_result={lines[-1]}
 send_data(temp_result['geo_map'],'map')
             """
+                lines[-1] = new_line
+            elif '=' not in lines[-1]:
+                new_line = f"""
+print({lines[-1]})
+                            """
                 lines[-1] = new_line
 
 
