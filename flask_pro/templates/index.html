@@ -27,6 +27,9 @@
             max-width: 600px; /* 假设上方文本的最大宽度为600px */
             margin: 10px auto; /* 居中显示 */
         }
+        .red-button {
+            background-color: red;
+        }
         #chatWindow {
 
             border: 1px solid #ccc;
@@ -162,6 +165,7 @@
 
     <input type="text" id="inputField" class="your-button-class" placeholder="Input question...">
     <button id="confirmButton" class="your-button-class">submit</button>
+    <button id="debug_mode" class="your-button-class">debug</button>
 </div>
 <div id="map-container" ></div>
 
@@ -485,6 +489,35 @@ ${String.fromCharCode(96)} to get news in Germany.`
             }
 
         }
+            document.getElementById('debug_mode').addEventListener('click', function() {
+                // 发送 AJAX 请求到后台
+                var button = this;
+                var message
+                // 如果按钮当前没有红色样式，则添加，否则移除
+                if (!button.classList.contains('red-button')) {
+                    button.classList.add('red-button');
+                    message='debug'
+                } else {
+                    message='not debug'
+                    button.classList.remove('red-button');
+                }
+                fetch('/debug_mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({message:message})
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Response from server:', data);
+                        // 这里可以根据后台返回的数据执行一些操作
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+
+            });
         function process_input(userInput){
             if (userInput!==""){
                 addRequestMessage(userInput)

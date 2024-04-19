@@ -245,4 +245,4 @@ for i in tools:
     # print(i['function'])
     simiplified_tools.append({'function':i['function']['name'],'description':i['function']['description'],'arguments':i['function']['parameters']['required']})
 
-    print(simiplified_tools[-1])
+    # print(simiplified_tools[-1])

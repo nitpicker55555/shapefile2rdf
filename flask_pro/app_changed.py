@@ -39,350 +39,8 @@ socketio =SocketIO(app,async_mode='threading')
 
 
 search = DuckDuckGoSearchResults()
-template_answer={
-'The building around forest 100m in munich Ismaning step by step':[r"""
-```python
-set_bounding_box("munich ismaning")
-```
-          ""","""
-```python
-id1=(ids_of_type('landuse', 'forest'))
-```
-          ""","""
-```python
-id2=(ids_of_type('buildings', 'building'))
-```
-          ""","""
-```python
-geo_calculate(id1,id2,'buffer',100)
-```
-          ""","""
-Map showing buildings within 100m of forests in Munich Ismaning created.
-          """],"This file is about soil, I want to know which soil region is good for agriculture":["""
-```python
-subject_dict,predicate_dict=ttl_read(r'uploads\modified_Moore_Bayern_4326.ttl')
-predicate_dict.keys()
-```
-""",
-"""
-Given the list of attributes from the database, I think the attribute that is most likely to describe the soil type is "http://example.org/property/kategorie", am I correct?
-""",
 
 
-
-    ],"no, please search in 'http://example.org/property/uebk25_l'":[
-"""
-I understand now that the attribute most likely to describe the soil type is found under 'http://example.org/property/uebk25_l', and I will focus my analysis on this attribute going forward.
-```python
-predicate_dict['http://example.org/property/uebk25_l']
-```
-""",
-"""
-Based on the results, I believe the soils of 62c, 64c, and 80b are suitable for agriculture.
-```python
-search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
-```
-""",
-"""
-The soils have already been marked on the map. If you have any more questions, please feel free to ask me.
-"""
-
-    ],"I want to know in munich ismaning, which buildings is around this type of soil 100m?":[
-"""
-let's now delve into performing spatial calculations by leveraging the `buffer` function of `geo_calculate`.
-```python
-set_bounding_box("munich ismaning")
-id1=search_attribute(subject_dict,'http://example.org/property/uebk25_l',["62c","64c","80b"])
-id2=ids_of_type('buildings', 'building')
-geo_calculate(id1,id2,'buffer',100)
-```
-""",
-"""
-If you have any more questions, please feel free to ask.
-"""
-    ],"Can you draw a graph of how far these buildings are from the nearest soil?":[
-    """
-```python
-import geopandas as gpd
-import matplotlib.pyplot as plt
-from shapely.geometry import Point, Polygon
-import numpy as np
-
-# Assuming that the GeoDataFrames for buildings and soil areas have been loaded: building_gdf and soil_gdf
-building_gdf_data = {
-    'Name': [k[0] for k in id2.keys()],
-    'geometry': [v for v in id2.values()]
-}
-soil_gdf_data = {
-    'Name': [k[0] for k in id1.keys()],
-    'geometry': [v for v in id1.values()]
-}
-
-# Convert dictionaries to GeoDataFrames
-building_gdf = gpd.GeoDataFrame(building_gdf_data, geometry='geometry')
-soil_gdf = gpd.GeoDataFrame(soil_gdf_data, geometry='geometry')
-
-# Function to calculate the nearest distance of each building to all soil areas
-def calculate_nearest(row, other_gdf, other_gdf_column='geometry'):
-    point = row.geometry
-    # Calculate distance to each geometry in the other GeoDataFrame
-    distances = other_gdf.distance(point)
-    # Return the minimum distance
-    return distances.min()
-
-# Calculate the distance to the nearest soil area for each building
-building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
-
-# Plotting the histogram of distances
-plt.figure(figsize=(10, 6))
-plt.hist(building_gdf['distance_to_nearest_soil'], bins=30, color='skyblue', edgecolor='black')
-plt.title('Distribution of Distances from Buildings to Nearest Soil Area')
-plt.xlabel('Distance (meters)')
-plt.ylabel('Number of Buildings')
-plt.grid(True)
-plt.show()
-```
-"""],"redraw it to a pie chart":[
-"""
-```python
-import geopandas as gpd
-import matplotlib.pyplot as plt
-from shapely.geometry import Point, Polygon
-import numpy as np
-
-building_gdf_data = {
-    'Name': [k[0] for k in id2.keys()],
-    'geometry': [v for v in id2.values()]
-}
-soil_gdf_data = {
-    'Name': [k[0] for k in id1.keys()],
-    'geometry': [v for v in id1.values()]
-}
-
-# Assuming the GeoDataFrames for buildings and soil areas have been loaded: building_gdf and soil_gdf
-building_gdf = gpd.GeoDataFrame(building_gdf_data, geometry='geometry')
-soil_gdf = gpd.GeoDataFrame(soil_gdf_data, geometry='geometry')
-
-# Calculate the nearest distance of each building to all soil areas
-def calculate_nearest(row, other_gdf, other_gdf_column='geometry'):
-    point = row.geometry
-    # Calculate distance to each geometry in the other GeoDataFrame
-    distances = other_gdf.distance(point)
-    # Return the minimum distance
-    return distances.min()
-
-building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
-
-import matplotlib.pyplot as plt
-import pandas as pd
-# Assuming building_gdf['distance_to_nearest_soil'] exists and contains distance data
-
-# Define distance intervals and labels
-bins = [0, 0.01, 0.02, 0.03, 0.04, float('inf')]  # Define distance intervals
-labels = ['0-0.01m', '0.01-0.02m', '0.02-0.03m', '0.03-0.04m', '>0.04m']
-
-# Categorize distance data
-categories = pd.cut(building_gdf['distance_to_nearest_soil'], bins=bins, labels=labels, include_lowest=True)
-
-# Calculate the number of buildings in each distance interval
-counts = categories.value_counts(sort=False)
-
-# Convert to percentages
-percentages = counts / counts.sum() * 100
-
-# Plot a pie chart
-plt.figure(figsize=(8, 8))
-plt.pie(percentages, labels=percentages.index, autopct='%1.1f%%', startangle=140)
-plt.title('Percentage of Buildings by Distance to Nearest Soil Area')
-plt.show()
-```
-"""
-    ]
-}
-
-markdown_text = """
-asdasdafsdfsdfsafasfasf
-```python
-```
-"""
-
-# normal_prompt = r"""
-# You have a virtual environment equipped with a python environment and internet.
-# You can use python code to process user upload files, or use matplotlib to draw charts, and use 'search_internet("news")' to access
-# internet. The variables in the code you give will be stored in the environment and can be called directly next time.
-#
-# Please notice: If you want to write code, please write with markdown format. If user wants to search news or
-# informations in internet, use python code: 'search_internet('what you want to search')' to get relevant information,
-# do not use other python code.
-#
-# Access internet: You can access internet to search information by calling function search_internet("news"), Example: you
-# can write python code '```python\nsearch_internet("西安新闻")\n```' to get news in 西安. Write '```python\nsearch_internet("Germany news")\n```' to get news in germany.
-# """
-normal_prompt = r"""
-Question1:
-现在有一个sparql查询端口，输入端口
-sql
-ttl file
-
-2:
-告诉我这个数据库是关于什么的
-
-"""
-
-judge_prompt="""You are a task completion judge. I will tell you the goal and current completion status of this task. 
-You need to output whether it is completed now in json format. If it is completed, output {"complete":true}. If not, 
-output {"complete":false} """
-question_template="""
-You are an AI assistant that processes database queries. You have a virtual environment 
-equipped with python. Environment has a graph database consists of three graphs:['http://example.com/landuse', 'http://example.com/soil', 
-'http://example.com/buildings']
-
-The following functions are provided for database action: 
-
-region=set_bounding_box(address=None) #Set bounding box for a specific region
-types=types_of_graph(graph) #Get types of specific graph
-ids=ids_of_type(graph,type,region=None) #Get ids of specific graph
-geo_calculate(id_list_1=[],id_list_2=[],geo_relation,buffer_number=0) #Get ids with specific geo relation
-
-geo_relation={
-        "contains": "return which id in id_list_2 geographically contains which id in id_list_1",
-        "intersects": "return which id in id_list_2 geographically intersects which id in id_list_1",
-        "buffer": "return which id in id_list_2 geographically intersects the buffer of which id in id_list_1, if you want to 
-        call buffer, you need to specify the last argument "buffer_number" as a number"
-
-Example1:
-User: I want to know which building in 100m around the forest in munich ismaning.
-You:
-Ok, let me find out.
-```python
-region=set_bounding_box('munich ismaning')
-id1=ids_of_type('landuse','forest',region)
-id2=ids_of_type('buildings','building',region)
-geo_calculate(id1,id2,'buffer',100)
-```
-Example2:
-User: I want to know which land is suitable for agriculture.
-You:
-```python
-region=set_bounding_box(None)
-types=types_of_graph('soil')
-types
-```
-Based on semantic meaning of these types, I think 61a,65c is good for agriculture.
-```python
-id1=ids_of_type('soil',['65c','61a'],region)
-```
-Example3:
-User: Please draw ids in map
-You:
-```python
-draw_geo_map(id1, "geo")
-```
-}
-"""
-
-ttl_prompt=r"""
-You can read .ttl file by calling flowing functions.
-subject_dict,predicate_list=ttl_read(path)
-search_attribute(subject_dict,predicate,predicate_value)
-
-Example1:
-User: I want know which predicate the ttl file has.
-You:
-```python
-subject_dict,predicate_dict=ttl_read(r'\path\.ttl')
-predicate_dict.keys()
-```
-Example2:
-User: I want to know the value of predicate 'predicate'.
-You:
-```python
-predicate_dict['predicate']
-```
-Example3:
-User: I want to know the subject which has value 'a','b' of predicate 'predicate':
-You:
-```python
-search_attribute(subject_dict,'predicate',['a','b'])
-```
-Example4:
-User: This turtle file is about soil type, I want to know which type is good for agriculture:
-You:
-```python
-search_attribute(subject_dict,'predicate',['a','b'])
-```
-
-"""
-geo_prompt = """You are an AI assistant that processes complex database queries. You have a virtual environment 
-equipped with python. The following functions are provided for database action: 
-
-{
-
-    "set_bounding_box": { "Argument": ["region_name"], "Description": "If user wants to get query result from a 
-    specific location, you need to first run this function with argument region_name, then the other function would 
-    limit its result in this region automatically (you don't need to add region name to other function). Example: if 
-    user wants to search result from munich germany, input of this function would be ['munich germany']." 
-    }, 
-    "types_of_graph": { "Argument": ["graph_name"], "Description": "Enter the name of the graph you want to 
-    query and it returns all types of that graph. For example, the types of landuse are park, forest, etc." 
-    }, 
-    "ids_of_type": { "Arguments": ["graph_name", "type_name"], "Description": "Enter the graph name and type 
-    name you want to query, and it returns the corresponding element IDs. If you want to get id_list from multi types 
-    at the same time, you can input arg type_name as a list.","Example":" 
-
-        If user wants to search soil that suitable for agriculture, first you need to call function 
-        types_of_graph to get types in soil graph: soil_types=types_of_graph("http://example.com/soil"). 
-        Then input type list you think is good for agriculture, for example ['62c','64c','66b','80b'].
-        Next, use function ids_of_type to get its id_list soil_ids=ids_of_type( "http://example.com/soil",['62c','64c','66b']) 
-        "
-    },
-
-        "geo_calculate": {
-        "Arguments": [id_list_1, id_list_2,"function name",buffer_number=0],
-        "Description": "
-        geo_calculate function has functions: contains, intersects, buffer. 
-        Input should be two id_list which generated by function ids_of_type and geo_calculate function name you want to use. 
-
-        function contains: return which id in id_list_2 geographically contains which id in id_list_1; function 
-        intersects: return which id in id_list_2 geographically intersects which id in id_list_1; function buffer: 
-        return which id in id_list_2 geographically intersects the buffer of which id in id_list_1, if you want to 
-        call buffer, you need to specify the last argument "buffer_number" as a number. "Example": If user wants to 
-        search buildings in farmland, first you need to figure out farmland and buildings in which graph using 
-        function types_of_graph, then generate id_list for buildings and farmland using function 
-        ids_of_type, id_list1=ids_of_type("buildings","building")
-        id_list2=ids_of_type("landuse","farmland"), 
-        finally call function geo_calculate: contains_list=geo_calculate(id_list_1,id_list_2,"contains")
-        "
-    }
-}
-
-Database: The database has three graphs: ['landuse', 'soil', 
-'buildings']; The soil graph contains many soil types. If a user asks you which soil types are 
-suitable for agriculture, you need to make a semantic judgment based on the names of the types. 
-"""
-soil_tem= {"Can you describe these soil and explain your reason?": [{'role':'system','content':"Can you describe these soil types and explain why 62c,64c,80b are good for agriculture?"},{'role':'user','content':"""
-            '61a': '61a: Bodenkomplex: Vorherrschend Anmoorgley und Pseudogley, gering verbreitet Podsol aus (Kryo-)Sandschutt (Granit oder Gneis) über Sandschutt bis Sandgrus (Basislage, verfestigt)',
-            '62c': '62c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel oder Alm) über tiefem Carbonatsandkies (Schotter)',
-            '65c': '65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig',
-            '66b': '66b: Fast ausschließlich Anmoorgley aus Lehm bis Schluff, selten Ton (See- oder Flusssediment); im Untergrund carbonathaltig',
-            '67': '67: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von (Carbonat-)Lehm bis Schluff und Torf über Carbonatsandkies (Schotter)',
-            '72c': '72c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Talsediment)',
-            '72f': '72f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Sand (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
-            '64c': '64c: Fast ausschließlich kalkhaltiger Anmoorgley aus Schluff bis Lehm (Flussmergel) über Carbonatsandkies (Schotter), gering verbreitet aus Talsediment',
-            '73c': '73c: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Talsediment)',
-            '73f': '73f: Vorherrschend Anmoorgley und humusreicher Gley, gering verbreitet Niedermoorgley aus (skelettführendem) Schluff bis Lehm, selten aus Ton (Substrate unterschiedlicher Herkunft); außerhalb rezenter Talbereiche',
-            '74': '74: Fast ausschließlich Gley über Niedermoor und Niedermoor-Gley aus Wechsellagerungen von Lehm und Torf über Sand bis Lehm (Talsediment)',
-            '75': '75: Fast ausschließlich Moorgley, Anmoorgley und Oxigley aus Lehmgrus bis Sandgrus (Talsediment)',
-            '75c': '75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf',
-            '77': '77: Fast ausschließlich Kalkniedermoor und Kalkerdniedermoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum; verbreitet mit Wiesenkalk durchsetzt',
-            '78': '78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum',
-            '78a': '78a: Fast ausschließlich Niedermoor und Übergangsmoor aus Torf über kristallinen Substraten mit weitem Bodenartenspektrum',
-            '79': '79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf',
-            '80a': '80a: Fast ausschließlich (flacher) Gley über Niedermoor aus (flachen) mineralischen Ablagerungen mit weitem Bodenartenspektrum über Torf, vergesellschaftet mit (Kalk)Erdniedermoor',
-            '80b': '80b: Überwiegend (Gley-)Rendzina und kalkhaltiger Gley über Niedermoor aus Alm über Torf, engräumig vergesellschaftet mit Kalkniedermoor und Kalkerdniedermoor aus Torf',
-            '850': '850: Bodenkomplex: Humusgleye, Moorgleye, Anmoorgleye und Niedermoore aus alpinen Substraten mit weitem Bodenartenspektrum'}
-
-"""}]}
 def chat_single(messages, mode="json"):
     if mode == "json":
 
@@ -552,6 +210,14 @@ def upload_file():
         return jsonify({"filename": filename}), 200
     else:
         return jsonify({"error": "File type not allowed"}), 400
+@app.route('/debug_mode', methods=['POST'])
+def debug_mode():
+    data = request.get_json().get('message')  # 获取JSON数据
+    if data=='debug':
+        session['template']=True
+    else:
+        session['template'] = False
+
 @app.route('/submit_email', methods=['POST'])
 def submit_email():
     data=request.get_json().get('text')
@@ -651,68 +317,76 @@ def submit():
             yield chat_response
         else:
             if session.get('uploaded_indication') != None:
-                messages[0]['content'] =ttl_prompt
+                messages[0]['content'] ='ttl_prompt'
                 messages[0]['content'] += f"\nUser uploaded a ttl file in: .\\uploads\\{session['uploaded_indication']}"
             else:
-                messages[0]['content'] = question_template
+                messages[0]['content'] = 'question_template'
                 # data+=f".(用户上传的文件地址: .\\uploads\\{session['uploaded_indication']})"
             # session['messages2'].append({"role": "user",
             #                              "content": data})
 
         code_list=[]
-        if judge_query_first(data)['judge']:
-            code_list=judge_query(data)['code'].split("\n")
+        if session['template']==True:
+            code_list.append(data)
         else:
+            if judge_query_first(data)['judge']:
+                code_list=judge_query(data)['code'].split("\n")
+            else:
 
-            bounding_box_indicate = judge_bounding_box(data)
-            if bounding_box_indicate != None:
-                code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
+                bounding_box_indicate = judge_bounding_box(data)
+                if bounding_box_indicate != None:
+                    code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
+                    if bounding_box_indicate in data:
+                        if f"in {bounding_box_indicate}" in data:
+                            data_without_placename=data.replace(f'in {bounding_box_indicate}','')
+                        else:
+                            data_without_placename = data.replace(f'{bounding_box_indicate}', '')
+                        data=data_without_placename
 
-
-            object_subject = judge_object_subject(data)  # primary_subject,related_geographic_element
-            yield f"\n\n`{object_subject}`\n"
-            geo_relation_dict = judge_geo_relation(data)
-            yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
-            code_list.append("""
+                object_subject = judge_object_subject(data)  # primary_subject,related_geographic_element
+                yield f"\n\n`{object_subject}`\n"
+                geo_relation_dict = judge_geo_relation(data)
+                yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
+                code_list.append("""
 graph_dict={}
 graph_type_list={}
 type_dict={}
 element_list={'primary_subject':None,'related_geographic_element':None}
-                    """)
-            if geo_relation_dict==None:                                                                     #没有地理关系
+                        """)
+                if geo_relation_dict==None:                                                                     #没有地理关系
 
-                code_list.append(f"""
+                    code_list.append(f"""
 graph_dict['primary_subject'] = judge_type('{object_subject['primary_subject']}')["database"]
 graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
-type_dict['primary_subject'] = pick_match('for {object_subject['related_geographic_element']}', graph_type_list['primary_subject'])
-                        """)
-                code_list.append(
-                    f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
-            else:
+type_dict['primary_subject'] = pick_match('{object_subject['related_geographic_element']}', graph_type_list['primary_subject'])
+                            """)
+                    code_list.append(
+                        f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
+                else:
 
-                code_list.append(f"geo_relation_dict={geo_relation_dict}")
+                    code_list.append(f"geo_relation_dict={geo_relation_dict}")
 
 
-                # graph_dict={}
-                # graph_type_list={}
-                # type_dict={}
-                # element_list={}
+                    # graph_dict={}
+                    # graph_type_list={}
+                    # type_dict={}
+                    # element_list={}
 
-                for item_, value in object_subject.items():
-                    if value != None:
-                        code_list.append(f"""
+                    for item_, value in object_subject.items():
+                        if value != None:
+                            code_list.append(f"""
 graph_dict['{item_}']=judge_type('{value}')['database']
 graph_type_list['{item_}']=ids_of_attribute(graph_dict['{item_}'])
 type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'])
-                                    """)
-                        code_list.append(
-                            f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
-                        # graph_dict[item_]=judge_type(object_subject[item_])['database']               #判断图名
-                        # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])                    #得到该图所有的属性
-                        # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
-                        # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
+                                        """)
+                            code_list.append(
+                                f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
+                            # graph_dict[item_]=judge_type(object_subject[item_])['database']               #判断图名
+                            # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])                    #得到该图所有的属性
+                            # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
+                            # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
 
-                code_list.append("geo_result=geo_calculate(element_list['related_geographic_element'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])")
+                    code_list.append("geo_result=geo_calculate(element_list['related_geographic_element'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])")
 
 
 

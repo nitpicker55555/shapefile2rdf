@@ -141,6 +141,7 @@ def ids_of_attribute(graph_name, bounding_box_coordinats=None):
         fclass='fclass'
     if bounding_box_coordinats is not None:
     # 执行查询
+
         bounding_query = f"""
         SELECT DISTINCT {fclass}
         FROM {graph_name}
@@ -838,7 +839,7 @@ def sql_debug():
     cur.close()
     conn.close()
 #
-
+print(ids_of_attribute('landuse'))
 # set_bounding_box("munich ismaning")
 #
 #
@@ -962,8 +963,3 @@ def sql_debug():
 # plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305001254.png')
 # set_bounding_box("munich ismaning")
 # print(ids_of_attribute('buildings'))
-try:
-    print(ids_of_attribute('landuseaa'))
-except:
-    pass
-print(ids_of_attribute('landuse'))

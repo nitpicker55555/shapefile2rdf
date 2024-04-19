@@ -30,6 +30,11 @@ def modify_region_advanced(region, horizontal_range, vertical_range):
 
 def find_boundbox(name):
     nominatim_url = "https://nominatim.openstreetmap.org/search"
+    name=name.lower()
+    if 'germany' in name.lower():
+        name=name.replace('germany','')
+    if ',' in name.lower():
+        name=name.replace(',','')
 
     # Query parameters
     query_params = {
@@ -78,5 +83,26 @@ def find_boundbox(name):
 
     return coordinates,wkb,response_str
 
+def bounding_box_test(name):
+    name=name.lower()
+    if 'germany' in name.lower():
+        name=name.replace('germany','')
+    if ',' in name.lower():
+        name=name.replace(',','')
+    nominatim_url = "https://nominatim.openstreetmap.org/search"
 
-# print(find_boundbox("garching"))
+    # Query parameters
+    query_params = {
+        'q': ''+name,  # Your search query
+        'format': 'json'
+    }
+
+    # Send GET request
+    response = requests.get(nominatim_url, params=query_params)
+    response_str=""
+    # Handle the response
+    if response.status_code == 200:
+        search_results = response.json()
+        if search_results:
+            print(search_results)
+# print(bounding_box_test("munich moosach,germany"))
