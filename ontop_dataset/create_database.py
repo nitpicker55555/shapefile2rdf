@@ -5,7 +5,7 @@ from geoalchemy2 import Geometry
 import rdflib
 
 Base = declarative_base()
-
+from tqdm import tqdm
 
 class Building(Base):
     __tablename__ = 'soilcomplete'
@@ -18,22 +18,22 @@ class Building(Base):
     # # geom = Column(Geometry('POLYGON', srid=4326))
     # geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
     id= Column(Integer, primary_key=True)
-    kategorie = Column(String)
-    red_jahr = Column(Integer)
+    leg_einh = Column(String)
+    leg_nr = Column(Integer)
+    leg_text = Column(String)
+    objectid = Column(Integer)
     shape_area = Column(REAL)
     shape_leng = Column(REAL)
-    uebk25_k = Column(String)
-    uebk25_l = Column(String)
     # geom = Column(Geometry('POLYGON', srid=4326))
     geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
 """
-    ns1:kategorie "Vorherrschend Anmoorgley und Moorgley, gering verbreitet Gley über Niedermoor, humusreicher Gley und Nassgley, teilweise degradiert" ;
-    ns1:red_jahr "2023" ;
-    ns1:shape_area 8.786226e+04 ;
-    ns1:shape_leng 1.737214e+03 ;
-    ns1:uebk25_k "65c" ;
-    ns1:uebk25_l "65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig" ;
-    geo:asWKT "POLYGON [
+    ns1:leg_einh "101" ;
+    ns1:leg_nr 10100 ;
+    ns1:leg_text "101: Vorherrschend (Para-)Rendzina und Braunerde, gering verbreitet Terra fusca und Pseudogley aus Bunten Trümmermassen mit weitem Bodenartenspektrum, verbreitet mit flacher Deckschicht aus Schluff bis Lehm" ;
+    ns1:objectid 1 ;
+    ns1:shape_area 1.569228e+06 ;
+    ns1:shape_leng 7.182522e+03 ;
+    geo:asWKT 
 """
 
 ns1 = rdflib.Namespace("http://example.org/property/")
@@ -62,9 +62,8 @@ from collections import defaultdict
 # 创建一个默认字典来存储每个主题s的属性
 properties = defaultdict(dict)
 
-for s, p, o in g:
-    # 根据谓词p设置属性
-    print(".")
+for s, p, o in tqdm(g):
+
     if p == ns1.leg_einh:
         properties[s]['leg_einh'] = str(o)
     elif p == ns1.leg_nr:
@@ -91,9 +90,8 @@ for s, p, o in g:
 """
 # 遍历每个主题s的属性字典
 num_index=0
-for s, attrs in properties.items():
-    # 确保所有需要的属性都存在
-    print("..")
+for s, attrs in tqdm(properties.items()):
+
     if all(key in attrs for key in ['leg_einh', 'leg_nr', 'leg_text','objectid', 'shape_area', 'shape_leng','geom']):
         num_index+=1
         # 创建Building对象
