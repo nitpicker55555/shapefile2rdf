@@ -8,7 +8,7 @@ Base = declarative_base()
 
 
 class Building(Base):
-    __tablename__ = 'soilnoraml'
+    __tablename__ = 'soilcomplete'
     # id = Column(Integer, primary_key=True)
     # code = Column(Integer)
     # fclass = Column(String)
@@ -25,7 +25,7 @@ class Building(Base):
     uebk25_k = Column(String)
     uebk25_l = Column(String)
     # geom = Column(Geometry('POLYGON', srid=4326))
-    geom = Column(Geometry(geometry_type='GEOMETRY', srid=25832))
+    geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
 """
     ns1:kategorie "Vorherrschend Anmoorgley und Moorgley, gering verbreitet Gley über Niedermoor, humusreicher Gley und Nassgley, teilweise degradiert" ;
     ns1:red_jahr "2023" ;
@@ -47,7 +47,7 @@ session = Session()
 
 
 g = rdflib.Graph()
-g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl", format="turtle")
+g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\soil_4326_repaired.ttl", format="turtle")
 # g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm_buildings.ttl", format="turtle")
 print("finds")
 
@@ -65,38 +65,46 @@ properties = defaultdict(dict)
 for s, p, o in g:
     # 根据谓词p设置属性
     print(".")
-    if p == ns1.kategorie:
-        properties[s]['kategorie'] = str(o)
-    elif p == ns1.red_jahr:
-        properties[s]['red_jahr'] = int(o)
+    if p == ns1.leg_einh:
+        properties[s]['leg_einh'] = str(o)
+    elif p == ns1.leg_nr:
+        properties[s]['leg_nr'] = int(o)
+    elif p == ns1.leg_text:
+        properties[s]['leg_text'] = str(o)
+        # print(float(o))
+    elif p == ns1.objectid:
+        properties[s]['objectid'] = int(o)
     elif p == ns1.shape_area:
         properties[s]['shape_area'] = float(o)
-        # print(float(o))
     elif p == ns1.shape_leng:
         properties[s]['shape_leng'] = float(o)
-    elif p == ns1.uebk25_k:
-        properties[s]['uebk25_k'] = str(o)
-    elif p == ns1.uebk25_l:
-        properties[s]['uebk25_l'] = str(o)
     elif p == geo.asWKT:
         properties[s]['geom'] = o
-
+"""
+    ns1:leg_einh "101" ;
+    ns1:leg_nr 10100 ;
+    ns1:leg_text "101: Vorherrschend (Para-)Rendzina und Braunerde, gering verbreitet Terra fusca und Pseudogley aus Bunten Trümmermassen mit weitem Bodenartenspektrum, verbreitet mit flacher Deckschicht aus Schluff bis Lehm" ;
+    ns1:objectid 1 ;
+    ns1:shape_area 1.569228e+06 ;
+    ns1:shape_leng 7.182522e+03 ;
+    geo:asWKT 
+"""
 # 遍历每个主题s的属性字典
 num_index=0
 for s, attrs in properties.items():
     # 确保所有需要的属性都存在
     print("..")
-    if all(key in attrs for key in ['kategorie', 'red_jahr', 'shape_area','shape_leng', 'uebk25_k', 'uebk25_l','geom']):
+    if all(key in attrs for key in ['leg_einh', 'leg_nr', 'leg_text','objectid', 'shape_area', 'shape_leng','geom']):
         num_index+=1
         # 创建Building对象
         building = Building(
             id=num_index,
-            kategorie=attrs['kategorie'],
-            red_jahr=attrs['red_jahr'],
+            leg_einh=attrs['leg_einh'],
+            leg_nr=attrs['leg_nr'],
+            leg_text=attrs['leg_text'],
+            objectid=attrs['objectid'],
             shape_area=attrs['shape_area'],
             shape_leng=attrs['shape_leng'],
-            uebk25_k=attrs['uebk25_k'],
-            uebk25_l=attrs['uebk25_l'],
             geom=attrs['geom']
         )
         # 添加到会话
