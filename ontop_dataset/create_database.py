@@ -8,7 +8,7 @@ Base = declarative_base()
 from tqdm import tqdm
 
 class Building(Base):
-    __tablename__ = 'soilcomplete'
+    __tablename__ = 'landuse'
     # id = Column(Integer, primary_key=True)
     # code = Column(Integer)
     # fclass = Column(String)
@@ -18,22 +18,18 @@ class Building(Base):
     # # geom = Column(Geometry('POLYGON', srid=4326))
     # geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
     id= Column(Integer, primary_key=True)
-    leg_einh = Column(String)
-    leg_nr = Column(Integer)
-    leg_text = Column(String)
-    objectid = Column(Integer)
-    shape_area = Column(REAL)
-    shape_leng = Column(REAL)
+    fclass = Column(String)
+    name = Column(String)
+    osm_id = Column(String)
     # geom = Column(Geometry('POLYGON', srid=4326))
     geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
 """
-    ns1:leg_einh "101" ;
-    ns1:leg_nr 10100 ;
-    ns1:leg_text "101: Vorherrschend (Para-)Rendzina und Braunerde, gering verbreitet Terra fusca und Pseudogley aus Bunten Trümmermassen mit weitem Bodenartenspektrum, verbreitet mit flacher Deckschicht aus Schluff bis Lehm" ;
-    ns1:objectid 1 ;
-    ns1:shape_area 1.569228e+06 ;
-    ns1:shape_leng 7.182522e+03 ;
-    geo:asWKT 
+<http://example.org/data/0> ns1:code 7208 ;
+    ns1:fclass "meadow" ;
+    ns1:name "Adelberger" ;
+    ns1:osm_id "3401793" ;
+    geo:asWKT "POLYGON [[(11.8986921 48.195019) (11.9010643 48.1957291) (11.901297 48.1950387) (11.9001733 48.1947152) (11.8996997 48.1945784) (11.8992682 48.1944537) (11.8991531 48.1944205) (11.8986921 48.195019)]]" .
+
 """
 
 ns1 = rdflib.Namespace("http://example.org/property/")
@@ -47,7 +43,7 @@ session = Session()
 
 
 g = rdflib.Graph()
-g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\soil_4326_repaired.ttl", format="turtle")
+g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\landuse_repaired.ttl", format="turtle")
 # g.parse(r"C:\Users\Morning\Desktop\hiwi\ttl_query\modified_osm_buildings.ttl", format="turtle")
 print("finds")
 
@@ -64,45 +60,43 @@ properties = defaultdict(dict)
 
 for s, p, o in tqdm(g):
 
-    if p == ns1.leg_einh:
-        properties[s]['leg_einh'] = str(o)
-    elif p == ns1.leg_nr:
-        properties[s]['leg_nr'] = int(o)
-    elif p == ns1.leg_text:
-        properties[s]['leg_text'] = str(o)
-        # print(float(o))
-    elif p == ns1.objectid:
-        properties[s]['objectid'] = int(o)
-    elif p == ns1.shape_area:
-        properties[s]['shape_area'] = float(o)
-    elif p == ns1.shape_leng:
-        properties[s]['shape_leng'] = float(o)
+    if p == ns1.fclass:
+        properties[s]['fclass'] = str(o)
+    elif p == ns1.name:
+        properties[s]['name'] = str(o)
+    elif p == ns1.osm_id:
+        properties[s]['osm_id'] = str(o)
+    #     # print(float(o))
+    # elif p == ns1.objectid:
+    #     properties[s]['objectid'] = int(o)
+    # elif p == ns1.shape_area:
+    #     properties[s]['shape_area'] = float(o)
+    # elif p == ns1.shape_leng:
+    #     properties[s]['shape_leng'] = float(o)
     elif p == geo.asWKT:
         properties[s]['geom'] = o
 """
-    ns1:leg_einh "101" ;
-    ns1:leg_nr 10100 ;
-    ns1:leg_text "101: Vorherrschend (Para-)Rendzina und Braunerde, gering verbreitet Terra fusca und Pseudogley aus Bunten Trümmermassen mit weitem Bodenartenspektrum, verbreitet mit flacher Deckschicht aus Schluff bis Lehm" ;
-    ns1:objectid 1 ;
-    ns1:shape_area 1.569228e+06 ;
-    ns1:shape_leng 7.182522e+03 ;
-    geo:asWKT 
+    ns1:fclass "meadow" ;
+    ns1:name "Adelberger" ;
+    ns1:osm_id "3401793" ;
+    geo:asWKT "POLYGON [[(11.8986921 48.195019) (11.9010643 48.1957291) (11.901297 48.1950387) (11.9001733 48.1947152) (11.8996997 48.1945784) (11.8992682 48.1944537) (11.8991531 48.1944205) (11.8986921 48.195019)]]" .
+
 """
 # 遍历每个主题s的属性字典
 num_index=0
 for s, attrs in tqdm(properties.items()):
 
-    if all(key in attrs for key in ['leg_einh', 'leg_nr', 'leg_text','objectid', 'shape_area', 'shape_leng','geom']):
+    if all(key in attrs for key in ['osm_id', 'name', 'fclass','geom']):
         num_index+=1
         # 创建Building对象
         building = Building(
             id=num_index,
-            leg_einh=attrs['leg_einh'],
-            leg_nr=attrs['leg_nr'],
-            leg_text=attrs['leg_text'],
-            objectid=attrs['objectid'],
-            shape_area=attrs['shape_area'],
-            shape_leng=attrs['shape_leng'],
+            osm_id=attrs['osm_id'],
+            name=attrs['name'],
+            fclass=attrs['fclass'],
+            # objectid=attrs['objectid'],
+            # shape_area=attrs['shape_area'],
+            # shape_leng=attrs['shape_leng'],
             geom=attrs['geom']
         )
         # 添加到会话
