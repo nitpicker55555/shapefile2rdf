@@ -2,20 +2,26 @@ from chat_py import *
 
 import json,re
 from rag_model import calculate_similarity
+from rag_model_openai import calculate_similarity_openai
 global_paring_dict={}
 new_dict_num=0
 file_path = 'global_paring_dict.jsonl'
 if os.path.exists(file_path):
     with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
-        # 逐行读取文件内容
+        # 逐行读取并处理每一行
         for line in file:
-            # 解析 JSON 字符串为字典
-            new_dict_num+=1
             current_dict = json.loads(line)
+            key = next(iter(current_dict))  # 获取当前字典的键
+            # 如果键不存在于全局字典中，直接添加
+            if key not in global_paring_dict:
+                global_paring_dict[key] = current_dict[key]
+            else:
+                # 如果键已存在，更新该键对应的字典
+                global_paring_dict[key].update(current_dict[key])
+    for key, sub_dict in global_paring_dict.items():
+        for sub_key, value in sub_dict.items():
+            print(f'{key} -> {sub_key}')
 
-            # 合并字典
-            global_paring_dict.update(current_dict)
-    print('Found pre_pairing_dict: ',new_dict_num)
 def limit_total_words(lst, max_length=10000):
     total_length = 0
     result = []
@@ -28,8 +34,39 @@ def limit_total_words(lst, max_length=10000):
         total_length += current_length
 
     return result
+def error_test():
+    print("normal output")
+    raise Exception("asdasdawfdafc asdac zcx fwe")
+def describe_label(query,given_list,messages=None):
+    if messages == None:
+        messages = []
 
-
+    ask_prompt = """
+    Based on the this list: %s, create imitations to meet user needs. Be sure to use the same language as the provided list, and be as concise as possible, offering only keywords. Response in json
+    Example1:
+        user:"good for planting strawberry"
+        response:
+        {
+        "result": "Hauptsächlich Braunerde aus sandigem Lehm (Oberschicht) über Kalkstein, ideal für Erdbeeranbau mit ausreichender Feuchtigkeit und reich an Kalium."
+        }
+    Example2:
+        user:"good for planting potatoes"
+        response:
+        {
+        "result": "Hauptsächlich Podsol-Braunerde, sandig-lehmig, auf Granit-/Gneisschutt, optimal für Kartoffelanbau, gute Wasserdrainage, nährstoffreich."
+        }
+    """%given_list
+    if messages == None:
+        messages = []
+    messages.append(message_template('system', ask_prompt))
+    messages.append(message_template('user', query))
+    result = chat_single(messages, 'json')
+    # print(result)
+    json_result = json.loads(result)
+    if 'result' in json_result:
+            return json_result['result']
+    else:
+        raise Exception('no relevant item found for: ' + query + ' in given list.')
 def vice_versa(query, messages=None):
     if messages == None:
         messages = []
@@ -64,7 +101,7 @@ def string_process(s):
     if processed.startswith(':'):
         processed=processed[1:]
     return  processed
-def details_pick(query,given_list,messages=None):
+def details_pick_chatgpt(query,given_list,table_name,messages=None):
 
     # given_list = limit_total_words(given_list)
     ask_prompt = """
@@ -93,33 +130,79 @@ def details_pick(query,given_list,messages=None):
 
 
     for word in given_list:
-        messages = []
-        messages.append(message_template('system', ask_prompt))
-        messages.append(message_template('user',f'is "{string_process(word)}" "{query}"?'))
-        print(f'is {string_process(word)} {query}?')
+        if word!='':
+            messages = []
+            messages.append(message_template('system', ask_prompt))
+            messages.append(message_template('user',f'is "{string_process(word)}" "{query}"?'))
+            print(f'is {string_process(word)} {query}?')
 
-        result = chat_single(messages, 'json')
-        # print(result)
-        json_result = json.loads(result)
-        if 'judgment' in json_result:
-            if json_result['judgment']:
-                new_paring_dict[query].append(word)
+            result = chat_single(messages, 'json')
+            # print(result)
+            json_result = json.loads(result)
+            if 'judgment' in json_result:
+                if json_result['judgment']:
+                    new_paring_dict[query].append(word)
+                else:
+                    new_paring_dict[reversed_query].append(word)
+
             else:
-                new_paring_dict[reversed_query].append(word)
+                raise Exception('no relevant item found for: ' + query + ' in given list.')
+    if new_paring_dict[query]!=[]:
+        if table_name not in global_paring_dict:
+            global_paring_dict[table_name]={}
 
-        else:
-            raise Exception('no relevant item found for: ' + query + ' in given list.')
-    global_paring_dict.update(new_paring_dict)
-    with open('global_paring_dict.jsonl','a',encoding='utf-8') as file:
-        json.dump(new_paring_dict, file)
-        file.write('\n')
-    return new_paring_dict[query]
-def pick_match(query,given_list):
+
+
+        global_paring_dict[table_name].update(new_paring_dict)
+
+        with open('global_paring_dict.jsonl','a',encoding='utf-8') as file:
+            json.dump({table_name:new_paring_dict}, file)
+            file.write('\n')
+        return new_paring_dict[query]
+    raise Exception('no relevant item found for: ' + query)
+
+
+def details_pick(query, given_list, table_name, messages=None):
+
+    reversed_query = vice_versa(query)
+    new_paring_dict = {query: [], reversed_query: []}
+    # describe the target label to make match more precise
+    target_label_describtion=describe_label(query,list(given_list)[:2])
+
+    query_paring_list=calculate_similarity_openai(table_name,target_label_describtion)
+    if len(query_paring_list)!=0:
+
+        vice_list=set(given_list)-set(query_paring_list)
+        new_paring_dict[query]=query_paring_list
+        new_paring_dict[reversed_query]=vice_list
+        if table_name not in global_paring_dict:
+            global_paring_dict[table_name] = {}
+
+        global_paring_dict[table_name].update(new_paring_dict)
+
+        with open('global_paring_dict.jsonl', 'a', encoding='utf-8') as file:
+            json.dump({table_name: new_paring_dict}, file)
+            file.write('\n')
+        return new_paring_dict[query]
+    else:
+        raise Exception('no relevant item found for: ' + query)
+def pick_match(query,given_list,table_name):
     if query in given_list:
         return query
     if 'building' in query:
         return 'building'
-    match_dict=calculate_similarity(given_list,query)
+    find_pre_matched={}
+    if table_name in global_paring_dict:
+        if list(global_paring_dict[table_name].keys()) != []:
+            find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()), query)
+
+    if find_pre_matched != {}:
+        print('find_pre_matched:', find_pre_matched)
+        match_list_key = list(find_pre_matched.keys())[0]
+        match_list = global_paring_dict[table_name][match_list_key]
+        return match_list
+    else:
+        match_dict=calculate_similarity(given_list,query)
     print(query+'\n')
     print(given_list)
     print('\n\nmatch_dict:',match_dict)
@@ -127,13 +210,8 @@ def pick_match(query,given_list):
         return list(match_dict.keys())
 
     else:
-        find_pre_matched=calculate_similarity(list(global_paring_dict.keys()),query)
-        if find_pre_matched!={}:
-            print('find_pre_matched:',find_pre_matched)
-            match_list_key=list(find_pre_matched.keys())[0]
-            match_list=global_paring_dict[match_list_key]
-        else:
-            match_list=details_pick(query,given_list)
+
+        match_list=details_pick(query,given_list,table_name)
         print('\n\nmatch_list:', match_list)
         if match_list==[]:
             raise Exception('no relevant item found for: ' +query + ' in given list.')
@@ -144,6 +222,7 @@ def judge_bounding_box(query,messages=None):
         messages=[]
     if 'munich ismaning' in query.lower():
         return 'munich ismaning'
+
     ask_prompt="""Does query contain a specific place name? If so, please give the place name back and do not change its 
     original string. Return json format like: { "bounding_box": { "exist":true, "place_name":place_name } 
 
@@ -154,6 +233,11 @@ def judge_bounding_box(query,messages=None):
             "exist":false
         }
     }
+    Example:
+    user: I want to know buildings in forest in munich
+    Assistant: in munich
+    user: I want to know residential area around park in munich moosach
+    Assistant: in munich moosach
     """
     if messages==None:
         messages=[]
@@ -176,7 +260,7 @@ def judge_geo_relation(query,messages=None):
         messages=[]
     geo_relation=['intersects','contains','buffer','area_calculate']
     ask_prompt="""
-If the query includes sections about geospatial calculations such as intersects, contains, buffer, or area calculations, please respond with the JSON format indicating whether these calculations exist, what type it is('it should be single type'), and the number mentioned. The JSON should look like this:
+If the query includes sections about geospatial calculations such as intersects, contains, buffer, or area_calculate, please respond with the JSON format indicating whether these calculations exist, what type it is('it should be single type'), and the number mentioned. The JSON should look like this:
 
 ```json
 {
@@ -189,7 +273,7 @@ If the query includes sections about geospatial calculations such as intersects,
 ```
 If query is about 'near/close', geospatial calculations should be buffer with num 10.
 If query is about largest n elements, geospatial calculations should be area_calculate with num n.
-If query is about 'in/on', geospatial calculations should be contains.
+If query is about 'in/on/within', geospatial calculations should be contains.
 If these calculations are not included in the query, respond with:
 
 ```json
@@ -221,21 +305,26 @@ If these calculations are not included in the query, respond with:
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
 def judge_object_subject(query,messages=None):
-    print('query for judge_object_subject:',judge_object_subject)
+    print('query for judge_object_subject:',query)
     if messages==None:
         messages=[]
     ask_prompt="""Please provide information in the following json format: {'primary_subject':primary_subject, 
-    'related_geographic_element':related_geographic_element}. For example, when I ask, 'I want to know the 
+    'related_geographic_element':related_geographic_element}. 
+    
+    For example, when I ask, 'I want to know the 
     residential area near the swamp,' you should respond with: {'primary_subject':'residential area', 
     'related_geographic_element':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
     ' the response should be:  {'primary_subject':'buildings', 'related_geographic_element':'forests'}, 
     for 'buildings for commercial in munich ismaning',the response should be:  {'primary_subject':'buildings', 
     'related_geographic_element':'commercial'}
     
+    
     if there is adj in query which describe primary_subject, like: 'soil type good for agriculture', the response 
     should include adj in related_geographic_element:{'primary_subject':'soil', 'related_geographic_element':'good 
     for agriculture'}. 
     
+    if user's query is about agriculture or planting relevant but not explicitly mentioned "soil", the primary_subject should be soil.
+
     
     If there is no related_geographic_element, related_geographic_element should be set as None, example: 
     for 'the largest 5 forest', related_geographic_element is None. """
@@ -248,6 +337,7 @@ def judge_object_subject(query,messages=None):
     # print(result)
     json_result=json.loads(result)
     if 'primary_subject' in json_result:
+
 
         return {'primary_subject':json_result['primary_subject'],'related_geographic_element':json_result['related_geographic_element']}
 
@@ -289,40 +379,24 @@ def judge_type(query,messages=None):
         raise Exception('no relevant item found for: ' +query + ' in given list.')
 
 
-def judge_query_first(query,messages=None):
+def judge_result(query,messages=None):
+
     if query==None:
         return None
     if messages==None:
         messages=[]
 
-    ask_prompt="""
-    if the query is one of the three questions below:
-    ['What soil types are the houses near the farm on?','Which farmlands are on soil unsuitable for agriculture?','Which buildings are on soil unsuitable for buildings?']
-    response in json format like:
-    {
-    'judge':True
-    }
-    else:
-        {
-    'judge':False
-    }
+    ask_prompt="""User will give you a dict, key is a item name, value is the number of its occurrences in map, 
+    describe it for user, Emphasize which items appear most often, and What types of objects are most of them? 
+    Please mention you get the result from search but not from dict.
     """
     if messages==None:
         messages=[]
 
     messages.append(message_template('system',ask_prompt))
-    messages.append(message_template('user',query))
-    result=chat_single(messages,'json')
-    # print(result)
-    json_result=json.loads(result)
-    if 'judge' in json_result:
-
-
-
-        return {'judge':json_result['judge']}
-
-    else:
-        raise Exception('no relevant item found for: ' +query + ' in given list.')
+    messages.append(message_template('user',str(query)[:3000]))
+    result=chat_single(messages)
+    return result
 
 def judge_query(query,messages=None):
     if query==None:
@@ -437,8 +511,27 @@ print(id_2_attributes(buildings_on_soil['subject']))
 # from geo_functions import *
 # iii=ids_of_attribute('landuse')
 # print(pick_match('parks', iii))
-# set_bounding_box("munich garching")
+
 # id_buildings=ids_of_type('buildings','building')
 # id_farmland=ids_of_type('landuse','forest')
 # buildings_near_farmland=geo_calculate(id_farmland,id_buildings,'contains',10)
 # print(id_2_attributes(soil_under_buildings['subject']))
+from geo_functions import *
+from rag_model_openai import build_vector_store
+soil=list((ids_of_attribute('buildings')))[:1000]
+# print(soil)
+build_vector_store(soil,'buildings')
+# set_bounding_box("munich ismaning")
+# a2=ids_of_type('buildings','building')
+# a1=ids_of_type('landuse','forest')
+# aa=geo_calculate(a1,a2,'buffer',100)
+# explain=id_explain(aa)
+# print(explain)
+# print(judge_result(explain))
+# a1=ids_of_attribute('landuse')
+# a2=ids_of_attribute('buildings')
+# (ids_of_type(['landuse','buildings'],a3))
+# print(pick_match('school', a))
+#
+# print(pick_match('good fot agriculture', ids_of_attribute('soil')))
+# judge_object_subject('where is good for planting strawberry')
