@@ -26,19 +26,28 @@ cur = conn.cursor()
 
 def remove_semicolon_before_union(input_string):
     # 将输入字符串分割成单独的行
+    aa=[]
     lines = input_string.split('\n')
+    for i in lines:
+        if i.replace(' ','')!='':
+            aa.append(i)
 
-    # 遍历每一行，检查是否含有"UNION"
-    for i in range(1, len(lines)):
-        if 'UNION' in lines[i]:
-            # 如果当前行包含"UNION"，删除上一行末尾的分号
-            lines[i - 1] = lines[i - 1].rstrip(';\r')
+    aa[- 1] = aa[ - 1].rstrip(';\r')
+    aa.append('LIMIT 20000;')
+
+
+    # # # 遍历每一行，检查是否含有"UNION"
+    # for i in range(1, len(lines)):
+    #     if 'UNION' in lines[i]:
+    #         # 如果当前行包含"UNION"，删除上一行末尾的分号
+    #         lines[i - 1] = lines[i - 1].rstrip(';\r')
 
     # 将处理过的行重新组合成一个字符串并返回
-    return '\n'.join(lines)
+    return '\n'.join(aa)
 def cur_action(query):
     try:
         query=remove_semicolon_before_union(query)
+
         # print(query)
         cur.execute(query)
         rows =cur.fetchall()
@@ -581,7 +590,7 @@ def sql_debug():
 # # ]
 # # ids_of_type('soil',aa)
 # set_bounding_box("munich ismaning")
-# id2=ids_of_type('buildings','building')
+id2=ids_of_type('buildings','building')
 # id1=ids_of_type('landuse','farmland')
 # # id3=ids_of_type('landuse','forest')
 # # area=area_calculate(id3,5)
@@ -677,5 +686,5 @@ def sql_debug():
 # print(ids_of_attribute('soil'))
 # aa=['21: Fast ausschließlich humusreiche Pararendzina aus Carbonatsandkies bis -schluffkies (Schotter), gering verbreitet mit flacher Flussmergeldecke', '57: Fast ausschließlich Rendzina aus Kalktuff oder Alm', '4a: Überwiegend Parabraunerde und verbreitet Braunerde aus Schluff bis Schluffton (Lösslehm) über Carbonatschluff (Löss)']
 # ids_of_type('soil',aa)
-# print(ids_of_attribute('landuse'))
+print(ids_of_attribute('landuse'))
 # print(ids_of_attribute('soil')
