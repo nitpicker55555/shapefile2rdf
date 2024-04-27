@@ -35,20 +35,24 @@ def build_vector_store(words_origin,label):
 
    # 保存为 CSV 文件
    df.to_csv(f'{label}_vectors.csv', index=False)
-def calculate_similarity_openai(label,key_vector):
+def calculate_similarity_openai(label,key_vector_template):
+   key_vector = get_embedding(key_vector_template)
    df = pd.read_csv(f'{label}_vectors.csv')
    df['vector'] = df['vector'].apply(ast.literal_eval)
 
    df['cosine_similarity'] = df['vector'].apply(lambda v: cosine_similarity(np.array(v), key_vector))
-   filtered_df = df[df['cosine_similarity'] > 0.6]
+   # print(df[['cosine_similarity', 'label']])
+
+   filtered_df = df[df['cosine_similarity'] > 0.5]
 
    sorted_df = filtered_df.sort_values(by='cosine_similarity', ascending=False)
    labels_list = sorted_df['label'].tolist()
    return labels_list
 
 # template="""Hauptsächlich Braunerde aus sandigem Lehm (Oberschicht) über Kalkstein, ideal für Erdbeeranbau mit ausreichender Feuchtigkeit und reich an Kalium."""
-
+#
+# template='greenary'
 # key_vector=get_embedding(template)
-# print(calculate_similarity('soil', key_vector))
+# print(calculate_similarity_openai('landuse', template))
 # df = pd.read_csv('soil_vectors.csv')
 # print(df['label'][81])

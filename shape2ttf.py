@@ -1,11 +1,11 @@
 import shapefile
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS
-
+from tqdm import tqdm
 
 
 def shapefile_to_ttl(shapefile_path, output_ttl_path=None):
-    shapefile_path=shapefile_path.replace('.shp','')
+    # shapefile_path=shapefile_path.replace('.shp','')
     if output_ttl_path==None:
         output_ttl_path=shapefile_path+".ttl"
     GEO = Namespace("http://www.opengis.net/ont/geosparql#")
@@ -17,7 +17,7 @@ def shapefile_to_ttl(shapefile_path, output_ttl_path=None):
     g.bind("geo", GEO)
 
     # Process Shapefile
-    for record, shape in zip(sf.records(), sf.shapes()):
+    for record, shape in tqdm(zip(sf.records(), sf.shapes())):
         feature_uri = URIRef(f"http://example.org/data/{record.oid}")
 
 
@@ -38,12 +38,13 @@ def shapefile_to_ttl(shapefile_path, output_ttl_path=None):
         pass
 
     # Serialize graph to TTL
+    print(output_ttl_path)
     g.serialize(destination=output_ttl_path, format="turtle")
 
 # shapefile_path = r"C:\Users\Morning\Downloads\oberbayern-latest-free.shp\gis_osm_buildings_a_free_1"  # e.g., 'C:/path_to_file/filename' without .shp
-# shapefile_path = r"C:\Users\Morning\Desktop\hiwi\ttl_query\shape_file\mbk25_epsg25832\shape\Moore_Bayern"  # e.g., 'C:/path_to_file/filename' without .shp
-# output_ttl_path = 'ttl_file/Moore_Bayern.ttl'
-# shapefile_to_ttl(shapefile_path, output_ttl_path)
+shapefile_path = r"C:\Users\Morning\Documents\landusecomplete"  # e.g., 'C:/path_to_file/filename' without .shp
+output_ttl_path = 'ttl_file/landuse.ttl'
+shapefile_to_ttl(shapefile_path, output_ttl_path)
 
 
 

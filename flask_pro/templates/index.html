@@ -30,6 +30,9 @@
         .red-button {
             background-color: red;
         }
+        .leaflet-control-layers{
+            display: none;
+        }
         #chatWindow {
 
             border: 1px solid #ccc;
@@ -107,6 +110,7 @@
              /*height: 500px; !* 高度为600px *!*/
              background-color: #f0f0f0; /* 背景色，仅作为示例 */
              visibility : hidden;
+
          }
 
 
@@ -186,6 +190,10 @@
         document.body.classList.toggle('night-mode');
     });
     var color_dict={}
+    var letters = '0123456789ABCDEF';
+    var color_dict = {}; // 存储标签与颜色的映射
+    var history_colors = new Set(); // 存储历史颜色以避免重复
+    var count = 0; // 初始化计数器
     var map_index=0
     function add_map_button(map_data){
         // 选择所有类名为'message-text response'的元素
@@ -218,61 +226,87 @@
         }
 
     }
+
     function updateMapDataAndFitBounds(map, newPolygons) {
         // 检查是否已经添加了geoJsonLayer图层，如果有，则移除
         if (window.geoJsonLayer) {
             window.geoJsonLayer.clearLayers(); // 移除之前的图层数据
         } else {
             window.geoJsonLayer = L.geoJSON().addTo(map); // 初始化geoJsonLayer
-            L.Control.CollapseControl = L.Control.extend({
-                onAdd: function(map) {
-                    var container = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
-                    container.innerHTML = 'fold'; // 设置按钮文本
-                    container.style.backgroundColor = 'white';
-                    container.style.width = '60px';
-                    container.style.height = '30px';
+            // var layerControlElement = document.getElementsByClassName('leaflet-control-layers')[0];
+            // layerControlElement.style.display = 'none';
+            // L.Control.CollapseControl = L.Control.extend({
+            //     onAdd: function(map) {
+            //         var container = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+            //         container.innerHTML = 'fold'; // 设置按钮文本
+            //         container.style.backgroundColor = 'white';
+            //         container.style.width = '60px';
+            //         container.style.height = '30px';
+            //
+            //
+            //         container.onclick = function() {
+            //             // 切换图层控制器的可见性
+            //             var layerControlElement = document.getElementsByClassName('leaflet-control-layers')[0];
+            //             if (layerControlElement.style.display === 'none') {
+            //                 layerControlElement.style.display = 'block';
+            //                 container.innerHTML = 'fold';
+            //             } else {
+            //                 layerControlElement.style.display = 'none';
+            //                 container.innerHTML = 'unfold';
+            //             }
+            //         }
+            //
+            //         return container;
+            //     },
+            //
+            //     onRemove: function(map) {
+            //         // Nothing to do here
+            //     }
+            // });
+            //
+            // L.control.collapseControl = function(opts) {
+            //     return new L.Control.CollapseControl(opts);
+            // }
+            // map.addControl(L.control.collapseControl({ position: 'topleft' }));
 
-                    container.onclick = function() {
-                        // 切换图层控制器的可见性
-                        var layerControlElement = document.getElementsByClassName('leaflet-control-layers')[0];
-                        if (layerControlElement.style.display === 'none') {
-                            layerControlElement.style.display = 'block';
-                            container.innerHTML = 'fold';
-                        } else {
-                            layerControlElement.style.display = 'none';
-                            container.innerHTML = 'unfold';
-                        }
-                    }
-
-                    return container;
-                },
-
-                onRemove: function(map) {
-                    // Nothing to do here
-                }
-            });
-
-            L.control.collapseControl = function(opts) {
-                return new L.Control.CollapseControl(opts);
-            }
-            map.addControl(L.control.collapseControl({ position: 'topleft' }));
         }
 
         var layers = {};
 
 
+
+        function generateColor() {
+            var color = '#';
+            var factor = 8; // 偶数次较深，奇数次较浅
+            // var factor = count % 2 === 0 ? 8 : 4; // 偶数次较深，奇数次较浅
+
+            for (var i = 0; i < 6; i++) {
+                // 生成颜色码，偶数次从8-F，奇数次从4-F
+                color += letters[Math.floor(Math.random() * (16 - factor)) + factor];
+            }
+
+            // 确保不返回历史中的颜色
+            while (history_colors.has(color)) {
+                color = '#';
+                for (var i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * (16 - factor)) + factor];
+                }
+            }
+
+            history_colors.add(color); // 添加到历史颜色集合中
+            count++; // 更新计数器
+            return color;
+        }
         function getRandomColor(label) {
             const label_belong =label.split("_").slice(0, 2).join("_");
+            // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
+            // const label_belong = label.substring(0, lastIndex);
             if (label_belong in color_dict){
                 return color_dict[label_belong]
             }
             else
             {
-                var letters = '0123456789ABCDEF';
-                var color = '#';
-                for (var i = 0; i < 6; i++) {
-                    color += letters[Math.floor(Math.random() * 16)];
-                }
+                var color = generateColor()
                 color_dict[label_belong]=color
                 return color;
             }
@@ -282,7 +316,8 @@
 
         // 遍历并添加新多边形到地图和GeoJSON图层
         Object.keys(newPolygons).forEach(label => {
-            const label_belong =label.split("_").slice(0, 2).join("_");
+            const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
+            const label_belong = label.substring(0, lastIndex);
             var color = getRandomColor(label);
             var wkt = newPolygons[label];
             var geojson = (wkt); // 假设使用 wellknown 库来解析WKT
@@ -315,14 +350,9 @@
     }
 
     var map = L.map('map-container').setView([0, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    // 示例新数据
-    var newPolygons = {
-        'Label3': 'POLYGON((10 10, 11 10, 11 11, 10 11, 10 10))',
-        'Label4': 'POLYGON((12 12, 13 12, 13 13, 12 13, 12 12))'
-    };
-
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        opacity: 0.5  // 设置透明度为50%
+    }).addTo(map);
     // 更新地图数据并自动缩放以适应所有元素
     // updateMapDataAndFitBounds(map, newPolygons);
 

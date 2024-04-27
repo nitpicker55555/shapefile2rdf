@@ -39,7 +39,7 @@ def remove_semicolon_before_union(input_string):
 def cur_action(query):
     try:
         query=remove_semicolon_before_union(query)
-        print(query)
+        # print(query)
         cur.execute(query)
         rows =cur.fetchall()
         return rows
@@ -70,7 +70,7 @@ def ids_of_attribute(graph_name, bounding_box_coordinats=None):
     if 'bounding_coordinates' in globals_dict:
         bounding_box_coordinats = globals_dict['bounding_coordinates']
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-        bounding_judge_query=f"WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
+        bounding_judge_query=f"WHERE ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
     attributes_set = set()
     if graph_name=='soil':
         fclass='leg_text'
@@ -136,7 +136,7 @@ def ids_of_type(graph_names, single_type, bounding_box_coordinats=None):
         if 'bounding_coordinates' in globals_dict:
             bounding_box_coordinats = globals_dict['bounding_coordinates']
             min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-            bounding_judge_query=f"WHERE ST_Within(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
+            bounding_judge_query=f"WHERE ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
             if single_type != 'all':
                 if single_type[0] == '(':
                     fclass_row = f"AND {fclass} in {single_type};"
@@ -167,14 +167,16 @@ def ids_of_type(graph_names, single_type, bounding_box_coordinats=None):
 
     # print(bounding_query)
     final_query = "UNION ALL".join(queries)
+    # print(final_query)
     rows = cur_action(final_query)
 
     result_dict = {}
+    # print(graph_names)
     for row in rows:
 
 
         # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
-        if graph_names==['soilcomplete']:
+        if graph_names==['soil']:
             # soil 没有name
 
 
@@ -201,26 +203,26 @@ def ids_of_type(graph_names, single_type, bounding_box_coordinats=None):
 
 
 def area_calculate(data_list1_original,top_num=None):
-
+    top_num=int(top_num)
     data_list1 = copy.deepcopy(data_list1_original)
     if isinstance(data_list1, dict) and 'id_list' in data_list1: #ids_of_type return的id_list是可以直接计算的字典
         data_list1 = data_list1['id_list']
 
-        list_2_geo1 = {i:[(global_id_geo[i]).area,global_id_geo[i]] for i in data_list1}
-        data_list1=list_2_geo1
-        sorted_dict=dict(sorted(data_list1.items(), key=lambda item: item[1][0], reverse=True))
-        if top_num!=None:
-            top_dict=dict(islice(sorted_dict.items(), top_num))
-        else:
-            top_dict=sorted_dict
-        area_list = {key: value[0] for key, value in top_dict.items()}
-        geo_dict = {key: value[1] for key, value in top_dict.items()}
+    list_2_geo1 = {i:[(global_id_geo[i]).area,global_id_geo[i]] for i in data_list1}
+    data_list1=list_2_geo1
+    sorted_dict=dict(sorted(data_list1.items(), key=lambda item: item[1][0], reverse=True))
+    if top_num!=None:
+        top_dict=dict(islice(sorted_dict.items(), top_num))
+    else:
+        top_dict=sorted_dict
+    area_list = {key: value[0] for key, value in top_dict.items()}
+    geo_dict = {key: value[1] for key, value in top_dict.items()}
 
-        return {'area_list':area_list,'geo_map':geo_dict,'id_list':geo_dict}
+    return {'area_list':area_list,'geo_map':geo_dict,'id_list':geo_dict}
 
 def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0):
     if mode=='area_calculate':
-        return area_calculate(data_list2_original,buffer_number)
+        return area_calculate(data_list1_original,buffer_number)
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
     """
     buildings in forest
@@ -299,16 +301,16 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
                 parent_dict.extend(matching_osmIds)
                 child_dict.append(osmId1)
                 # result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
-                print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
+                # print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
         print(len(osmId1_dict))
 
 
     elif mode == "buffer":
-        for osmId1, geom1 in tqdm(gseries1.items(), desc="buffer"):
+        for osmId2, geom2 in tqdm(gseries2.items(), desc="buffer"):
             # osmId1 is smaller element : subject
             # matching_osmIds is bigger element : object
             # 创建缓冲区（100米）
-            buffer = geom1.buffer(buffer_number)
+            buffer = geom2.buffer(buffer_number)
 
             possible_matches_index = list(sindex.intersection(buffer.bounds))
             possible_matches = gseries2.iloc[possible_matches_index]
@@ -316,11 +318,11 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                all_id_list.append(osmId1)
-                osmId1_dict[osmId1]=geom1
+                all_id_list.append(osmId2)
+                osmId1_dict[osmId2]=geom2
                 all_id_list.extend(matching_osmIds)
                 parent_dict.extend(matching_osmIds)
-                child_dict.append(osmId1)
+                child_dict.append(osmId2)
                 # result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
                 # print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
 
@@ -394,8 +396,11 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 # list_type_of_graph_name('http://example.com/landuse')
 def id_explain(id_list):
 
-    if isinstance(id_list, dict) and 'id_list' in id_list: #ids_of_type return的id_list是可以直接计算的字典
-        id_list = id_list['id_list']
+    if isinstance(id_list, dict): #ids_of_type return的id_list是可以直接计算的字典
+        if 'id_list' in id_list:
+            id_list = id_list['id_list']
+        elif 'subject' in id_list:
+            id_list = id_list['object']['id_list']
     # print(id_list)
 
     element_count = {}
@@ -658,10 +663,14 @@ def sql_debug():
 # plt.ylabel('Number of Buildings')
 # plt.grid(True)
 # plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305001254.png')
-set_bounding_box("munich")
-print(ids_of_type(['landuse','buildings'],'university'))
+# set_bounding_box("munich")
+
 # a=(ids_of_type('soil', '82: Fast ausschließlich Kalkpaternia aus Carbonatfeinsand bis -schluff über Carbonatsand bis -kies (Auensediment, hellgrau)'))
 # print(ids_of_attribute('soil'))
 # print(ids_of_attribute('soil'))
 # print(ids_of_attribute('buildings'))
 # print(ids_of_attribute('soil'))
+# aa=['21: Fast ausschließlich humusreiche Pararendzina aus Carbonatsandkies bis -schluffkies (Schotter), gering verbreitet mit flacher Flussmergeldecke', '57: Fast ausschließlich Rendzina aus Kalktuff oder Alm', '4a: Überwiegend Parabraunerde und verbreitet Braunerde aus Schluff bis Schluffton (Lösslehm) über Carbonatschluff (Löss)']
+# ids_of_type('soil',aa)
+# print(ids_of_attribute('landuse'))
+# print(ids_of_attribute('soil')

@@ -23,8 +23,8 @@ import sys
 from io import StringIO
 from datetime import datetime
 from flask_socketio import SocketIO, emit
-from repair_data import repair,crs_transfer
-from shape2ttf import shapefile_to_ttl
+# from repair_data import repair,crs_transfer
+# from shape2ttf import shapefile_to_ttl
 output = StringIO()
 original_stdout = sys.stdout
 app = Flask(__name__)
@@ -165,15 +165,23 @@ def judge_list(result):
             # 如果解析时发生错误，说明字符串不是有效的列表字符串
             return False
 def details_span(result,run_time):
+    pattern = r"An error occurred:.*\)"
+    match = re.search(pattern, result)
 
-    aa=f"""
+    if match:
+        error_message = match.group(0)
+        aa=error_message
+        return {'error':result+" \n "+aa}
+    else:
+        aa = f"""
 <details>
-    <summary>`Code result: Length:{len_str2list(str(result))},Run_time:{round(run_time,2)}s`</summary>
+    <summary>`Code result: Length:{len_str2list(str(result))},Run_time:{round(run_time, 2)}s`</summary>
        {str(result)}
 </details>
-    """
+            """
 
-    return aa
+
+        return {'normal':aa}
 def short_response(text_list):
     if len(str(text_list))>1000 and judge_list(text_list):
         if len_str2list(text_list)<40:
@@ -329,88 +337,112 @@ def submit():
         if session['template']==True:
             code_list.append(data)
         else:
-            if judge_query_first(data)['judge']:
-                code_list=judge_query(data)['code'].split("\n")
-            else:
+            data=data.lower()
 
-                bounding_box_indicate = judge_bounding_box(data)
-                if bounding_box_indicate != None:
-                    code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
-                    if bounding_box_indicate in data:
-                        if f"in {bounding_box_indicate}" in data:
-                            data_without_placename=data.replace(f'in {bounding_box_indicate}','')
-                        else:
-                            data_without_placename = data.replace(f'{bounding_box_indicate}', '')
-                        data=data_without_placename
 
-                object_subject = judge_object_subject(data)  # primary_subject,related_geographic_element
-                yield f"\n\n`{object_subject}`\n"
-                geo_relation_dict = judge_geo_relation(data)
-                yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
-                code_list.append("""
+            bounding_box_indicate = judge_bounding_box(data)
+            if bounding_box_indicate != None:
+                code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
+                if bounding_box_indicate in data:
+                    if f"in {bounding_box_indicate}" in data:
+                        data_without_placename=data.replace(f'in {bounding_box_indicate}','')
+                    else:
+                        data_without_placename = data.replace(f'{bounding_box_indicate}', '')
+                    data=data_without_placename
+
+
+            geo_relation_dict = judge_geo_relation(data)
+            yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
+
+            object_subject = judge_object_subject(data,geo_relation_dict)  # primary_subject,related_geographic_element
+            yield f"\n\n`{object_subject}`\n"
+            code_list.append("""
 graph_dict={}
 graph_type_list={}
 type_dict={}
 element_list={'primary_subject':None,'related_geographic_element':None}
-                        """)
-                if geo_relation_dict==None:                                                                     #没有地理关系
+                    """)
+            if geo_relation_dict==None and object_subject['related_geographic_element']!=None:                                                                     #没有地理关系,有related_geographic_element，是subject的形容词,object subject 被全部送入judge_type防止没有主语
 
-                    code_list.append(f"""
-graph_dict['primary_subject'] = judge_type('{object_subject['primary_subject']}')["database"]
+                code_list.append(f"""
+graph_dict['primary_subject'] = judge_type({object_subject})["database"]
 graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
-type_dict['primary_subject'] = pick_match('{object_subject['related_geographic_element']}', graph_type_list['primary_subject'])
-                            """)
-                    code_list.append(
-                        f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
-                else:
+type_dict['primary_subject'] = pick_match('{object_subject['related_geographic_element']}', graph_type_list['primary_subject'],graph_dict['primary_subject'])
+                        """)
+                code_list.append(
+                    f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
+            elif geo_relation_dict==None and object_subject['related_geographic_element']==None:                                                                   #没有地理关系,无related_geographic_element，比如show soil
+                code_list.append(f"""
+graph_dict['primary_subject'] = judge_type({object_subject})["database"]                                                                                         
+graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
+type_dict['primary_subject'] = pick_match('{object_subject['primary_subject']}', graph_type_list['primary_subject'],graph_dict['primary_subject'] )
+                                        """)
+                code_list.append(
+                    f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
+            else:
 
-                    code_list.append(f"geo_relation_dict={geo_relation_dict}")
+                code_list.append(f"geo_relation_dict={geo_relation_dict}")
 
 
-                    # graph_dict={}
-                    # graph_type_list={}
-                    # type_dict={}
-                    # element_list={}
+                # graph_dict={}
+                # graph_type_list={}
+                # type_dict={}
+                # element_list={}
 
-                    for item_, value in object_subject.items():
-                        if value != None:
-                            code_list.append(f"""
+                for item_, value in object_subject.items():
+                    if value != None and (geo_relation_dict['type']!='area_calculate' or item_!='related_geographic_element'): #如果geo是area_calculate那么related_geographic_element就不能算进来
+                        code_list.append(f"""
 graph_dict['{item_}']=judge_type('{value}')['database']
 graph_type_list['{item_}']=ids_of_attribute(graph_dict['{item_}'])
-type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'])
-                                        """)
-                            code_list.append(
-                                f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
-                            # graph_dict[item_]=judge_type(object_subject[item_])['database']               #判断图名
-                            # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])                    #得到该图所有的属性
-                            # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
-                            # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
+type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'],graph_dict['{item_}'])
+                                    """)
+                        code_list.append(
+                            f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
+                        # graph_dict[item_]=judge_type(object_subject[item_])['database']               #判断图名
+                        # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])                    #得到该图所有的属性
+                        # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
+                        # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
 
-                    code_list.append("geo_result=geo_calculate(element_list['related_geographic_element'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])")
+                code_list.append("geo_result=geo_calculate(element_list['primary_subject'],element_list['related_geographic_element'],geo_relation_dict['type'],geo_relation_dict['num'])")
 
 
 
         lines_list = code_list
-        for lines in lines_list:
+
+        for line_num,lines in enumerate(lines_list):
             yield f"\n\n```python\n{lines}\n```"
             yield "\n\n`Code running...`\n"
 
             lines=[lines]
             if '=' in lines[-1] and (
                     'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
-                -1] or 'area_calculate' in lines[-1]):
+                -1]):
+
                 variable_str = lines[-1].split('=')[0]
+                explain_row=''
+                if 'set_bounding_box' not in lines[-1] and line_num==(len(lines_list)-1) :
+                    explain_row=f"""
+explain=id_explain({variable_str})
+print(judge_result(explain))
+"""
                 new_line = f"""
 send_data({variable_str}['geo_map'],'map')
+
             """
                 lines.append(new_line)
             elif '=' not in lines[-1] and (
                     'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
-                -1] or 'area_calculate' in lines[-1]):
-
+                -1]):
+                explain_row = ''
+                if 'set_bounding_box' not in lines[-1]  and line_num==(len(lines_list)-1):
+                    explain_row = f"""
+explain=id_explain(temp_result)
+print(judge_result(explain))    
+                """
                 new_line = f"""
 temp_result={lines[-1]}
 send_data(temp_result['geo_map'],'map')
+
             """
                 lines[-1] = new_line
             elif '=' not in lines[-1]:
@@ -418,6 +450,7 @@ send_data(temp_result['geo_map'],'map')
 print({lines[-1]})
                             """
                 lines[-1] = new_line
+
 
 
             code_str = '\n'.join(lines)
@@ -429,6 +462,7 @@ print({lines[-1]})
             try:
 
                 exec(code_str, globals())
+
             except Exception as e:
                 print(f"An error occurred: {repr(e)}")
             end_time = time.time()  # 记录函数结束时间
@@ -437,7 +471,11 @@ print({lines[-1]})
             output.truncate(0)
             sys.stdout = original_stdout
             code_result = str(code_result)
-            yield details_span(code_result, run_time)
+            show_template=details_span(code_result, run_time)
+            yield list(show_template.values())[0]
+            if 'error' in show_template:
+                break
+
 
 
 

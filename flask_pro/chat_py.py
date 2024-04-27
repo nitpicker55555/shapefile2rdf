@@ -25,20 +25,20 @@ def chat_completion_request(messages, tools=tools, tool_choice=None, model=GPT_M
             tool_choice=tool_choice,#强制选用某个function
         )
         return response.choices[0].message
-def chat_single(messages,mode="json"):
+def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
     if mode=="json":
 
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
+            model=model,
             response_format={"type": "json_object"},
             temperature=0,
             messages=messages
         )
     else:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
+            model="gpt-3.5-turbo-0125",
             messages=messages
-        )
-    print( response.choices[0].message.content)
-    return response.choices[0].message.content
 
+        )
+    print(response.choices[0].message.content)
+    return response.choices[0].message.content

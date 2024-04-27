@@ -17,7 +17,10 @@ def calculate_similarity(words, key_word):
     words_with_key = words + [key_word]
 
     # Compute embeddings for all words including the key_word
+
     embeddings = model.encode(words_with_key, convert_to_tensor=True, show_progress_bar=True)
+
+
 
     # Extract the embedding for the key_word
     key_word_embedding = embeddings[-1].unsqueeze(0)

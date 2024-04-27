@@ -43,7 +43,7 @@
     background-color: pink;
 
   }
- #plus_button{
+  #plus_button{
     z-index: 999;
   }
   body, html {
@@ -113,8 +113,9 @@
 
     // 加载一个地图瓦片层
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+      attribution: '© OpenStreetMap contributors'
     }).addTo(mymap);
+
     // 创建一个GeoJSON对象
 
 
@@ -241,16 +242,18 @@
 
       try {
         // 根据条件计算颜色
-        if (d_value > one_quarter[selectedShapes]['3/4']) {
+        if (d_value >= one_quarter[selectedShapes]['3/4']) {
           color = '#574249';
         } else if (d_value > one_quarter[selectedShapes]['2/4'] && d_value <=one_quarter[selectedShapes]['3/4']) {
           color = '#64acbe';
         } else if (d_value > one_quarter[selectedShapes]['1/4'] && d_value <= one_quarter[selectedShapes]['2/4']) {
           color = '#c85a5a';
-        } else if (d_value < one_quarter[selectedShapes]['1/4']) {
+        } else if (d_value <= one_quarter[selectedShapes]['1/4']) {
           color = '#e8e8e8';
         } else {
-          color = '#e8e8e8'; // 默认颜色
+          console.log(typeof d_value)
+
+          color = 'green'; // 默认颜色
         }
       } catch (error) {
         console.error(error, selectedShapes); // 如果有错误发生，打印错误信息
@@ -268,22 +271,19 @@
       } else if (selectedShapes.length > 0 && conditions[1] === true) {
         color = '#e8e8e8';
       } else {
-        color = '#e8e8e8'; // 默认颜色
+        color = 'black'; // 默认颜色
       }
       return color
     }
     if (checkbox.checked && selectedShapes.length===2) {
       // console.log('Checkbox is checked');
-      console.log(one_quarter.length)
       one_quarter={}
       one_quarter[selectedShapes[0]]=calculateQuartiles(selectedShapes)
-      console.log(one_quarter.length)
-
 
     }
 
 
-      circles.forEach(function(circle) {
+    circles.forEach(function(circle) {
       // 假设圆圈实例上存储了它对应的数据
       var d = circle.options.data; // 假设我们在创建圆圈时，将数据保存在了options对象的data属性中
 
@@ -292,10 +292,18 @@
 
       var color;
       if (selectedShapes.length===2){
-
         if (mode !== 'shap') {
 
-             {
+          if (checkbox.checked) {
+            // console.log('Checkbox is checked');
+
+            color=contains_mode_quarter(d[selectedShapes[0]]+d[selectedShapes[1]],selectedShapes[0],one_quarter)
+
+
+
+
+            // 在这里执行你需要的操作，当复选框被选中时
+          } else {
             // console.log('Checkbox is not checked');
             try {
               // 根据条件计算颜色
@@ -310,23 +318,21 @@
 
 
         }
-
         else
+        if (checkbox.checked) {
+          // console.log('Checkbox is checked');
+
+          color=contains_mode_quarter(Number(d[selectedShapes[0]])+Number(d[selectedShapes[1]]),selectedShapes[0],one_quarter)
+
+
+
+
+          // 在这里执行你需要的操作，当复选框被选中时
+        }else
+
         {
-          if (checkbox.checked) {
-            // console.log('Checkbox is checked');
-
-            color=contains_mode_quarter(d[selectedShapes[0]]+d[selectedShapes[1]],selectedShapes[0],one_quarter)
-
-
-
-
-            // 在这里执行你需要的操作，当复选框被选中时
-          }else{
-            conditions = selectedShapes.map(shape => +d[shape] > 0);
-            color=contains_mode_normal(conditions,selectedShapes)
-          }
-
+          conditions = selectedShapes.map(shape => +d[shape] > 0);
+          color=contains_mode_normal(conditions,selectedShapes)
         }
 
 

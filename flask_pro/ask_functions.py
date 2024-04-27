@@ -37,24 +37,16 @@ def limit_total_words(lst, max_length=10000):
 def error_test():
     print("normal output")
     raise Exception("asdasdawfdafc asdac zcx fwe")
-def describe_label(query,given_list,messages=None):
+def describe_label(query,given_list,table_name,messages=None):
     if messages == None:
         messages = []
 
     ask_prompt = """
-    Based on the this list: %s, create imitations to meet user needs. Be sure to use the same language as the provided list, and be as concise as possible, offering only keywords. Response in json
-    Example1:
-        user:"good for planting strawberry"
-        response:
-        {
-        "result": "Hauptsächlich Braunerde aus sandigem Lehm (Oberschicht) über Kalkstein, ideal für Erdbeeranbau mit ausreichender Feuchtigkeit und reich an Kalium."
-        }
-    Example2:
-        user:"good for planting potatoes"
-        response:
-        {
-        "result": "Hauptsächlich Podsol-Braunerde, sandig-lehmig, auf Granit-/Gneisschutt, optimal für Kartoffelanbau, gute Wasserdrainage, nährstoffreich."
-        }
+    Based on the this list: %s, create imitations to match the query. Be sure to use the same language as the provided list, and be as concise as possible, offering only keywords. Response in json
+    {
+    'result':statement
+    }
+    
     """%given_list
     if messages == None:
         messages = []
@@ -64,6 +56,7 @@ def describe_label(query,given_list,messages=None):
     # print(result)
     json_result = json.loads(result)
     if 'result' in json_result:
+
             return json_result['result']
     else:
         raise Exception('no relevant item found for: ' + query + ' in given list.')
@@ -83,6 +76,11 @@ def vice_versa(query, messages=None):
         user:"negative for planting tomatoes"
         {
         "result": "positive for planting tomatoes"
+        }
+    Example3:
+        user:"for commercial"
+        {
+        "result": "not for commercial"
         }
     """
     if messages == None:
@@ -163,29 +161,38 @@ def details_pick_chatgpt(query,given_list,table_name,messages=None):
 
 
 def details_pick(query, given_list, table_name, messages=None):
-
-    reversed_query = vice_versa(query)
-    new_paring_dict = {query: [], reversed_query: []}
-    # describe the target label to make match more precise
-    target_label_describtion=describe_label(query,list(given_list)[:2])
-
-    query_paring_list=calculate_similarity_openai(table_name,target_label_describtion)
-    if len(query_paring_list)!=0:
-
+    def after_match(query_paring_list):
         vice_list=set(given_list)-set(query_paring_list)
-        new_paring_dict[query]=query_paring_list
-        new_paring_dict[reversed_query]=vice_list
+        new_paring_dict[query]=list(query_paring_list)
+        new_paring_dict[reversed_query]=list(vice_list)
         if table_name not in global_paring_dict:
             global_paring_dict[table_name] = {}
 
         global_paring_dict[table_name].update(new_paring_dict)
 
-        with open('global_paring_dict.jsonl', 'a', encoding='utf-8') as file:
-            json.dump({table_name: new_paring_dict}, file)
-            file.write('\n')
-        return new_paring_dict[query]
+        return new_paring_dict
+    reversed_query = vice_versa(query)
+    new_paring_dict = {query: [], reversed_query: []}
+    # describe the target label to make match more precise
+
+    query_paring_list=calculate_similarity_openai(table_name,query)
+    if len(query_paring_list)!=0:
+        result=after_match(query_paring_list)
+        new_paring_dict.update(result)
+        return result[query]
     else:
-        raise Exception('no relevant item found for: ' + query)
+        target_label_describtion = describe_label(query, list(given_list)[:2],table_name)
+        query_paring_list = calculate_similarity_openai(table_name, target_label_describtion)
+
+        if len(query_paring_list)!=0:
+            result = after_match(query_paring_list)
+            new_paring_dict.update(result)
+            with open('global_paring_dict.jsonl', 'a', encoding='utf-8') as file:
+                json.dump({table_name: new_paring_dict}, file)
+                file.write('\n')
+            return result[query]
+        else:
+            raise Exception('no relevant item found for: ' + query)
 def pick_match(query,given_list,table_name):
     if query in given_list:
         return query
@@ -204,7 +211,7 @@ def pick_match(query,given_list,table_name):
     else:
         match_dict=calculate_similarity(given_list,query)
     print(query+'\n')
-    print(given_list)
+    # print(given_list)
     print('\n\nmatch_dict:',match_dict)
     if match_dict!={}:
         return list(match_dict.keys())
@@ -233,11 +240,8 @@ def judge_bounding_box(query,messages=None):
             "exist":false
         }
     }
-    Example:
-    user: I want to know buildings in forest in munich
-    Assistant: in munich
-    user: I want to know residential area around park in munich moosach
-    Assistant: in munich moosach
+    Here are some place name may be appear in query:
+    munich, munich moosach, munich maxvorstadt
     """
     if messages==None:
         messages=[]
@@ -259,31 +263,55 @@ def judge_geo_relation(query,messages=None):
     if messages==None:
         messages=[]
     geo_relation=['intersects','contains','buffer','area_calculate']
-    ask_prompt="""
-If the query includes sections about geospatial calculations such as intersects, contains, buffer, or area_calculate, please respond with the JSON format indicating whether these calculations exist, what type it is('it should be single type'), and the number mentioned. The JSON should look like this:
+    ask_prompt="""You are a search query analyst tasked with analyzing user queries to determine if they include 
+    geographical relationships. For each query, assess if it contains any of the following geographical operations: [
+    'intersects', 'contains', 'buffer', 'area_calculate']. Provide a response indicating whether the query includes a 
+    geographical calculation and, if so, which type. Response in json format. Examples of expected analyses are as follows: 
 
-```json
+Query: "I want to know buildings 100m around the forest"
+Response:
 {
     "geo_calculations": {
         "exist": true,
-        "type": "type",
-        "num": "num"
+        "type": "buffer",
+        "num": 100
     }
 }
-```
-If query is about 'near/close', geospatial calculations should be buffer with num 10.
-If query is about largest n elements, geospatial calculations should be area_calculate with num n.
-If query is about 'in/on/within', geospatial calculations should be contains.
-If these calculations are not included in the query, respond with:
-
-```json
+Query: "I want to know buildings in forest"
+Response:
 {
     "geo_calculations": {
-        "exist": false
+        "exist": true,
+        "type": "contains",
+        "num": 0
     }
 }
-```
+Query: "I want to know residential closed to park"
+Response:
+{
+    "geo_calculations": {
+        "exist": true,
+        "type": "buffer",
+        "num": 10
+    }
+}
+Query: "I want to know the largest 5 parks"
+Response:
+{
+    "geo_calculations": {
+        "exist": true,
+        "type": "area_calculate",
+        "num": 5
+    }
+}
+For queries that do not involve any geographical relationship, your response should be:
 
+{
+    "geo_calcalculations": {
+        "exist": false,
+    }
+}
+Please ensure accuracy and precision in your responses, as these are critical for correctly interpreting the user's needs.
     """
     if messages==None:
         messages=[]
@@ -304,33 +332,52 @@ If these calculations are not included in the query, respond with:
             return None
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
-def judge_object_subject(query,messages=None):
+def judge_object_subject(query,geo_relation_dict,messages=None):
     print('query for judge_object_subject:',query)
     if messages==None:
         messages=[]
-    ask_prompt="""Please provide information in the following json format: {'primary_subject':primary_subject, 
-    'related_geographic_element':related_geographic_element}. 
+    ask_prompt_geo_relation="""
+    
+    Please response in json format: {'primary_subject':primary_subject, 
+    'related_statement':related_geographic_element}. 
     
     For example, when I ask, 'I want to know the 
     residential area near the swamp,' you should respond with: {'primary_subject':'residential area', 
-    'related_geographic_element':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
-    ' the response should be:  {'primary_subject':'buildings', 'related_geographic_element':'forests'}, 
-    for 'buildings for commercial in munich ismaning',the response should be:  {'primary_subject':'buildings', 
-    'related_geographic_element':'commercial'}
+    'related_statement':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
+    ' the response should be:  {'primary_subject':'buildings', 'related_statement':'forests'}, 
     
-    
-    if there is adj in query which describe primary_subject, like: 'soil type good for agriculture', the response 
-    should include adj in related_geographic_element:{'primary_subject':'soil', 'related_geographic_element':'good 
-    for agriculture'}. 
-    
-    if user's query is about agriculture or planting relevant but not explicitly mentioned "soil", the primary_subject should be soil.
+    If there is no related_statement, related_statement should be set as None, example: 
+    for 'the largest 5 forest', related_statement is None. """
+    ask_prompt_adj="""
+You are a query analysis expert. Your task is to extract the primary subject and any related statements from user queries. Here's how you should approach it:
 
-    
-    If there is no related_geographic_element, related_geographic_element should be set as None, example: 
-    for 'the largest 5 forest', related_geographic_element is None. """
+Identify the primary subject in the query. This is often a noun or a noun phrase that forms the core focus of the query.
+Extract the related statement which modifies or provides additional context about the primary subject, and response in json format.
+For example:
+
+Query: "soil type good for agriculture"
+Expected Output: {'primary_subject':'soil', 'related_statement':'good for agriculture'}
+Query: "buildings which is commercial"
+Expected Output: {'primary_subject':'buildings', 'related_statement':'commercial'}
+If a query does not explicitly mention a primary subject but provides a statement,like asking about 'where is for...' set primary_subject as None:
+Query: "Where is good for planting strawberries"
+Expected Output: {'primary_subject':None, 'related_statement':'good for planting strawberry'}
+Query: "Where is good for planting vegetables"
+Expected Output: {'primary_subject':None, 'related_statement':'good for planting vegetables'}
+If there is no modifying statement, set the related_statement to None:
+Query: "show greenery"
+Expected Output: {'primary_subject': 'greenery', 'related_statement': None}
+Your goal is to consistently apply this method to analyze and break down user queries into structured data as shown above.
+    """
+
     if messages==None:
         messages=[]
-
+    if geo_relation_dict!=None and 'area_calculate' not in geo_relation_dict:
+            print('geo_calculate')
+            ask_prompt=ask_prompt_geo_relation
+    else:
+        print('ask_prompt_adj')
+        ask_prompt=ask_prompt_adj
     messages.append(message_template('system',ask_prompt))
     messages.append(message_template('user',query))
     result=chat_single(messages,'json')
@@ -339,12 +386,17 @@ def judge_object_subject(query,messages=None):
     if 'primary_subject' in json_result:
 
 
-        return {'primary_subject':json_result['primary_subject'],'related_geographic_element':json_result['related_geographic_element']}
+        return {'primary_subject':json_result['primary_subject'],'related_geographic_element':json_result['related_statement']}
 
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
 
 def judge_type(query,messages=None):
+    if isinstance(query,dict):
+        if query['primary_subject']!=None: #没有地理关系,有related_geographic_element，是subject的形容词,object subject 被全部送入judge_type防止没有主语
+            query= query['primary_subject']
+        else:
+            query=query['related_geographic_element']
     if query==None:
         return None
     if messages==None:
@@ -354,8 +406,7 @@ def judge_type(query,messages=None):
     ask_prompt="""
     There are two database: [soil,landuse], 
     'soil' database stores various soil types, such as swamps, wetlands, soil compositions.
-    'landuse' database stores various types of urban land use like park, forest, residential area.
-    
+    'landuse' database stores various types of urban land use like park, forest, residential area, school.
     response the correct database name given the provided data name in json format like:
     {
     'database':database
@@ -508,7 +559,7 @@ print(id_2_attributes(buildings_on_soil['subject']))
 # graph_type_list=ids_of_attribute('soil')
 # aa=pick_match('swamp',graph_type_list)
 # print(aa)
-# from geo_functions import *
+#
 # iii=ids_of_attribute('landuse')
 # print(pick_match('parks', iii))
 
@@ -516,11 +567,13 @@ print(id_2_attributes(buildings_on_soil['subject']))
 # id_farmland=ids_of_type('landuse','forest')
 # buildings_near_farmland=geo_calculate(id_farmland,id_buildings,'contains',10)
 # print(id_2_attributes(soil_under_buildings['subject']))
-from geo_functions import *
-from rag_model_openai import build_vector_store
-soil=list((ids_of_attribute('buildings')))[:1000]
-# print(soil)
-build_vector_store(soil,'buildings')
+# from geo_functions import *
+# #
+# print(pick_match('good for planting strawberry', ids_of_attribute('soil'), 'soil'))
+# from rag_model_openai import build_vector_store
+# soil=list((ids_of_attribute('buildings')))[:1000]
+# # print(soil)
+# build_vector_store(soil,'buildings')
 # set_bounding_box("munich ismaning")
 # a2=ids_of_type('buildings','building')
 # a1=ids_of_type('landuse','forest')
@@ -534,4 +587,6 @@ build_vector_store(soil,'buildings')
 # print(pick_match('school', a))
 #
 # print(pick_match('good fot agriculture', ids_of_attribute('soil')))
-# judge_object_subject('where is good for planting strawberry')
+
+# print(judge_geo_relation("I want to know where is good for planting strawberry",None))
+# print(judge_geo_relation("buildings in forest",None))
