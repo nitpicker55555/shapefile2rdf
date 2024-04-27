@@ -278,6 +278,7 @@ Response:
     }
 }
 Query: "I want to know buildings in forest"
+Reasoning: if query is about in/within, type of geo_calculations is contains.
 Response:
 {
     "geo_calculations": {
@@ -589,4 +590,4 @@ print(id_2_attributes(buildings_on_soil['subject']))
 # print(pick_match('good fot agriculture', ids_of_attribute('soil')))
 
 # print(judge_geo_relation("I want to know where is good for planting strawberry",None))
-# print(judge_geo_relation("buildings in forest",None))
+

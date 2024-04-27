@@ -279,7 +279,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     # gseries2.index = [item['osmId'] for item in data_list2]
 
     # 创建空间索引
-    sindex = gseries2.sindex
+    sindex2 = gseries2.sindex
+    sindex1 = gseries1.sindex
     result_list = []
     all_id_list = []
     osmId1_dict = {}
@@ -289,7 +290,7 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
         # 检查包含关系
 
         for osmId1, geom1 in gseries1.items():
-            possible_matches_index = list(sindex.intersection(geom1.bounds))
+            possible_matches_index = list(sindex2.intersection(geom1.bounds))
             possible_matches = gseries2.iloc[possible_matches_index]
             precise_matches = possible_matches[possible_matches.contains(geom1)]
 
@@ -312,8 +313,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
             # 创建缓冲区（100米）
             buffer = geom2.buffer(buffer_number)
 
-            possible_matches_index = list(sindex.intersection(buffer.bounds))
-            possible_matches = gseries2.iloc[possible_matches_index]
+            possible_matches_index = list(sindex1.intersection(buffer.bounds))
+            possible_matches = gseries1.iloc[possible_matches_index]
             precise_matches = possible_matches[possible_matches.intersects(buffer)]
 
             if not precise_matches.empty:
@@ -329,7 +330,7 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     elif mode == "intersects":
         # 检查交叉关系
         for osmId1, geom1 in gseries1.items():
-            possible_matches_index = list(sindex.intersection(geom1.bounds))
+            possible_matches_index = list(sindex2.intersection(geom1.bounds))
             possible_matches = gseries2.iloc[possible_matches_index]
             precise_matches = possible_matches[possible_matches.intersects(geom1)]
 
@@ -386,6 +387,10 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
 
     return {'object':{'id_list':parent_dict},'subject':{'id_list':child_dict},'geo_map':geo_dict}
+    # return {'subject_id_list':parent_dict,'object_id_list':child_dict,'geo_map':geo_dict}
+    # return child_dict,parent_dict,geo_dict
+    # return geo_dict
+
     # return {'subject_id_list':parent_dict,'object_id_list':child_dict,'geo_map':geo_dict}
     # return child_dict,parent_dict,geo_dict
     # return geo_dict
@@ -572,19 +577,19 @@ def sql_debug():
 # aa=["78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum",
 #         "79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf",
 #         "65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig",
-#         "75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf"
-# ]
-# ids_of_type('soil',aa)
+# #         "75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf"
+# # ]
+# # ids_of_type('soil',aa)
 # set_bounding_box("munich ismaning")
 # id2=ids_of_type('buildings','building')
 # id1=ids_of_type('landuse','farmland')
-# id3=ids_of_type('landuse','forest')
-# area=area_calculate(id3,5)
-# print(area['id_list'])
-# print(id3)
-
-# a=geo_calculate(id1,id2,'buffer',10)
-# cc=geo_calculate(id3,a['subject'],'intersects')
+# # id3=ids_of_type('landuse','forest')
+# # area=area_calculate(id3,5)
+# # print(area['id_list'])
+# # print(id3)
+#
+# a=geo_calculate(id2,id1,'buffer',10)
+# # cc=geo_calculate(id3,a['subject'],'intersects')
 # print(id3)
 # print(id_2_attributes(id3))
 
