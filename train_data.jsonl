@@ -1,0 +1,105 @@
+{"query": "What soil types are the houses that are used for commercial purposes near the farm on?", "entities":
+[
+  {
+    'text': 'soil',
+    'non_spatial_modify_statement': "types"
+  },
+  {
+    'text': 'houses',
+    'non_spatial_modify_statement': "used for commercial purposes"
+  },
+    {
+    'text': 'farm',
+    'non_spatial_modify_statement': null
+  }
+],
+ "spatial_relations": [
+    {"type": "on", "head": 1, "tail": 0},
+    {"type": "near", "head": 1, "tail": 2}
+  ]
+}
+{
+  "query": "show parking slots of landuse in around 200 m of the largest river in the park landuse?",
+  "entities": [
+    {
+      "text": "landuse",
+      "non_spatial_modify_statement": "parking slots"
+    },
+    {
+      "text": "river",
+      "non_spatial_modify_statement": "largest"
+    },
+    {
+      "text": "park landuse",
+      "non_spatial_modify_statement": null
+    }
+  ],
+  "spatial_relations": [
+    {"type": "in around 200 m of", "head": 0, "tail": 1},
+    {"type": "in", "head": 1, "tail": 2}
+  ]
+}
+{
+  "query": "I want to know commercial kinds of buildings in around 100m of landuse which is forest",
+  "entities": [
+    {
+      "text": "buildings",
+      "non_spatial_modify_statement": "commercial kinds"
+    },
+    {
+      "text": "landuse",
+      "non_spatial_modify_statement": "forest"
+    },
+  ],
+  "spatial_relations": [
+    {"type": "in around 100m of", "head": 0, "tail": 1},
+  ]
+}
+{
+  "query": "Which kinds of buildings are on soil unsuitable for buildings",
+  "entities": [
+    {
+      "text": "buildings",
+      "non_spatial_modify_statement": 'kinds'
+    },
+    {
+      "text": "soil",
+      "non_spatial_modify_statement": "unsuitable for buildings"
+    },
+  ],
+  "spatial_relations": [
+    {"type": "on", "head": 0, "tail": 1},
+  ]
+}
+{
+  "query": "I want to know which soil has landuse which is parking",
+  "entities": [
+    {
+      "text": "soil",
+      "non_spatial_modify_statement": null
+    },
+    {
+      "text": "landuse",
+      "non_spatial_modify_statement": "is parking"
+    },
+  ],
+  "spatial_relations": [
+    {"type": "has", "head": 0, "tail": 1},
+  ]
+}
+{
+  "query": "Where do the main roads intersect with the historic district?",
+  "entities": [
+    {
+      "text": "main roads",
+      "non_spatial_modify_statement": null
+    },
+    {
+      "text": "historic district",
+      "non_spatial_modify_statement": null
+    }
+  ],
+  "spatial_relations": [
+    {"type": "intersect", "head": 0, "tail": 1}
+  ]
+}

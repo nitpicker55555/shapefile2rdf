@@ -40,7 +40,7 @@ def calculate_similarity(words, key_word):
 
 
 # Example usage
-# words = ['good for agriculture','not good for agriculture','bad for agriculture']
-# key_word = "negative for farmland"
-# similarity_scores = calculate_similarity(words, key_word)
-# print(similarity_scores)
+words = ['buildings']
+key_word = "building"
+similarity_scores = calculate_similarity(words, key_word)
+print(similarity_scores)

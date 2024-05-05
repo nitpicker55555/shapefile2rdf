@@ -1,7 +1,7 @@
 from chat_py import *
-
+from levenshtein import are_strings_similar
 import json,re
-from rag_model import calculate_similarity
+# from rag_model import calculate_similarity
 from rag_model_openai import calculate_similarity_openai
 global_paring_dict={}
 new_dict_num=0
@@ -196,8 +196,9 @@ def details_pick(query, given_list, table_name, messages=None):
 def pick_match(query,given_list,table_name):
     if query in given_list:
         return query
-    if 'building' in query:
-        return 'building'
+    if are_strings_similar(query,table_name):
+        return 'all'
+
     find_pre_matched={}
     if table_name in global_paring_dict:
         if list(global_paring_dict[table_name].keys()) != []:
@@ -262,10 +263,9 @@ def judge_bounding_box(query,messages=None):
 def judge_geo_relation(query,messages=None):
     if messages==None:
         messages=[]
-    geo_relation=['intersects','contains','buffer','area_calculate']
     ask_prompt="""You are a search query analyst tasked with analyzing user queries to determine if they include 
     geographical relationships. For each query, assess if it contains any of the following geographical operations: [
-    'intersects', 'contains', 'buffer', 'area_calculate']. Provide a response indicating whether the query includes a 
+    'intersects', 'contains','in', 'buffer', 'area_calculate']. Provide a response indicating whether the query includes a 
     geographical calculation and, if so, which type. Response in json format. Examples of expected analyses are as follows: 
 
 Query: "I want to know buildings 100m around the forest"
@@ -277,13 +277,23 @@ Response:
         "num": 100
     }
 }
-Query: "I want to know buildings in forest"
-Reasoning: if query is about in/within, type of geo_calculations is contains.
+Query: "I want to know forests have buildings"
+Reasoning: if query is about have/contains/under, type of geo_calculations is contains.
 Response:
 {
     "geo_calculations": {
         "exist": true,
         "type": "contains",
+        "num": 0
+    }
+}
+Query: "I want to know buildings in forest"
+Reasoning: if query is about in/within, type of geo_calculations is in.
+Response:
+{
+    "geo_calculations": {
+        "exist": true,
+        "type": "in",
         "num": 0
     }
 }
@@ -333,8 +343,100 @@ Please ensure accuracy and precision in your responses, as these are critical fo
             return None
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
+def judge_object_subject_multi(query,messages=None):
+    multi_prompt="""
+You are an excellent linguist，Help me identify all entities from this statement and their descriptions. Please format your response in JSON. 
+Example:
+'what type of soil is found under commercial buildings within 100 meters of the forest':{
+  "search_entities": [
+    {
+      "entity": "soil",
+      "description": "type",
+      "id": 1
+    },
+    {
+      "entity": "buildings",
+      "type": "commercial",
+      "id": 2
+    },
+    {
+      "entity": "forest",
+      "description": None,
+      "id": 3
+    }
+  ],
+  "relationships": [
+    "#1 under #2",
+    "#2 within 100 meters of the #3"
+  ]
+},
+'Which farmlands are on soil unsuitable for agriculture':{
+  "search_entities": [
+    {
+      "entity": "farmlands",
+      "description": None,
+      "id": 1
+    },
+    {
+      "entity": "soil",
+      "type": "unsuitable for agriculture",
+      "id": 2
+    }
+  ],
+  "relationships": [
+    "#1 on #2"
+  ]
+},
+'Which buildings are in soil unsuitable for buildings':{
+  "search_entities": [
+    {
+      "entity": "buildings",
+      "description": None,
+      "id": 1
+    },
+    {
+      "entity": "soil",
+      "type": "unsuitable for buildings",
+      "id": 2
+    }
+  ],
+  "relationships": [
+    "#1 in #2"
+  ]
+},
+
+'which buildings for commercial are in landuse which is forest':{
+  "search_entities": [
+    {
+      "entity": "buildings",
+      "description": 'commercial',
+      "id": 1
+    },
+    {
+      "entity": "landuse",
+      "type": "forest",
+      "id": 2
+    }
+  ],
+  "relationships": [
+    "#1 in #2"
+  ]
+},
+
+    """
+    if messages==None:
+        messages=[]
+
+    ask_prompt=multi_prompt
+    messages.append(message_template('system',ask_prompt))
+    messages.append(message_template('user',query))
+    result=chat_single(messages,'json')
+    # print(result)
+    json_result=json.loads(result)
+    print(json_result)
 def judge_object_subject(query,geo_relation_dict,messages=None):
     print('query for judge_object_subject:',query)
+
     if messages==None:
         messages=[]
     ask_prompt_geo_relation="""
@@ -355,7 +457,8 @@ You are a query analysis expert. Your task is to extract the primary subject and
 Identify the primary subject in the query. This is often a noun or a noun phrase that forms the core focus of the query.
 Extract the related statement which modifies or provides additional context about the primary subject, and response in json format.
 For example:
-
+Query: "show commercial buildings"
+Expected Output: {'primary_subject':'buildings', 'related_statement':'commercial'}
 Query: "soil type good for agriculture"
 Expected Output: {'primary_subject':'soil', 'related_statement':'good for agriculture'}
 Query: "buildings which is commercial"
@@ -468,7 +571,7 @@ set_bounding_box("munich ismaning")
 id_buildings=ids_of_type('buildings','building')
 id_farmland=ids_of_type('landuse','farmland')
 id_soil=ids_of_type('soil','all')
-buildings_near_farmland=geo_calculate(id_farmland,id_buildings,'buffer',10)
+buildings_near_farmland=geo_calculate(id_buildings,id_farmland,'buffer',10)
 soil_under_buildings=geo_calculate(id_soil,buildings_near_farmland['subject'],'intersects')
 print(id_2_attributes(soil_under_buildings['subject']))
     "
@@ -591,3 +694,4 @@ print(id_2_attributes(buildings_on_soil['subject']))
 
 # print(judge_geo_relation("I want to know where is good for planting strawberry",None))
 
+print(judge_object_subject_multi('What soil types are the houses near the farm on?', None))

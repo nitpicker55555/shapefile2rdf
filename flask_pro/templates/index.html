@@ -155,13 +155,20 @@
 <div class="container" id="title">
     <span class="code-interpreter">Talk to DB</span>
     <div class="description"></div>
-    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning')">The building around forest 100m in munich Ismaning step by step</button>
+    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning')">The building around forest 100m in munich Ismaning</button>
     <br>
     <br>
-<!--    <button class="rectangle-btn"  onclick="showNumber('最近西安有啥新闻')">最近西安有啥新闻</button>-->
+    <button class="rectangle-btn"  onclick="showNumber('show buildings in greenery')">show buildings in greenery</button>
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>
+    <button class="rectangle-btn"  onclick="showNumber('where is good for agriculture')">soil which is good for agriculture</button>
+    <br>
+    <br>
+    <button class="rectangle-btn"  onclick="showNumber('park which has buildings inside in munich')">park which has buildings inside</button>
+    <br>
+    <br>
+    <button class="rectangle-btn"  onclick="showNumber('landuse is river')">landuse is river</button>
+<!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>-->
 </div>
 <div class="input-button-container">
     <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />
@@ -277,11 +284,11 @@
 
         function generateColor() {
             var color = '#';
-            var factor = 8; // 偶数次较深，奇数次较浅
+            var factor = 2; // 偶数次较深，奇数次较浅
             // var factor = count % 2 === 0 ? 8 : 4; // 偶数次较深，奇数次较浅
 
             for (var i = 0; i < 6; i++) {
-                // 生成颜色码，偶数次从8-F，奇数次从4-F
+
                 color += letters[Math.floor(Math.random() * (16 - factor)) + factor];
             }
 
@@ -351,7 +358,7 @@
 
     var map = L.map('map-container').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        opacity: 0.5  // 设置透明度为50%
+        opacity: 0.3  // 设置透明度为50%
     }).addTo(map);
     // 更新地图数据并自动缩放以适应所有元素
     // updateMapDataAndFitBounds(map, newPolygons);

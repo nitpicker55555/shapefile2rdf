@@ -138,6 +138,8 @@ def complete_json(input_stream):
 def extract_code(code_str):
     return code_str.split("```python")[1].split("```")[0]
 def len_str2list(result):
+    if result==None:
+        return 0
     # result=result.replace("None","").replace(" ","")
     try:
         # 尝试使用 ast.literal_eval 解析字符串
@@ -173,11 +175,20 @@ def details_span(result,run_time):
         aa=error_message
         return {'error':result+" \n "+aa}
     else:
+        length=len_str2list(str(result))
+        attention=''
+        if 'String' not in str(length) and int(length)>10000:
+            attention='Due to the large volume of data, visualization may take longer.'
+            if int(length)==20000:
+                attention='Due to the large volume of data in your current search area, only 20,000 entries are displayed.'
         aa = f"""
 <details>
-    <summary>`Code result: Length:{len_str2list(str(result))},Run_time:{round(run_time, 2)}s`</summary>
+    <summary>`Code result: Length:{length},Run_time:{round(run_time, 2)}s`</summary>
        {str(result)}
 </details>
+{attention}
+
+
             """
 
 
@@ -243,6 +254,9 @@ def home():
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
     print("初始化")
+    globals_dict = {}
+    global_id_attribute = {}
+    global_id_geo = {}
     ip_=request.headers.get('X-Real-IP')
     session['ip_']=ip_
     session['uploaded_indication'] = None
@@ -318,17 +332,17 @@ def submit():
         true_step = 0  # 总返回数
         stop_step = False  # 强制该轮停止
 
-        if "User upload a file in:" in data:
-            chat_response = "File uploaded successfully! You can ask your questions."
-            compelete = True
-
-            yield chat_response
-        else:
-            if session.get('uploaded_indication') != None:
-                messages[0]['content'] ='ttl_prompt'
-                messages[0]['content'] += f"\nUser uploaded a ttl file in: .\\uploads\\{session['uploaded_indication']}"
-            else:
-                messages[0]['content'] = 'question_template'
+        # if "User upload a file in:" in data:
+        #     chat_response = "File uploaded successfully! You can ask your questions."
+        #     compelete = True
+        #
+        #     yield chat_response
+        # else:
+        #     if session.get('uploaded_indication') != None:
+        #         messages[0]['content'] ='ttl_prompt'
+        #         messages[0]['content'] += f"\nUser uploaded a ttl file in: .\\uploads\\{session['uploaded_indication']}"
+        #     else:
+        #         messages[0]['content'] = 'question_template'
                 # data+=f".(用户上传的文件地址: .\\uploads\\{session['uploaded_indication']})"
             # session['messages2'].append({"role": "user",
             #                              "content": data})
@@ -338,6 +352,9 @@ def submit():
             code_list.append(data)
         else:
             data=data.lower()
+            # if data.startswith('next'):
+
+
 
 
             bounding_box_indicate = judge_bounding_box(data)
@@ -365,6 +382,7 @@ element_list={'primary_subject':None,'related_geographic_element':None}
             if geo_relation_dict==None and object_subject['related_geographic_element']!=None:                                                                     #没有地理关系,有related_geographic_element，是subject的形容词,object subject 被全部送入judge_type防止没有主语
 
                 code_list.append(f"""
+                
 graph_dict['primary_subject'] = judge_type({object_subject})["database"]
 graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
 type_dict['primary_subject'] = pick_match('{object_subject['related_geographic_element']}', graph_type_list['primary_subject'],graph_dict['primary_subject'])
@@ -373,6 +391,7 @@ type_dict['primary_subject'] = pick_match('{object_subject['related_geographic_e
                     f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
             elif geo_relation_dict==None and object_subject['related_geographic_element']==None:                                                                   #没有地理关系,无related_geographic_element，比如show soil
                 code_list.append(f"""
+                
 graph_dict['primary_subject'] = judge_type({object_subject})["database"]                                                                                         
 graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
 type_dict['primary_subject'] = pick_match('{object_subject['primary_subject']}', graph_type_list['primary_subject'],graph_dict['primary_subject'] )
@@ -392,9 +411,11 @@ type_dict['primary_subject'] = pick_match('{object_subject['primary_subject']}',
                 for item_, value in object_subject.items():
                     if value != None and (geo_relation_dict['type']!='area_calculate' or item_!='related_geographic_element'): #如果geo是area_calculate那么related_geographic_element就不能算进来
                         code_list.append(f"""
+                        
 graph_dict['{item_}']=judge_type('{value}')['database']
 graph_type_list['{item_}']=ids_of_attribute(graph_dict['{item_}'])
 type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'],graph_dict['{item_}'])
+
                                     """)
                         code_list.append(
                             f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
@@ -403,7 +424,7 @@ type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'],graph_dict[
                         # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
                         # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
 
-                code_list.append("geo_result=geo_calculate(element_list['primary_subject'],element_list['related_geographic_element'],geo_relation_dict['type'],geo_relation_dict['num'])")
+                code_list.append("\ngeo_result=geo_calculate(element_list['primary_subject'],element_list['related_geographic_element'],geo_relation_dict['type'],geo_relation_dict['num'])")
 
 
 

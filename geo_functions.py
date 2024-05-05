@@ -232,6 +232,8 @@ def area_calculate(data_list1_original,top_num=None):
 def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0):
     if mode=='area_calculate':
         return area_calculate(data_list1_original,buffer_number)
+
+
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
     """
     buildings in forest
@@ -244,7 +246,10 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     """
     data_list1=copy.deepcopy(data_list1_original)
     data_list2=copy.deepcopy(data_list2_original)
-
+    if mode=='contains':
+        mode='in'
+        data_list1 = copy.deepcopy(data_list2_original)
+        data_list2 = copy.deepcopy(data_list1_original)
     if isinstance(data_list1, str):
         data_list1 = globals_dict[data_list1]
         data_list2 = globals_dict[data_list2]
@@ -293,9 +298,9 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     result_list = []
     all_id_list = []
     osmId1_dict = {}
-    parent_dict=[]
-    child_dict=[]
-    if mode == "contains":
+    parent_list=[]
+    child_list=[]
+    if mode == "in":
         # 检查包含关系
 
         for osmId1, geom1 in gseries1.items():
@@ -305,15 +310,14 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                all_id_list.append(osmId1)
+                # all_id_list.append(osmId1)
                 osmId1_dict[osmId1]=geom1
-                all_id_list.extend(matching_osmIds)
-                parent_dict.extend(matching_osmIds)
-                child_dict.append(osmId1)
+                # all_id_list.extend(matching_osmIds)
+                parent_list.extend(matching_osmIds)
+                child_list.append(osmId1)
                 # result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
                 # print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
         print(len(osmId1_dict))
-
 
     elif mode == "buffer":
         for osmId2, geom2 in tqdm(gseries2.items(), desc="buffer"):
@@ -328,11 +332,11 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
-                all_id_list.append(osmId2)
+                # all_id_list.append(osmId2)
                 osmId1_dict[osmId2]=geom2
-                all_id_list.extend(matching_osmIds)
-                parent_dict.extend(matching_osmIds)
-                child_dict.append(osmId2)
+                # all_id_list.extend(matching_osmIds)
+                child_list.extend(matching_osmIds)
+                parent_list.append(osmId2)
                 # result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
                 # print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
 
@@ -346,11 +350,11 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
             if not precise_matches.empty:
                 matching_osmIds = precise_matches.index.tolist()
                 # result_list.append(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
-                all_id_list.append(osmId1)
+                # all_id_list.append(osmId1)
                 osmId1_dict[osmId1]=geom1
-                all_id_list.extend(matching_osmIds)
-                parent_dict.extend(matching_osmIds)
-                child_dict.append(osmId1)
+                # all_id_list.extend(matching_osmIds)
+                parent_list.extend(matching_osmIds)
+                child_list.append(osmId1)
                 # print(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
 
     elif mode == "shortest_distance":
@@ -385,8 +389,11 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
         geo_dict = {globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
         geo_dict = {}
-    data_list1.update(data_list2)
-    geo_dict.update(transfer_id_list_2_geo_dict(all_id_list, data_list1))
+    # data_list1.update(data_list2)
+    parent_geo_dict=transfer_id_list_2_geo_dict(parent_list, data_list2)
+    child_geo_dict=transfer_id_list_2_geo_dict(child_list, data_list1)
+    geo_dict.update(parent_geo_dict)
+    geo_dict.update(child_geo_dict)
 
     print(len(geo_dict))
 
@@ -395,13 +402,13 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     #     pickle.dump(osmId1_list, file)
 
 
-    return {'object':{'id_list':parent_dict},'subject':{'id_list':child_dict},'geo_map':geo_dict}
-    # return {'subject_id_list':parent_dict,'object_id_list':child_dict,'geo_map':geo_dict}
-    # return child_dict,parent_dict,geo_dict
+    return {'object':{'id_list':parent_geo_dict},'subject':{'id_list':child_geo_dict},'geo_map':geo_dict}
+    # return {'subject_id_list':parent_list,'object_id_list':child_list,'geo_map':geo_dict}
+    # return child_list,parent_list,geo_dict
     # return geo_dict
 
-    # return {'subject_id_list':parent_dict,'object_id_list':child_dict,'geo_map':geo_dict}
-    # return child_dict,parent_dict,geo_dict
+    # return {'subject_id_list':parent_list,'object_id_list':child_list,'geo_map':geo_dict}
+    # return child_list,parent_list,geo_dict
     # return geo_dict
 
 
@@ -588,16 +595,17 @@ def sql_debug():
 #         "65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig",
 # #         "75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf"
 # # ]
-# # ids_of_type('soil',aa)
+# # # ids_of_type('soil',aa)
 # set_bounding_box("munich ismaning")
-id2=ids_of_type('buildings','building')
-# id1=ids_of_type('landuse','farmland')
-# # id3=ids_of_type('landuse','forest')
-# # area=area_calculate(id3,5)
-# # print(area['id_list'])
-# # print(id3)
-#
+# id2=ids_of_type('buildings','building')
+# id1=ids_of_type('landuse','forest')
+# # # id3=ids_of_type('landuse','forest')
+# # # area=area_calculate(id3,5)
+# # # print(area['id_list'])
+# # # print(id3)
+# #
 # a=geo_calculate(id2,id1,'buffer',10)
+# print(a['subject']['id_list'])
 # # cc=geo_calculate(id3,a['subject'],'intersects')
 # print(id3)
 # print(id_2_attributes(id3))
@@ -686,5 +694,7 @@ id2=ids_of_type('buildings','building')
 # print(ids_of_attribute('soil'))
 # aa=['21: Fast ausschließlich humusreiche Pararendzina aus Carbonatsandkies bis -schluffkies (Schotter), gering verbreitet mit flacher Flussmergeldecke', '57: Fast ausschließlich Rendzina aus Kalktuff oder Alm', '4a: Überwiegend Parabraunerde und verbreitet Braunerde aus Schluff bis Schluffton (Lösslehm) über Carbonatschluff (Löss)']
 # ids_of_type('soil',aa)
-print(ids_of_attribute('landuse'))
+# print(ids_of_attribute('landuse'))
 # print(ids_of_attribute('soil')
+# a=ids_of_type('landuse','park')
+# geo_calculate(geo_result['subject']['id_list'])
