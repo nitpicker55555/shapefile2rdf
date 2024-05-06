@@ -1,8 +1,9 @@
 from chat_py import *
 from levenshtein import are_strings_similar
 import json,re
-from rag_model import calculate_similarity
+# from rag_model import calculate_similarity
 from rag_model_openai import calculate_similarity_openai
+from geo_functions import *
 global_paring_dict={}
 new_dict_num=0
 file_path = 'global_paring_dict.jsonl'
@@ -260,6 +261,12 @@ def judge_bounding_box(query,messages=None):
     
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
+def judge_graph_type(query):
+
+    graph_dict = judge_type(query)["database"]
+    graph_type_list = ids_of_attribute(graph_dict)
+    type_dict = pick_match(query['non_spatial_modify_statement'], graph_type_list, graph_dict)
+    return graph_dict,type_dict
 def judge_geo_relation(query,messages=None):
     if messages==None:
         messages=[]
@@ -443,16 +450,16 @@ def judge_object_subject(query,geo_relation_dict,messages=None):
         messages=[]
     ask_prompt_geo_relation="""
     
-    Please response in json format: {'primary_subject':primary_subject, 
-    'related_statement':related_geographic_element}. 
+    Please response in json format: {'entity_text':entity_text, 
+    'non_spatial_modify_statement':non_spatial_modify_statement}. 
     
     For example, when I ask, 'I want to know the 
-    residential area near the swamp,' you should respond with: {'primary_subject':'residential area', 
-    'related_statement':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
-    ' the response should be:  {'primary_subject':'buildings', 'related_statement':'forests'}, 
+    residential area near the swamp,' you should respond with: {'entity_text':'residential area', 
+    'non_spatial_modify_statement':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
+    ' the response should be:  {'entity_text':'buildings', 'non_spatial_modify_statement':'forests'}, 
     
-    If there is no related_statement, related_statement should be set as None, example: 
-    for 'the largest 5 forest', related_statement is None. """
+    If there is no non_spatial_modify_statement, non_spatial_modify_statement should be set as None, example: 
+    for 'the largest 5 forest', non_spatial_modify_statement is None. """
     ask_prompt_adj="""
 You are a query analysis expert. Your task is to extract the primary subject and any related statements from user queries. Here's how you should approach it:
 
@@ -460,19 +467,19 @@ Identify the primary subject in the query. This is often a noun or a noun phrase
 Extract the related statement which modifies or provides additional context about the primary subject, and response in json format.
 For example:
 Query: "show commercial buildings"
-Expected Output: {'primary_subject':'buildings', 'related_statement':'commercial'}
+Expected Output: {'entity_text':'buildings', 'non_spatial_modify_statement':'commercial'}
 Query: "soil type good for agriculture"
-Expected Output: {'primary_subject':'soil', 'related_statement':'good for agriculture'}
+Expected Output: {'entity_text':'soil', 'non_spatial_modify_statement':'good for agriculture'}
 Query: "buildings which is commercial"
-Expected Output: {'primary_subject':'buildings', 'related_statement':'commercial'}
-If a query does not explicitly mention a primary subject but provides a statement,like asking about 'where is for...' set primary_subject as None:
+Expected Output: {'entity_text':'buildings', 'non_spatial_modify_statement':'commercial'}
+If a query does not explicitly mention a primary subject but provides a statement,like asking about 'where is for...' set entity_text as None:
 Query: "Where is good for planting strawberries"
-Expected Output: {'primary_subject':None, 'related_statement':'good for planting strawberry'}
+Expected Output: {'entity_text':None, 'non_spatial_modify_statement':'good for planting strawberry'}
 Query: "Where is good for planting vegetables"
-Expected Output: {'primary_subject':None, 'related_statement':'good for planting vegetables'}
-If there is no modifying statement, set the related_statement to None:
+Expected Output: {'entity_text':None, 'non_spatial_modify_statement':'good for planting vegetables'}
+If there is no modifying statement, set the non_spatial_modify_statement to None:
 Query: "show greenery"
-Expected Output: {'primary_subject': 'greenery', 'related_statement': None}
+Expected Output: {'entity_text': 'greenery', 'non_spatial_modify_statement': None}
 Your goal is to consistently apply this method to analyze and break down user queries into structured data as shown above.
     """
 
@@ -489,20 +496,20 @@ Your goal is to consistently apply this method to analyze and break down user qu
     result=chat_single(messages,'json')
     # print(result)
     json_result=json.loads(result)
-    if 'primary_subject' in json_result:
+    if 'entity_text' in json_result:
 
 
-        return {'primary_subject':json_result['primary_subject'],'related_geographic_element':json_result['related_statement']}
+        return {'entity_text':json_result['entity_text'],'non_spatial_modify_statement':json_result['non_spatial_modify_statement']}
 
     else:
         raise Exception('no relevant item found for: ' +query + ' in given list.')
 
 def judge_type(query,messages=None):
     if isinstance(query,dict):
-        if query['primary_subject']!=None: #没有地理关系,有related_geographic_element，是subject的形容词,object subject 被全部送入judge_type防止没有主语
-            query= query['primary_subject']
+        if query['entity_text']!=None: #没有地理关系,有non_spatial_modify_statement，是subject的形容词,object subject 被全部送入judge_type防止没有主语
+            query= query['entity_text']
         else:
-            query=query['related_geographic_element']
+            query=query['non_spatial_modify_statement']
     if query==None:
         return None
     if messages==None:
@@ -555,80 +562,11 @@ def judge_result(query,messages=None):
     result=chat_single(messages)
     return result
 
-def judge_query(query,messages=None):
-    if query==None:
-        return None
-    if messages==None:
-        messages=[]
-    if 'building' in query:
-        return {'database': 'buildings'}
-    ask_prompt="""
-    
-    If this query is about What soil types are the houses near the farm on?
-    
-    response in json format like:
-    {
-    'code':"
-set_bounding_box("munich ismaning")
-id_buildings=ids_of_type('buildings','building')
-id_farmland=ids_of_type('landuse','farmland')
-id_soil=ids_of_type('soil','all')
-buildings_near_farmland=geo_calculate(id_buildings,id_farmland,'buffer',10)
-soil_under_buildings=geo_calculate(id_soil,buildings_near_farmland['subject'],'intersects')
-print(id_2_attributes(soil_under_buildings['subject']))
-    "
-    }
-  If this query is about Which farmlands are on soil unsuitable for agriculture?
-    
-    response in json format like:
-    {
-    'code':"
-set_bounding_box("munich ismaning")
-id_farmland=ids_of_type('landuse','farmland')
-soil_type_list = ids_of_attribute('soil') # Get soil types
-soil_type_list_not_good_for_agriculture = pick_match('not good for agriculture', soil_type_list) # Get soil types which not good for agriculture
-id_soil=ids_of_type('soil',soil_type_list_not_good_for_agriculture)
-farmlands_on_soil=geo_calculate(id_soil,id_farmland,'contains')
-print(id_2_attributes(farmlands_on_soil['subject']))
-    "
-    }
-  If this query is about Which buildings are on soil unsuitable for buildings?
-    
-    response in json format like:
-    {
-    'code':"
-set_bounding_box("munich ismaning")
-id_buildings=ids_of_type('buildings','building')
-soil_type_list = ids_of_attribute('soil') # Get soil types
-soil_type_list_not_good_for_buildings = pick_match('not good for buildings', soil_type_list) # Get soil types which not good for buildings
-id_soil=ids_of_type('soil',soil_type_list_not_good_for_buildings)
-buildings_on_soil=geo_calculate(id_soil,id_buildings,'contains')
-print(id_2_attributes(buildings_on_soil['subject']))
-    "
-    }
-    """
-    if messages==None:
-        messages=[]
-
-    messages.append(message_template('system',ask_prompt))
-    messages.append(message_template('user',query))
-    result=chat_single(messages,'json')
-    # print(result)
-    json_result=json.loads(result)
-    if 'code' in json_result:
-
-
-
-        return {'code':json_result['code']}
-
-    else:
-        raise Exception('no relevant item found for: ' +query + ' in given list.')
-
 
 # print(judge_query_first('Which farmlands are on soil unsuitable for agriculture?'))
 # query="I want to know buildings around 100m of forest in munich ismaning."
 # judge_bounding_box(query)
-# object_subject=judge_geo_relation('What soil types are the houses on the farm on?') #primary_subject,related_geographic_element
+# object_subject=judge_geo_relation('What soil types are the houses on the farm on?') #entity_text,non_spatial_modify_statement
 # print(object_subject)
 # graph_dict={}
 # graph_type_list={}
@@ -642,7 +580,7 @@ print(id_2_attributes(buildings_on_soil['subject']))
 #         element_list[item_]=ids_of_type(graph_dict[item_],type_dict[item_])
 #
 # geo_relation_dict=judge_geo_relation(query)
-# geo_calculate(element_list['related_geographic_element'],element_list['primary_subject'],geo_relation_dict['type'],geo_relation_dict['num'])
+# geo_calculate(element_list['non_spatial_modify_statement'],element_list['entity_text'],geo_relation_dict['type'],geo_relation_dict['num'])
 # print(judge_type('swamp'))
 # id1=ids_of_attribute('soil')
 # print(id1)

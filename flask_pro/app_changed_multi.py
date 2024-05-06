@@ -4,7 +4,7 @@ import json
 import re
 from shapely.geometry import Polygon
 from geo_functions import *
-from ask_functions import *
+from ask_functions_multi import *
 from flask import Flask, Response, stream_with_context, request, render_template, jsonify,session
 from werkzeug.utils import secure_filename
 import time
@@ -369,64 +369,65 @@ def submit():
 
 
 
+            """
+            {
+              "query": "Identify residential buildings within 50 meters of parks with playgrounds on sandy soil under them?",
+              "entities": [
+                {
+                  "entity_text": "buildings",
+                  "non_spatial_modify_statement": "residential"
+                },
+                {
+                  "entity_text": "parks",
+                  "non_spatial_modify_statement": "with playgrounds"
+                },
+                {
+                  "entity_text": "soil",
+                  "non_spatial_modify_statement": "sandy"
+                }
+              ],
+              "spatial_relations": [
+                {
+                  "type": "within 50 meters of",
+                  "head": 0,
+                  "tail": 1
+                },
+                {
+                  "type": "under",
+                  "head": 2,
+                  "tail": 0
+                }
+              ]
+            }
+            """
 
-            geo_relation_dict = judge_geo_relation(data)
-            yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
+            multi_result = judge_object_subject_multi(data)
+            code_list.append(
+                f"""
+multi_result={multi_result}                
+                """
+            )
+            code_block=''
+            for num, entity in enumerate(multi_result['entities']):
 
-            object_subject = judge_object_subject(data,geo_relation_dict)  # primary_subject,related_geographic_element
-            yield f"\n\n`{object_subject}`\n"
-            code_list.append("""
-graph_dict={}
-graph_type_list={}
-type_dict={}
-element_list={'primary_subject':None,'related_geographic_element':None}
-                    """)
-            if geo_relation_dict==None and object_subject['related_geographic_element']!=None:                                                                     #没有地理关系,有related_geographic_element，是subject的形容词,object subject 被全部送入judge_type防止没有主语
-
+                code_block+=(f"""
+graph{num},type{num}=judge_graph_type(multi_result['entities'][{num}])
+                """)
+            code_list.append(code_block)
+            for num, entity in enumerate(multi_result['entities']):
                 code_list.append(f"""
-                
-graph_dict['primary_subject'] = judge_type({object_subject})["database"]
-graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
-type_dict['primary_subject'] = pick_match('{object_subject['related_geographic_element']}', graph_type_list['primary_subject'],graph_dict['primary_subject'])
-                        """)
-                code_list.append(
-                    f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
-            elif geo_relation_dict==None and object_subject['related_geographic_element']==None:                                                                   #没有地理关系,无related_geographic_element，比如show soil
+id_list{num}=ids_of_type(graph{num},type{num}))
+                            """)
+            for num, relations in enumerate(multi_result['spatial_relations']):
                 code_list.append(f"""
-                
-graph_dict['primary_subject'] = judge_type({object_subject})["database"]                                                                                         
-graph_type_list['primary_subject'] = ids_of_attribute(graph_dict['primary_subject'])
-type_dict['primary_subject'] = pick_match('{object_subject['primary_subject']}', graph_type_list['primary_subject'],graph_dict['primary_subject'] )
-                                        """)
-                code_list.append(
-                    f"element_list['primary_subject'] = ids_of_type(graph_dict['primary_subject'], type_dict['primary_subject'])")
-            else:
+geo_relation{num}=judge_geo_relation(multi_result['spatial_relations'][{num}]['type'])
+geo_result{num}=geo_calculate(id_list{relations['head']},id_list{relations['tail']},geo_relation{num}['type'],geo_relation{num}['num']))
+                            """)
+                code_list.append(f"""
+id_list{relations['head']}=geo_result{num}['subject']
+id_list{relations['tail']}=geo_result{num}['object']
+                """)
 
-                code_list.append(f"geo_relation_dict={geo_relation_dict}")
-
-
-                # graph_dict={}
-                # graph_type_list={}
-                # type_dict={}
-                # element_list={}
-
-                for item_, value in object_subject.items():
-                    if value != None and (geo_relation_dict['type']!='area_calculate' or item_!='related_geographic_element'): #如果geo是area_calculate那么related_geographic_element就不能算进来
-                        code_list.append(f"""
-                        
-graph_dict['{item_}']=judge_type('{value}')['database']
-graph_type_list['{item_}']=ids_of_attribute(graph_dict['{item_}'])
-type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'],graph_dict['{item_}'])
-
-                                    """)
-                        code_list.append(
-                            f"element_list['{item_}'] = ids_of_type(graph_dict['{item_}'], type_dict['{item_}'])")
-                        # graph_dict[item_]=judge_type(object_subject[item_])['database']               #判断图名
-                        # graph_type_list[item_]=ids_of_attribute(graph_dict[item_])                    #得到该图所有的属性
-                        # type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])     #从所有的属性中找到符合字段描述的，比如park
-                        # element_list[item_] = ids_of_type(graph_dict[item_], type_dict[item_])        #拿到这些id
-
-                code_list.append("\ngeo_result=geo_calculate(element_list['primary_subject'],element_list['related_geographic_element'],geo_relation_dict['type'],geo_relation_dict['num'])")
 
 
 
@@ -435,8 +436,11 @@ type_dict['{item_}']=pick_match('{value}',graph_type_list['{item_}'],graph_dict[
         for line_num,lines in enumerate(lines_list):
             yield f"\n\n```python\n{lines}\n```"
             yield "\n\n`Code running...`\n"
+            lines=lines.split('\n')
+            # lines=[lines]
+            filtered_lst = [x for x in lines if x!='']
+            lines=filtered_lst
 
-            lines=[lines]
             if '=' in lines[-1] and (
                     'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
                 -1]):

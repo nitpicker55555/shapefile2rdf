@@ -1,4 +1,6 @@
-from chat_py import chat_single
+import json
+
+from chat_py import *
 
 single_geo_buffer = """
 {
@@ -18,6 +20,27 @@ single_geo_buffer = """
   ]
 }
 """
+double_template={
+  "query": "show parking slots of landuse in around 200 m of the largest river in the commercial park area?",
+  "entities": [
+    {
+      "text": "landuse",
+      "non_spatial_modify_statement": "parking slots"
+    },
+    {
+      "text": "river",
+      "non_spatial_modify_statement": "largest"
+    },
+    {
+      "text": "park area",
+      "non_spatial_modify_statement": "commercial"
+    }
+  ],
+  "spatial_relations": [
+    {"type": "in around 200 m of", "head": 0, "tail": 1},
+    {"type": "in", "head": 1, "tail": 2}
+  ]
+}
 single_geo_in = """
 {
   "query": "I want to know commercial buildings in landuse which is forest",
@@ -61,7 +84,7 @@ modify_prompt = [{
         "example": "buildings that are used for commercial purposes",
         "explanation": "The relative clause 'that are used for commercial purposes' provides detailed information about the noun 'buildings'."
     }, {
-        "do not add description to this Noun."
+        "set non_spatial_modify_statement as None"
     }
 ]
 import random
@@ -102,14 +125,27 @@ def num_of_geo():
 
 def modify_of_entity(elements):
     """从给定列表中随机返回一个元素"""
-    return str(random.choice(elements))
+    random_elements = random.sample(elements, 2)
+    return str(random_elements)
 
 num_entities=2
-ask_prompt = f"""Create a structured query involving {str(num_entities)} entities relevant to geographic analysis. Each entity needs 
-to have these modifying phrases in turn:{modify_of_entity(modify_prompt)}. The query should involve {str(num_entities-1)} type of spatial relationships: 
-{generate_feature_pair()}
+
+for i in range(50):
+    print(i)
+    ask_prompt = f"""Create a structured query involving {str(num_entities)} entities relevant to geographic analysis. These entities must be related to landuse or buildings or soil. Each entity needs 
+to have these modifying phrases in turn:{modify_of_entity(modify_prompt)}. The query should involve the spatial relationship: 
+{generate_feature_pair()[0]}
 please response in json format like:
-
+{str(single_geo_buffer)}
 """
+    messages = []
+    messages.append(message_template('system', "You are a data generator, I will give you introductions and example for generating data, please only follow the introdcutions but do not copy the entities and relation in example, and do not learn the query in example. You need to write query which has different entities from example."))
+    messages.append(message_template('user', ask_prompt))
+    print(ask_prompt)
+    result = chat_single(messages, 'json','gpt-4-turbo')
+    # print(result)
+    json_result = json.loads(result)
+    print(result)
+    with open('template_gpt.jsonl','a',encoding='utf-8') as file:
+        file.write(json.dumps(json_result)+'\n')
 
-print(generate_feature_pair())
