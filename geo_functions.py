@@ -1,3 +1,5 @@
+import ast
+import re
 
 import psycopg2
 import time
@@ -22,6 +24,81 @@ global_id_geo={}
 conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
 conn = psycopg2.connect(conn_params)
 cur = conn.cursor()
+"""
+    osm_id='osm_id'
+    fclass='fclass'
+    select_query=f"SELECT '{graph_name}' AS source_table, {fclass},name,{osm_id},geom"
+    if graph_name=='soil':
+        graph_name='soilcomplete'
+        fclass='leg_text'
+        osm_id='objectid'
+        select_query=f'SELECT {fclass},{osm_id},geom'
+
+"""
+col_name_mapping_dict={
+"soil":{
+    "osm_id":"objectid",
+    "fclass":"leg_text",
+    "select_query":"SELECT leg_text,objectid,geom",
+    "graph_name":"soilcomplete"
+
+}   ,
+"buildings":{
+    "osm_id": "osm_id",
+    "fclass": "name",
+    "name": "name",
+    "select_query": "SELECT buildings AS source_table, fclass,name,osm_id,geom",
+    "graph_name":"buildings"
+},
+"landuse":{
+    "osm_id": "osm_id",
+    "fclass": "fclass",
+    "name":"name",
+    "select_query": "SELECT landuse AS source_table, fclass,name,osm_id,geom",
+    "graph_name":"landuse"
+}
+
+}
+def auto_add_WHERE_AND(sql_query):
+
+        # 将 SQL 查询分割成多行
+        lines_ori = sql_query.splitlines()
+        lines = [item for item in lines_ori if item.strip()]
+        # 标记是否已经添加了 WHERE 子句
+        where_added = False
+        # 标记是否已经处理过 FROM 关键字的行
+        from_processed = False
+        # 准备存储处理后的 SQL 查询
+        modified_query = []
+
+        for line in lines:
+            # 删除行首和行尾的空白字符
+            stripped_line = line.strip()
+            # 如果行是注释或空行，直接添加到结果中
+            if stripped_line.startswith('--') or not stripped_line:
+                modified_query.append(line)
+                continue
+
+            # 检查是否是 FROM 行或之后的行
+            if 'FROM' in stripped_line.upper():
+                modified_query.append(line)
+                from_processed = True
+            elif from_processed:
+                # 检查行是否已经以 WHERE 或 AND 开始
+                if not (stripped_line.upper().startswith('WHERE') or stripped_line.upper().startswith('AND')):
+                    # 如果还未添加 WHERE，则首个条件添加 WHERE，之后添加 AND
+                    if not where_added:
+                        line = line.replace(stripped_line, 'WHERE ' + stripped_line)
+                        where_added = True
+                    else:
+                        line = line.replace(stripped_line, 'AND ' + stripped_line)
+                modified_query.append(line)
+            else:
+                modified_query.append(line)
+        if not modified_query[-1].strip().endswith(';'):
+            modified_query[-1] += ';'
+        # 将处理后的行合并回一个单一的字符串
+        return '\n'.join(modified_query)
 
 
 def remove_semicolon_before_union(input_string):
@@ -46,9 +123,9 @@ def remove_semicolon_before_union(input_string):
     return '\n'.join(aa)
 def cur_action(query):
     try:
-        query=remove_semicolon_before_union(query)
+        query=auto_add_WHERE_AND(query)
 
-        # print(query)
+        print(query)
         cur.execute(query)
         rows =cur.fetchall()
         return rows
@@ -74,22 +151,18 @@ def set_bounding_box(region_name):
     else:
         return None
 
-def ids_of_attribute(graph_name, bounding_box_coordinats=None):
+def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None):
     bounding_judge_query=''
     if 'bounding_coordinates' in globals_dict:
         bounding_box_coordinats = globals_dict['bounding_coordinates']
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-        bounding_judge_query=f"WHERE ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
+        bounding_judge_query=f"ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
     attributes_set = set()
-    if graph_name=='soil':
-        fclass='leg_text'
-        graph_name='soilcomplete'
-    elif graph_name=="buildings":
-        fclass='name'
-    else:
-        fclass='fclass'
 
-
+    fclass= col_name_mapping_dict[graph_name]['fclass']
+    graph_name= col_name_mapping_dict[graph_name]['graph_name']
+    if specific_col!=None:
+        fclass=specific_col
     bounding_query = f"""
     SELECT DISTINCT {fclass}
     FROM {graph_name}
@@ -105,79 +178,69 @@ def ids_of_attribute(graph_name, bounding_box_coordinats=None):
     for row in rows:
         attributes_set.add(row[0])
     return attributes_set
+def extract_numbers(s):
+    # print(s)
+    # 使用正则表达式找出字符串中的所有数字
+    numbers = re.findall(r'\d+', s)
+    # print(numbers)
+    # 将找到的数字字符串转换为整数
+    a=1
+    if 'small' in s:
+       a=-1
+    if len(numbers)!=0:
+        return int(numbers[0])*a
+    else:return 1*a #如果没有显式说明最大数值，则为最大的
+def judge_area(type):
+    if 'large' in str(type) or 'small' in str(type) or 'big' in str(type):
+        return True
+    else:
+        return False
 
-def ids_of_type(graph_names, single_type, bounding_box_coordinats=None):
+def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
 
 
     """
     globals_dict["bounding_box_region_name"]=region_name
     globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
 
+    type_dict={'non_area_col':{'fclass':fclass_list...,'name':name_list...},'area_num':area_num}
     """
+    area_num=None
 
-    if isinstance(single_type,set):
-        single_type=list(single_type)
-        
-    single_type = str(single_type)
-    if '[' in single_type:
+    select_query=col_name_mapping_dict[graph_name]['select_query']
+    graph_name=col_name_mapping_dict[graph_name]['graph_name']
+    fclass=col_name_mapping_dict[graph_name]['fclass']
+    osm_id=col_name_mapping_dict[graph_name]['osm_id']
 
-        single_type = single_type.replace("[", "(").replace("]", ")")
+    bounding_judge_query = ""
+    if 'bounding_coordinates' in globals_dict:
+        bounding_box_coordinats = globals_dict['bounding_coordinates']
+        min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
+        bounding_judge_query=f"ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
 
-    else:
-        single_type = f"{single_type}"
-    if not isinstance(graph_names, list):
-        graph_names = [graph_names]
-
-    queries = []
-    for graph_name in graph_names:
-        osm_id='osm_id'
-        fclass='fclass'
-        select_query=f"SELECT '{graph_name}' AS source_table, {fclass},name,{osm_id},geom"
-        if graph_name=='soil':
-            graph_name='soilcomplete'
-            fclass='leg_text'
-            osm_id='objectid'
-            select_query=f'SELECT {fclass},{osm_id},geom'
-        elif graph_name=='buildings' and single_type[0]=='(':
-            fclass='name'
-
-        bounding_judge_query = ""
-        if 'bounding_coordinates' in globals_dict:
-            bounding_box_coordinats = globals_dict['bounding_coordinates']
-            min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-            bounding_judge_query=f"WHERE ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
-            if single_type != 'all':
-                if single_type[0] == '(':
-                    fclass_row = f"AND {fclass} in {single_type};"
-                else:
-                    fclass_row = f"AND {fclass} = '{single_type}';"
-            else:
-                fclass_row = ''
-        else:
-            if single_type != 'all':
-                if single_type[0] == '(':
-                    fclass_row = f"WHERE {fclass} in {single_type};"
-                else:
-                    fclass_row = f"WHERE {fclass} = '{single_type}';"
-            else:
-                fclass_row = ''
+    fclass_row = ''
+    # 如果single_type_list是all或字符串，那么fclass_row就是默认值，为空
+    for col_name,single_type_list in type_dict['non_area_col'].items():
+        if isinstance(single_type_list,list) and len(single_type_list)>1:
+            fclass_row+=f"\n{col_name_mapping_dict[graph_name][col_name]} in {tuple(single_type_list)}"
+        elif isinstance(single_type_list,list) and len(single_type_list)==1:
+            fclass_row += f"\n{col_name_mapping_dict[graph_name][col_name]} = '{single_type_list[0]}'"
 
 
 
 
-
-        bounding_query = f"""
-        {select_query}
-        FROM {graph_name}
-        {bounding_judge_query}
-        {fclass_row}
-        """
-        queries.append(bounding_query)
+    bounding_query = f"""
+    {select_query}
+    FROM {graph_name}
+    {bounding_judge_query}
+    {fclass_row}
+    """
+    # queries.append(bounding_query)
 
     # print(bounding_query)
-    final_query = "UNION ALL".join(queries)
+    # final_query = "UNION ALL".join(queries)
     # print(final_query)
-    rows = cur_action(final_query)
+    rows = cur_action(bounding_query)
 
     result_dict = {}
     # print(graph_names)
@@ -185,34 +248,39 @@ def ids_of_type(graph_names, single_type, bounding_box_coordinats=None):
 
 
         # result_dict[row[2] + "_" + row[3]+"_"+row[4]] = mapping(wkb.loads(bytes.fromhex(row[6])))
-        if graph_names==['soil']:
+        if graph_name=='soil':
             # soil 没有name
-
 
             result_dict['soil' + "_" + str(row[0]) + "_" + str(row[1])] = (wkb.loads(bytes.fromhex(row[-1]))) #result_dict _分割的前两位是展示在地图上的
             global_id_attribute['soil' + "_" + str(row[0]) + "_" + str(row[1])]=  str(row[0])
 
         else:
             #     select_query=f'SELECT {fclass},name,{osm_id},geom'
-            global_id_attribute[str(row[0])+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] =  str(row[1]+str(row[2]))
             result_dict[str(row[0])+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] = (wkb.loads(bytes.fromhex(row[-1])))
+            global_id_attribute[str(row[0])+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] =  str(row[1]+str(row[2]))
+
 
         global_id_geo.update(result_dict)
 
     feed_back=result_dict
     print(len(feed_back))
-
+    if type_dict['area_num']!=None:
+        feed_back=area_calculate(feed_back,type_dict['area_num'])['id_list'] #计算面积约束
+        print(len(feed_back),'area_num',type_dict['area_num'])
     if "bounding_box_region_name" in globals_dict:
         geo_dict = {globals_dict["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
         geo_dict = {}
 
-    geo_dict.update((feed_back))
+    geo_dict.update(feed_back)
+
     return {'id_list':feed_back,'geo_map':geo_dict}
 
 
 def area_calculate(data_list1_original,top_num=None):
+    print(top_num)
     top_num=int(top_num)
+
     data_list1 = copy.deepcopy(data_list1_original)
     if isinstance(data_list1, dict) and 'id_list' in data_list1: #ids_of_type return的id_list是可以直接计算的字典
         data_list1 = data_list1['id_list']
@@ -220,8 +288,17 @@ def area_calculate(data_list1_original,top_num=None):
     list_2_geo1 = {i:[(global_id_geo[i]).area,global_id_geo[i]] for i in data_list1}
     data_list1=list_2_geo1
     sorted_dict=dict(sorted(data_list1.items(), key=lambda item: item[1][0], reverse=True))
-    if top_num!=None:
-        top_dict=dict(islice(sorted_dict.items(), top_num))
+    if top_num!=None and top_num!=0:
+        if top_num>0:
+            top_dict=dict(islice(sorted_dict.items(), top_num))
+        else:
+            items_list = list(sorted_dict.items())
+
+            # 获取最后三个键值对
+            last_three_items = items_list[top_num:]
+
+            # 转换这三个键值对回字典
+            top_dict = dict(last_three_items)
     else:
         top_dict=sorted_dict
     area_list = {key: value[0] for key, value in top_dict.items()}
@@ -238,8 +315,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     """
     buildings in forest
 
-    :param data_list1_original:  bigger element as object forest 宾语
-    :param data_list2_original:  smaller element as subject buildings 主语
+    :param data_list1_original:  smaller element as subject buildings 主语
+    :param data_list2_original:  bigger element as object forest 宾语
     :param mode:
     :param buffer_number:
     :return:
@@ -562,139 +639,21 @@ def sql_debug():
     cur.close()
     conn.close()
 #
-# print(ids_of_attribute('landuse'))
-# set_bounding_box("munich ismaning")
-#
-#
-# # id_buildings=ids_of_type('buildings','building')
-# id_farmland=ids_of_type('landuse','farmland')
-# id_soil=ids_of_type('soil','62c')
-# buildings_near_farmland=geo_calculate(id_soil,id_farmland,'contains',10)
-# print(id_2_attributes(buildings_near_farmland['subject']))
-# id1=ids_of_type('buildings','building')
 
-
-# a=[
-#     "forest",
-#     "nature_reserve",
-#     "scrub"
-#   ]
-# ids_of_type('landuse',a)
-# subject_dict,predicate_dict=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
-# id1=search_attribute(subject_dict,'http://example.org/property/leg_text',["62c","64c","80b"])
-# id2=ids_of_type('buildings', 'building')
-# geo_calculate(id1,id2,'buffer',100)
-# search_attribute(subject_dict,'http://example.org/property/leg_text',["62c","64c","80b"])
-# dict_,predicate_list=ttl_read(r'C:\Users\Morning\Desktop\hiwi\ttl_query\ttl_file\modified_Moore_Bayern_4326_index.ttl')
-# print(predicate_list.keys())
-# print(predicate_list['http://example.org/property/leg_text'])
-# print(search_attribute(dict_,'http://example.org/property/kategorie','Vorherrschend Niedermoor und Erdniedermoor, teilweise degradiert'))
-# print(predicate_list)
-# aa=["78: Vorherrschend Niedermoor und Erdniedermoor, gering verbreitet Übergangsmoor aus Torf über Substraten unterschiedlicher Herkunft mit weitem Bodenartenspektrum",
-#         "79: Fast ausschließlich Hochmoor und Erdhochmoor aus Torf",
-#         "65c: Fast ausschließlich Anmoorgley, Niedermoorgley und Nassgley aus Lehmsand bis Lehm (Talsediment); im Untergrund carbonathaltig",
-# #         "75c: Bodenkomplex: Vorherrschend Gley und Anmoorgley, gering verbreitet Moorgley aus (Kryo-)Sandschutt (Granit oder Gneis), selten Niedermoor aus Torf"
-# # ]
-# # # ids_of_type('soil',aa)
-# set_bounding_box("munich ismaning")
-# id2=ids_of_type('buildings','building')
-# id1=ids_of_type('landuse','forest')
-# # # id3=ids_of_type('landuse','forest')
-# # # area=area_calculate(id3,5)
-# # # print(area['id_list'])
-# # # print(id3)
-# #
-# a=geo_calculate(id2,id1,'buffer',10)
-# print(a['subject']['id_list'])
-# # cc=geo_calculate(id3,a['subject'],'intersects')
-# print(id3)
-# print(id_2_attributes(id3))
-
-# print(id_2_attributes(cc['object']['id_list']))
-# # print(a)
-# print(b)
-# for i in aa:
-#     print(shape(aa[i]).wkt)
-#     break
-# geo_calculate(id1,id2,'intersects')
-# start_time = time.time()
-#
-# (ids_of_type('http://example.com/buildings', 'building'))
-# end_time = time.time()
-# print(end_time - start_time)
-# sql()
-# import geopandas as gpd
-# import matplotlib.pyplot as plt
-# from shapely.geometry import Point, Polygon
-# import numpy as np
-# building_gdf_data = {
-#     'Name': [k[0] for k in id2.keys()],
-#     'geometry': [(v) for v in id2.values()]
-# }
-# soil_gdf_data = {
-#     'Name': [k[0] for k in id1.keys()],
-#     'geometry': [(v) for v in id1.values()]
-# }
-# # 假设已经加载了建筑和土壤区域的GeoDataFrame：building_gdf 和 soil_gdf
-# building_gdf=gpd.GeoDataFrame(building_gdf_data, geometry='geometry')
-# soil_gdf=gpd.GeoDataFrame(soil_gdf_data, geometry='geometry')
-# # 计算每个建筑到所有土壤区域的最近距离
-# def calculate_nearest(row, other_gdf, other_gdf_column='geometry'):
-#     """计算GeoDataFrame中每一行与另一个GeoDataFrame中所有几何形状的最近距离"""
-#     point = row.geometry
-#     # 计算到另一个GeoDataFrame中每个几何形状的距离
-#     distances = other_gdf.distance(point)
-#     # 返回最小距离
-#     return distances.min()
-# building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
-#
-# import matplotlib.pyplot as plt
-# import pandas as pd
-# # 假设 building_gdf['distance_to_nearest_soil'] 存在且包含距离数据
-#
-# # 定义距离区间和标签
-# bins = [0, 0.01, 0.02, 0.03, 0.04, float('inf')]  # 定义距离区间
-# labels = ['0-0.01m', '0.01-0.02m', '0.02-0.03m', '0.03-0.04m', '>0.04m']
-#
-# # 对距离数据进行分类
-# categories = pd.cut(building_gdf['distance_to_nearest_soil'], bins=bins, labels=labels, include_lowest=True)
-#
-# # 计算每个距离区间的建筑数量
-# counts = categories.value_counts(sort=False)
-#
-# # 转换为百分比
-# percentages = counts / counts.sum() * 100
-#
-# # 绘制饼图
-# plt.figure(figsize=(8, 8))
-# plt.pie(percentages, labels=percentages.index, autopct='%1.1f%%', startangle=140)
-# plt.title('Percentage of Buildings by Distance to Nearest Soil Area')
-# plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305003154.png')
-#
-
-
-#
-# # # 对每个建筑应用函数，计算到最近土壤区域的距离
-# building_gdf['distance_to_nearest_soil'] = building_gdf.apply(calculate_nearest, other_gdf=soil_gdf, axis=1)
-#
-# # 绘制距离的直方图
-# plt.figure(figsize=(10, 6))
-# plt.hist(building_gdf['distance_to_nearest_soil'], bins=30, color='skyblue', edgecolor='black')
-# plt.title('Distribution of Distances from Buildings to Nearest Soil Area')
-# plt.xlabel('Distance (meters)')
-# plt.ylabel('Number of Buildings')
-# plt.grid(True)
-# plt.savefig(r'C:\Users\Morning\Desktop\hiwi\ttl_query\flask_pro\static\plot_20240305001254.png')
-# set_bounding_box("munich")
-
+# set_bounding_box("Munich ismaning")
+type_dict={'non_area_col':{'name':['Technische Universität München']},'area_num':3}
+ids_of_type('landuse',type_dict)
+# print(ids_of_attribute('landuse', 'name'))
 # a=(ids_of_type('soil', '82: Fast ausschließlich Kalkpaternia aus Carbonatfeinsand bis -schluff über Carbonatsand bis -kies (Auensediment, hellgrau)'))
 # print(ids_of_attribute('soil'))
 # print(ids_of_attribute('soil'))
 # print(ids_of_attribute('buildings'))
 # print(ids_of_attribute('soil'))
 # aa=['21: Fast ausschließlich humusreiche Pararendzina aus Carbonatsandkies bis -schluffkies (Schotter), gering verbreitet mit flacher Flussmergeldecke', '57: Fast ausschließlich Rendzina aus Kalktuff oder Alm', '4a: Überwiegend Parabraunerde und verbreitet Braunerde aus Schluff bis Schluffton (Lösslehm) über Carbonatschluff (Löss)']
-# ids_of_type('soil',aa)
+# ids_of_type('landuse',['smallest 3','park'])
+# print(ids_of_attribute('landuse','name'))
 # print(ids_of_attribute('landuse'))
 # print(ids_of_attribute('soil')
 # a=ids_of_type('landuse','park')
 # geo_calculate(geo_result['subject']['id_list'])
+# set_bounding_box('munich')

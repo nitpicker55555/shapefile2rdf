@@ -128,13 +128,13 @@ def modify_of_entity(elements):
     random_elements = random.sample(elements, 2)
     return str(random_elements)
 
-num_entities=2
+num_entities=3
 
-for i in range(50):
+for i in range(20):
     print(i)
     ask_prompt = f"""Create a structured query involving {str(num_entities)} entities relevant to geographic analysis. These entities must be related to landuse or buildings or soil. Each entity needs 
 to have these modifying phrases in turn:{modify_of_entity(modify_prompt)}. The query should involve the spatial relationship: 
-{generate_feature_pair()[0]}
+{generate_feature_pair()}
 please response in json format like:
 {str(single_geo_buffer)}
 """
@@ -149,3 +149,5 @@ please response in json format like:
     with open('template_gpt.jsonl','a',encoding='utf-8') as file:
         file.write(json.dumps(json_result)+'\n')
 
+a={"messages": [{"role": "system", "content": "You are an excellent linguist，Help me identify all entities from this statement also their non_spatial_modify_statement and spatial_relations. Please format your response in JSON."}, {"role": "user", "content": "Identify buildings with offices that are located on soil suitable for agriculture under urban areas"}, {"role": "assistant", "content": '{"entities": [{"entity_text": "buildings", "non_spatial_modify_statement": "with offices"}, {"entity_text": "soil", "non_spatial_modify_statement": "suitable for agriculture"}, {"entity_text": "urban areas", "non_spatial_modify_statement": "none"}], "spatial_relations": [{"type": "on", "head": 1, "tail": 0}, {"type": "under", "head": 1, "tail": 2}]}'}]}
+b={"query": "Identify buildings with offices that are located on soil suitable for agriculture under urban areas?", "entities": [{"entity_text": "buildings", "non_spatial_modify_statement": "with offices"}, {"entity_text": "soil", "non_spatial_modify_statement": "suitable for agriculture"}, {"entity_text": "urban areas", "non_spatial_modify_statement": "none"}], "spatial_relations": [{"type": "on", "head": 1, "tail": 0}, {"type": "under", "head": 1, "tail": 2}]}

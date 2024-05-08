@@ -1,9 +1,11 @@
+import spacy
+
 from chat_py import *
 from levenshtein import are_strings_similar
 import json,re
 # from rag_model import calculate_similarity
 from rag_model_openai import calculate_similarity_openai
-from geo_functions import *
+# from geo_functions import *
 global_paring_dict={}
 new_dict_num=0
 file_path = 'global_paring_dict.jsonl'
@@ -194,37 +196,66 @@ def details_pick(query, given_list, table_name, messages=None):
             return result[query]
         else:
             raise Exception('no relevant item found for: ' + query)
-def pick_match(query,given_list,table_name):
-    if query in given_list:
-        return query
-    if are_strings_similar(query,table_name):
-        return 'all'
-
-    find_pre_matched={}
-    if table_name in global_paring_dict:
-        if list(global_paring_dict[table_name].keys()) != []:
-            find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()), query)
-
-    if find_pre_matched != {}:
-        print('find_pre_matched:', find_pre_matched)
-        match_list_key = list(find_pre_matched.keys())[0]
-        match_list = global_paring_dict[table_name][match_list_key]
-        return match_list
+def judge_area(type):
+    if 'large' in str(type) or 'small' in str(type) or 'big' in str(type):
+        return True
     else:
-        match_dict=calculate_similarity(given_list,query)
-    print(query+'\n')
-    # print(given_list)
-    print('\n\nmatch_dict:',match_dict)
-    if match_dict!={}:
-        return list(match_dict.keys())
+        return False
 
+def pick_match(query_feature_ori,given_list,table_name):
+    #for query_feature_ori['entity_text']==table_name,
+    #for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
+
+    if query_feature_ori['non_spatial_modify_statement']:#如果有non_spatial_modify_statement，使用non_spatial_modify_statement。
+        query_feature = query_feature_ori['non_spatial_modify_statement']
+        if query_feature_ori['entity_text'] != table_name: #如果entity_text和table名不一致，那么将entity_text也加入作为判断
+            query_feature+=f',{query_feature_ori["entity_text"]}'
     else:
+        query_feature = query_feature_ori['entity_text']#如果没有non_spatial_modify_statement，那么把entity当作pick的判断语
 
-        match_list=details_pick(query,given_list,table_name)
-        print('\n\nmatch_list:', match_list)
-        if match_list==[]:
-            raise Exception('no relevant item found for: ' +query + ' in given list.')
-        return match_list
+
+
+    if ',' in query_feature:#复合特征
+        query_list=query_feature.split(",")
+    else:
+            query_list=[query_feature]
+    match_list=[]
+    for query in query_list:
+        if query in given_list or judge_area(query):
+            match_list.append(query)
+            continue
+        if are_strings_similar(query,table_name):
+            match_list.append('all')
+            continue
+
+        find_pre_matched={}
+        if table_name in global_paring_dict:
+            if list(global_paring_dict[table_name].keys()) != []:
+                find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()), query)
+
+        if find_pre_matched != {}:
+            print(f'find_pre_matched for {query}:', find_pre_matched)
+            match_list_key = list(find_pre_matched.keys())[0]
+            match_list.extend( global_paring_dict[table_name][match_list_key])
+            # return match_list
+        else:
+            match_dict=calculate_similarity(given_list,query)
+            print(query+'\n')
+            # print(given_list)
+            print('\n\nmatch_dict:',match_dict)
+            if match_dict!={}:
+                return list(match_dict.keys())
+
+            else:
+
+                match_list.extend(details_pick(query,given_list,table_name))
+                print(f'\n\nmatch_list for {query}:', match_list)
+
+    if match_list==[]:
+        raise Exception('no relevant item found for: ' +query_feature + ' in given list.')
+    if len(match_list)==1 and judge_area(match_list[0]):
+        match_list.append('all') #为了问题如：largest 5 landuse
+    return match_list
     # messages.append(message_template('assistant',result))
 def judge_bounding_box(query,messages=None):
     if messages==None:
@@ -232,41 +263,36 @@ def judge_bounding_box(query,messages=None):
     if 'munich ismaning' in query.lower():
         return 'munich ismaning'
 
-    ask_prompt="""Does query contain a specific place name? If so, please give the place name back and do not change its 
-    original string. Return json format like: { "bounding_box": { "exist":true, "place_name":place_name } 
 
-    }
+    # 加载 spaCy 的英语模型
+    nlp = spacy.load("en_core_web_sm")
+
+    # 处理文本
+    doc = nlp(query)
+
+    # 存储地名的起始和结束索引
+    start_index = None
+    end_index = None
+
+    # 找到地名的起始和结束索引
+    for i, token in enumerate(doc):
+        if token.ent_type_ == "GPE":
+            if start_index is None:
+                start_index = i
+            end_index = i
+
+    # 如果找到了地名，则删除地名及其前面的介词
+    if start_index is not None and end_index is not None:
+        # 提取地名
+        location = doc[start_index:end_index + 1].text
+        # 删除地名及其前面的介词
+        while start_index > 0 and doc[start_index - 1].pos_ == "ADP":
+            start_index -= 1
+        updated_text = doc[:start_index].text + doc[end_index + 1:].text
+        return location, updated_text.strip()
     else:
-        {
-        "bounding_box": {
-            "exist":false
-        }
-    }
-    Here are some place name may be appear in query:
-    munich, munich moosach, munich maxvorstadt
-    """
-    if messages==None:
-        messages=[]
+        return None, query.strip()
 
-    messages.append(message_template('system',ask_prompt))
-    messages.append(message_template('user',query))
-    result=chat_single(messages,'json')
-    # print(result)
-    json_result=json.loads(result)
-    if 'bounding_box' in json_result:
-        if json_result['bounding_box']['exist']:
-            return json_result['bounding_box']['place_name']
-        else:
-            return None
-    
-    else:
-        raise Exception('no relevant item found for: ' +query + ' in given list.')
-def judge_graph_type(query):
-
-    graph_dict = judge_type(query)["database"]
-    graph_type_list = ids_of_attribute(graph_dict)
-    type_dict = pick_match(query['non_spatial_modify_statement'], graph_type_list, graph_dict)
-    return graph_dict,type_dict
 def judge_geo_relation(query,messages=None):
     if messages==None:
         messages=[]
@@ -275,7 +301,7 @@ def judge_geo_relation(query,messages=None):
     'intersects', 'contains','in', 'buffer', 'area_calculate']. Provide a response indicating whether the query includes a 
     geographical calculation and, if so, which type. Response in json format. Examples of expected analyses are as follows: 
 
-Query: "I want to know buildings 100m around the forest"
+Query: "100m around of"
 Response:
 {
     "geo_calculations": {
@@ -284,7 +310,7 @@ Response:
         "num": 100
     }
 }
-Query: "I want to know forests have buildings"
+Query: "have/contains/under"
 Reasoning: if query is about have/contains/under, type of geo_calculations is contains.
 Response:
 {
@@ -294,7 +320,7 @@ Response:
         "num": 0
     }
 }
-Query: "I want to know buildings in forest"
+Query: "in/within/on"
 Reasoning: if query is about in/within, type of geo_calculations is in.
 Response:
 {
@@ -304,7 +330,7 @@ Response:
         "num": 0
     }
 }
-Query: "I want to know residential closed to park"
+Query: "near/close/neighbour"
 Response:
 {
     "geo_calculations": {
@@ -352,92 +378,78 @@ Please ensure accuracy and precision in your responses, as these are critical fo
         raise Exception('no relevant item found for: ' +query + ' in given list.')
 def judge_object_subject_multi(query,messages=None):
     multi_prompt="""
-You are an excellent linguist，Help me identify all entities from this statement and their descriptions. Please format your response in JSON. 
+You are an excellent linguist，Help me identify all entities from this statement and their non_spatial_modify_statement and spatial_relations. Please format your response in JSON. 
 Example:
-'what type of soil is found under commercial buildings within 100 meters of the forest':{
-  "search_entities": [
+query: "I want to know which soil types the commercial buildings near farm on"
+response:
+{
+"entities":
+[
+  {
+    'entity_text': 'soil',
+    'non_spatial_modify_statement': "types"
+  },
+  {
+    'entity_text': 'buildings',
+    'non_spatial_modify_statement': "commercial"
+  },
     {
-      "entity": "soil",
-      "description": "type",
-      "id": 1
-    },
-    {
-      "entity": "buildings",
-      "type": "commercial",
-      "id": 2
-    },
-    {
-      "entity": "forest",
-      "description": None,
-      "id": 3
-    }
-  ],
-  "relationships": [
-    "#1 under #2",
-    "#2 within 100 meters of the #3"
+    'entity_text': 'farm',
+    'non_spatial_modify_statement': null
+  }
+],
+ "spatial_relations": [
+    {"type": "on", "head": 1, "tail": 0},
+    {"type": "near", "head": 1, "tail": 2}
   ]
-},
-'Which farmlands are on soil unsuitable for agriculture':{
-  "search_entities": [
-    {
-      "entity": "farmlands",
-      "description": None,
-      "id": 1
-    },
-    {
-      "entity": "soil",
-      "type": "unsuitable for agriculture",
-      "id": 2
-    }
-  ],
-  "relationships": [
-    "#1 on #2"
-  ]
-},
-'Which buildings are in soil unsuitable for buildings':{
-  "search_entities": [
-    {
-      "entity": "buildings",
-      "description": None,
-      "id": 1
-    },
-    {
-      "entity": "soil",
-      "type": "unsuitable for buildings",
-      "id": 2
-    }
-  ],
-  "relationships": [
-    "#1 in #2"
-  ]
-},
+}
 
-'which buildings for commercial are in landuse which is forest':{
-  "search_entities": [
+query: "I want to know commercial kinds of buildings in around 100m of landuse which is forest"
+response:
+{
+  "entities": [
     {
-      "entity": "buildings",
-      "description": 'commercial',
-      "id": 1
+      "entity_text": "buildings",
+      "non_spatial_modify_statement": "commercial"
     },
     {
-      "entity": "landuse",
-      "type": "forest",
-      "id": 2
-    }
+      "entity_text": "landuse",
+      "non_spatial_modify_statement": "forest"
+    },
   ],
-  "relationships": [
-    "#1 in #2"
+  "spatial_relations": [
+    {"type": "in around 100m of", "head": 0, "tail": 1},
   ]
-},
-
+}
+query: "show landuse which is university and has name TUM"
+response:
+{
+  "entities": [
+    {
+      "entity_text": "landuse",
+      "non_spatial_modify_statement": "university,name TUM"
+    },
+  ],
+  "spatial_relations": []
+}
+query: "show landuse which is university or bus stop"
+response:
+{
+  "entities": [
+    {
+      "entity_text": "landuse",
+      "non_spatial_modify_statement": "university,bus stop"
+    },
+  ],
+  "spatial_relations": []
+}
     """
     if messages==None:
         messages=[]
-
     ask_prompt=multi_prompt
     messages.append(message_template('system',ask_prompt))
     messages.append(message_template('user',query))
-    result=chat_single(messages,'json')
+    result=chat_single(messages,'json','gpt-4-turbo')
     # print(result)
     json_result=json.loads(result)
     return json_result
@@ -506,20 +518,24 @@ Your goal is to consistently apply this method to analyze and break down user qu
 
 def judge_type(query,messages=None):
     if isinstance(query,dict):
-        if query['entity_text']!=None: #没有地理关系,有non_spatial_modify_statement，是subject的形容词,object subject 被全部送入judge_type防止没有主语
-            query= query['entity_text']
-        else:
-            query=query['non_spatial_modify_statement']
+        query=str(query)
+    #     if query['entity_text']!=None: #没有地理关系,有non_spatial_modify_statement，是subject的形容词,object subject 被全部送入judge_type防止没有主语
+    #         query= query['entity_text']
+    #     else:
+    #         query=query['non_spatial_modify_statement']
     if query==None:
         return None
     if messages==None:
         messages=[]
     if 'building' in query.lower():
         return {'database': 'buildings'}
+
+
     ask_prompt="""
-    There are two database: [soil,landuse], 
+    There are two database: [soil,landuse,buildings], 
     'soil' database stores various soil types, such as swamps, wetlands, soil compositions.
     'landuse' database stores various types of urban land use like park, forest, residential area, school.
+    'buildings' database stores various types of buildings.
     response the correct database name given the provided data name in json format like:
     {
     'database':database
@@ -529,7 +545,7 @@ def judge_type(query,messages=None):
         messages=[]
 
     messages.append(message_template('system',ask_prompt))
-    messages.append(message_template('user',query))
+    messages.append(message_template('user',str(query)))
     result=chat_single(messages,'json')
     # print(result)
     json_result=json.loads(result)
@@ -540,7 +556,7 @@ def judge_type(query,messages=None):
         return {'database':json_result['database']}
 
     else:
-        raise Exception('no relevant item found for: ' +query + ' in given list.')
+        raise Exception('no relevant item found for: ' +str(query) + ' in given list.')
 
 
 def judge_result(query,messages=None):
@@ -633,5 +649,11 @@ def judge_result(query,messages=None):
 # print(pick_match('good fot agriculture', ids_of_attribute('soil')))
 
 # print(judge_geo_relation("I want to know where is good for planting strawberry",None))
+# print(judge_object_subject_multi('I want to know commercial kinds of buildings in around 100m of landuse which is forest'))
+# print(judge_object_subject_multi('show farmlands', None))
+# print(judge_geo_relation('on'))
 
-# print(judge_object_subject_multi('What soil types are the houses near the farm on?', None))
+# judge_object_subject_multi('I want to know buildings close to largest 5 park ')
+# a={'clothes', 'pitch', 'playground', 'scrub', 'newsagent', 'mobile_phone_shop', 'biergarten', 'kindergarten', 'track', 'bank', 'shelter', 'university', 'bicycle_rental', 'meadow', 'public_building', 'allotments', 'castle', 'toilet', 'parking_multistorey', 'parking', 'tourist_info', 'hostel', 'forest', 'bus_stop', 'butcher', 'memorial', 'museum', 'jeweller', 'restaurant', 'bus_station', 'embassy', 'graveyard', 'parking_underground', 'fast_food', 'water_works', 'furniture_shop', 'retail', 'hospital', 'riverbank', 'kiosk', 'commercial', 'courthouse', 'park', 'theatre', 'attraction', 'tower', 'grass', 'helipad', 'bicycle_shop', 'school', 'cemetery', 'water', 'cafe', 'fountain', 'fire_station', 'recreation_ground', 'bar', 'taxi', 'arts_centre', 'industrial', 'college', 'bookshop', 'library', 'monument', 'comms_tower', 'bakery', 'supermarket', 'chemist', 'hairdresser', 'police', 'artwork', 'convenience', 'parking_bicycle', 'hotel', 'residential'}
+# b={'entity_text': 'landuse', 'non_spatial_modify_statement': 'largest 5'}
+# print(pick_match(b, a, 'landuse'))

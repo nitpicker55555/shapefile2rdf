@@ -2,6 +2,8 @@
 import asyncio
 import json
 import re
+import traceback
+
 from shapely.geometry import Polygon
 from geo_functions import *
 from ask_functions_multi import *
@@ -145,8 +147,11 @@ def len_str2list(result):
         # 尝试使用 ast.literal_eval 解析字符串
         result = ast.literal_eval(result)
         # 检查解析结果是否为列表
-        if not isinstance(result,int):
-            return len(result)
+        if result!=None:
+            if not isinstance(result,int):
+                return len(result)
+            else:
+                return result
         else:
             return result
     except (ValueError, SyntaxError):
@@ -167,6 +172,8 @@ def judge_list(result):
             # 如果解析时发生错误，说明字符串不是有效的列表字符串
             return False
 def details_span(result,run_time):
+    if result==None:
+        result="None"
     pattern = r"An error occurred:.*\)"
     match = re.search(pattern, result)
 
@@ -357,16 +364,13 @@ def submit():
 
 
 
-            bounding_box_indicate = judge_bounding_box(data)
+            bounding_box_indicate,data_without_placename = judge_bounding_box(data)
+            print( bounding_box_indicate,data_without_placename)
             if bounding_box_indicate != None:
                 code_list.append(f"set_bounding_box('{bounding_box_indicate}')")
-                if bounding_box_indicate in data:
-                    if f"in {bounding_box_indicate}" in data:
-                        data_without_placename=data.replace(f'in {bounding_box_indicate}','')
-                    else:
-                        data_without_placename = data.replace(f'{bounding_box_indicate}', '')
-                    data=data_without_placename
+                data=data_without_placename
 
+            # code_list.append(f"set_bounding_box('munich')")
 
 
             """
@@ -401,34 +405,47 @@ def submit():
             }
             """
 
+            # multi_result = {'entities': [{'entity_text': 'farmlands', 'non_spatial_modify_statement': None}, {'entity_text': 'soil', 'non_spatial_modify_statement': 'unsuitable for agriculture'}], 'spatial_relations': [{'type': 'on', 'head': 0, 'tail': 1}]}
             multi_result = judge_object_subject_multi(data)
             code_list.append(
                 f"""
 multi_result={multi_result}                
                 """
             )
-            code_block=''
+            code_block="""
+all_geo_id={}
+            """
             for num, entity in enumerate(multi_result['entities']):
 
                 code_block+=(f"""
-graph{num},type{num}=judge_graph_type(multi_result['entities'][{num}])
+graph{num} = judge_type(multi_result['entities'][{num}])["database"]
+graph_type_list = ids_of_attribute(graph{num})
+type{num} = pick_match(multi_result['entities'][{num}], graph_type_list, graph{num})
                 """)
             code_list.append(code_block)
             for num, entity in enumerate(multi_result['entities']):
                 code_list.append(f"""
-id_list{num}=ids_of_type(graph{num},type{num}))
+id_list{num}=ids_of_type(graph{num},type{num})
+
                             """)
-            for num, relations in enumerate(multi_result['spatial_relations']):
-                code_list.append(f"""
+            if len(multi_result['spatial_relations'])!=0:
+                for num, relations in enumerate(multi_result['spatial_relations']):
+                    code_list.append(f"""
 geo_relation{num}=judge_geo_relation(multi_result['spatial_relations'][{num}]['type'])
-geo_result{num}=geo_calculate(id_list{relations['head']},id_list{relations['tail']},geo_relation{num}['type'],geo_relation{num}['num']))
-                            """)
-                code_list.append(f"""
+geo_result{num}=geo_calculate(id_list{relations['head']},id_list{relations['tail']},geo_relation{num}['type'],geo_relation{num}['num'])
+                                """)
+                    code_list.append(f"""
 id_list{relations['head']}=geo_result{num}['subject']
 id_list{relations['tail']}=geo_result{num}['object']
-                """)
-
-
+                    """)
+            else:                                                                                           #no geo_relationship, show all entities
+                pass
+#                 if not judge_area(data):
+#                     code_list.append(
+#                     """
+# send_data(all_geo_id,'map')
+#                     """
+#                 )
 
 
         lines_list = code_list
@@ -438,7 +455,10 @@ id_list{relations['tail']}=geo_result{num}['object']
             yield "\n\n`Code running...`\n"
             lines=lines.split('\n')
             # lines=[lines]
-            filtered_lst = [x for x in lines if x!='']
+            # print(lines)
+            filtered_lst = [item for item in lines if item.strip()]
+            for i in filtered_lst:
+                print('----',i)
             lines=filtered_lst
 
             if '=' in lines[-1] and (
@@ -472,7 +492,7 @@ send_data(temp_result['geo_map'],'map')
 
             """
                 lines[-1] = new_line
-            elif '=' not in lines[-1]:
+            elif '=' not in lines[-1] and 'send_data' not in lines[-1]:
                 new_line = f"""
 print({lines[-1]})
                             """
@@ -482,7 +502,7 @@ print({lines[-1]})
 
             code_str = '\n'.join(lines)
 
-            print(code_str)
+            # print(code_str)
             sys.stdout = output
             start_time = time.time()  # 记录函数开始时间
 
@@ -491,7 +511,9 @@ print({lines[-1]})
                 exec(code_str, globals())
 
             except Exception as e:
-                print(f"An error occurred: {repr(e)}")
+                exc_info = traceback.format_exc()
+                # 打印错误信息和代码行
+                print(f"An error occurred: {repr(e)}\n{exc_info}")
             end_time = time.time()  # 记录函数结束时间
             run_time = end_time - start_time
             code_result = str(output.getvalue().replace('\00', ''))

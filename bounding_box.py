@@ -31,6 +31,7 @@ def modify_region_advanced(region, horizontal_range, vertical_range):
 def find_boundbox(name):
     nominatim_url = "https://nominatim.openstreetmap.org/search"
     name=name.lower()
+    bounding_box=''
     if 'germany' in name.lower():
         name=name.replace('germany','')
     if ',' in name.lower():
@@ -43,30 +44,31 @@ def find_boundbox(name):
     }
 
     # Send GET request
-    response = requests.get(nominatim_url, params=query_params)
-    response_str=""
-    # Handle the response
-    if response.status_code == 200:
-        search_results = response.json()
-        if search_results:
-            first_result = search_results[0]
-            bounding_box = first_result.get('boundingbox', None)
-            if bounding_box:
-                response_str=f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}"
-                print(f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}")
-            else:
-                response_str="Bounding box not found for the first result."
-                print("Bounding box not found for the first result.")
-        else:
-            print("No results found.")
-    else:
-        print(f"Failed to retrieve data: {response.status_code}")
+    # response = requests.get(nominatim_url, params=query_params)
+    # response_str=""
+    # # Handle the response
+    # if response.status_code == 200:
+    #     search_results = response.json()
+    #     if search_results:
+    #         first_result = search_results[0]
+    #         bounding_box = first_result.get('boundingbox', None)
+    #         if bounding_box:
+    #             response_str=f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}"
+    #             print(f"The bounding box for {first_result.get('display_name', 'unknown')} is: {bounding_box}")
+    #         else:
+    #             response_str="Bounding box not found for the first result."
+    #             print("Bounding box not found for the first result.")
+    #     else:
+    #         print("No results found.")
+    # else:
+    #     print(f"Failed to retrieve data: {response.status_code}")
     # print(bounding_box)
     # coordinates = re.findall(r"\d+\.\d+", bounding_box)
 
     # 将字符串坐标转换为浮点数
     # coordinates =  modify_region_advanced( [48.2016433, 48.2403103, 11.6435458, 11.70167735],(0.2, 0.6), (0.3,0.9))
     #
+    bounding_box=['48.1396028', '48.1576365', '11.5389232', '11.5881922']
     coordinates = [float(coord) for coord in bounding_box]
     # print(coordinates)
     # print(coordinates)
@@ -81,7 +83,7 @@ def find_boundbox(name):
     wkb = dumps(rectangle, hex=True)
     # draw_geo_map({name:wkb})
 
-    return coordinates,wkb,response_str
+    return coordinates,wkb,'bounding'
 
 def bounding_box_test(name):
     name=name.lower()
@@ -105,4 +107,4 @@ def bounding_box_test(name):
         search_results = response.json()
         if search_results:
             print(search_results)
-# print(bounding_box_test("munich moosach,germany"))
+# print(find_boundbox("munich moosach"))

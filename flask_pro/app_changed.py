@@ -368,8 +368,6 @@ def submit():
                     data=data_without_placename
 
 
-
-
             geo_relation_dict = judge_geo_relation(data)
             yield f"\n\ngeo_relation:`{geo_relation_dict}`\n"
 
