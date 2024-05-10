@@ -41,11 +41,13 @@ def error_test():
     print("normal output")
     raise Exception("asdasdawfdafc asdac zcx fwe")
 def is_string_in_list_partial(string, lst):
+    # print(string,lst)
+
     item_list=set()
     for item in lst:
         if string==item.lower():
             return [item]
-        if string in item.lower().split(' '):
+        if string.lower() in item.lower().split(' '):
             item_list.add(item)
     return item_list
 def describe_label(query,given_list,table_name,messages=None):
@@ -235,10 +237,12 @@ def pick_match(query_feature_ori,table_name):
 
     if query_feature_ori['non_spatial_modify_statement']:#如果有non_spatial_modify_statement，使用non_spatial_modify_statement。
         if 'type' in query_feature_ori['non_spatial_modify_statement']:
-            query_feature_ori['non_spatial_modify_statement'] = ''
+            query_feature_ori['non_spatial_modify_statement']=query_feature_ori['non_spatial_modify_statement'].replace('types','').replace('type','')
+
+
         query_feature = query_feature_ori['non_spatial_modify_statement']
         if query_feature_ori['entity_text'] != table_name: #如果entity_text和table名不一致，那么将entity_text也加入作为判断
-            query_feature+=f',{query_feature_ori["entity_text"]}'
+            query_feature+=f' {query_feature_ori["entity_text"]}'
 
     else:
         query_feature = query_feature_ori['entity_text']#如果没有non_spatial_modify_statement，那么把entity当作pick的判断语
@@ -250,17 +254,18 @@ def pick_match(query_feature_ori,table_name):
             query_list=[query_feature]
     match_list={'non_area_col':{},'area_num':None}
     for query in query_list:
+
         if query!='':
             col_name=judge_col_name(query)
             if col_name!=None:                                                  #fclass和name的粗选
-                print(query,table_name)
                 if are_strings_similar(query,table_name):
                     match_list['non_area_col'][col_name] ='all'
-                    print('match')
+                    # print('match')
                     continue
                 if col_name not in match_list['non_area_col']:
                     match_list['non_area_col'][col_name] =set()
                 given_list=ids_of_attribute(table_name,col_name)
+                query = query.replace('named', '').replace("name ", '').replace("is ", '')
                 partial_similar=is_string_in_list_partial(query,given_list)
 
                 if len(partial_similar)>=1:
@@ -271,7 +276,7 @@ def pick_match(query_feature_ori,table_name):
                     match_list['non_area_col'][col_name].update(set(given_list))
                     continue
                 else:                                                           #fclass和name的精选
-                        query=query.replace('name','').replace("is ",'')
+
 
 
                         find_pre_matched = {}
@@ -448,7 +453,7 @@ response:
 [
   {
     'entity_text': 'soil',
-    'non_spatial_modify_statement': "types"
+    'non_spatial_modify_statement': ""
   },
   {
     'entity_text': 'buildings',
@@ -504,6 +509,8 @@ response:
   ],
   "spatial_relations": []
 }
+Notice, have/has should be considered as spatial_relations:
+like: residential area which has buildings.
     """
     if messages==None:
         messages=[]
@@ -588,7 +595,7 @@ def judge_type(query,messages=None):
         return None
     if messages==None:
         messages=[]
-    if 'building' in query.lower():
+    if 'building' in query.lower() and 'soil' not in query.lower():
         return {'database': 'buildings'}
 
 
@@ -671,85 +678,17 @@ def judge_result(query,messages=None):
     return result
 
 
-# print(judge_query_first('Which farmlands are on soil unsuitable for agriculture?'))
-# query="I want to know buildings around 100m of forest in munich ismaning."
-# judge_bounding_box(query)
-# object_subject=judge_geo_relation('What soil types are the houses on the farm on?') #entity_text,non_spatial_modify_statement
-# print(object_subject)
-# graph_dict={}
-# graph_type_list={}
-# type_dict={}
-# element_list={}
-# for item_ in object_subject:
-#     if object_subject[item_]!=None:
-#         graph_dict[item_]=judge_type(object_subject[item_])['database']
-#         graph_type_list[item_]=ids_of_attribute(graph_dict[item_])
-#         type_dict[item_]=pick_match(object_subject[item_],graph_type_list[item_])
-#         element_list[item_]=ids_of_type(graph_dict[item_],type_dict[item_])
-#
-# geo_relation_dict=judge_geo_relation(query)
-# geo_calculate(element_list['non_spatial_modify_statement'],element_list['entity_text'],geo_relation_dict['type'],geo_relation_dict['num'])
-# print(judge_type('swamp'))
-# id1=ids_of_attribute('soil')
-# print(id1)
-# att=id_2_attributes(id1)
-# print(att.keys())
-# query='我想知道哪个适合农业'
-# a=pick_match(query,att)
-# id2=ids_of_type('soil',a)
-# from geo_functions import *
-# # set_bounding_box("munich ismaning")
-# # id_buildings=ids_of_type('buildings','building')
-# set_bounding_box("munich")
-# soil_type_list = ids_of_attribute('soil') # Get soil types
-# soil_type_list_not_good_for_buildings = pick_match('not good for building construction', soil_type_list) # Get soil types which not good for buildings
-# print(soil_type_list_not_good_for_buildings,'soil_type_list_not_good_for_buildings')
-#
-# id_soil=ids_of_type('soil',soil_type_list_not_good_for_buildings)
-# buildings_on_soil=geo_calculate(id_soil,id_buildings,'contains')
-# print(id_2_attributes(buildings_on_soil['subject']))
-# graph_type_list=ids_of_attribute('soil')
-# aa=pick_match('swamp',graph_type_list)
-# print(aa)
-#
-# iii=ids_of_attribute('landuse')
-# print(pick_match('parks', iii))
-
-# id_buildings=ids_of_type('buildings','building')
-# id_farmland=ids_of_type('landuse','forest')
-# buildings_near_farmland=geo_calculate(id_farmland,id_buildings,'contains',10)
-# print(id_2_attributes(soil_under_buildings['subject']))
-# from geo_functions import *
-# #
-# print(pick_match('good for planting strawberry', ids_of_attribute('soil'), 'soil'))
-# from rag_model_openai import build_vector_store
-# soil=list((ids_of_attribute('buildings')))[:1000]
-# # print(soil)
-# build_vector_store(soil,'buildings')
-# set_bounding_box("munich ismaning")
-# a2=ids_of_type('buildings','building')
-# a1=ids_of_type('landuse','forest')
-# aa=geo_calculate(a1,a2,'buffer',100)
-# explain=id_explain(aa)
-# print(explain)
-# print(judge_result(explain))
-# a1=ids_of_attribute('landuse')
-# a2=ids_of_attribute('buildings')
-# (ids_of_type(['landuse','buildings'],a3))
-# print(pick_match('school', a))
-#
-# print(pick_match('good fot agriculture', ids_of_attribute('soil')))
-
-# print(judge_geo_relation("I want to know where is good for planting strawberry",None))
-# print(judge_object_subject_multi('What soil types are the houses near the farm on'))
-# print(judge_object_subject_multi('show farmlands', None))
-# print(judge_geo_relation('on'))
-
 # judge_object_subject_multi('I want to know buildings close to largest 5 park ')
 # a={'clothes', 'pitch', 'playground', 'scrub', 'newsagent', 'mobile_phone_shop', 'biergarten', 'kindergarten', 'track', 'bank', 'shelter', 'university', 'bicycle_rental', 'meadow', 'public_building', 'allotments', 'castle', 'toilet', 'parking_multistorey', 'parking', 'tourist_info', 'hostel', 'forest', 'bus_stop', 'butcher', 'memorial', 'museum', 'jeweller', 'restaurant', 'bus_station', 'embassy', 'graveyard', 'parking_underground', 'fast_food', 'water_works', 'furniture_shop', 'retail', 'hospital', 'riverbank', 'kiosk', 'commercial', 'courthouse', 'park', 'theatre', 'attraction', 'tower', 'grass', 'helipad', 'bicycle_shop', 'school', 'cemetery', 'water', 'cafe', 'fountain', 'fire_station', 'recreation_ground', 'bar', 'taxi', 'arts_centre', 'industrial', 'college', 'bookshop', 'library', 'monument', 'comms_tower', 'bakery', 'supermarket', 'chemist', 'hairdresser', 'police', 'artwork', 'convenience', 'parking_bicycle', 'hotel', 'residential'}
 # b={'entity_text': 'landuse', 'non_spatial_modify_statement': 'name technische universität münchen,largest 3,education'}
-# b={'entity_text': 'houses', 'non_spatial_modify_statement': None}
+# b={'entity_text': 'buildings', 'non_spatial_modify_statement': 'name Hauptbahnhof'}
 # print(pick_match(b,'buildings'))
 # print(general_gpt('user wants to search name of tum, what is its full name'))
 # a={'entity_text': 'soil', 'non_spatial_modify_statement': ''}
-# print(pick_match(a,'soil'))
+# a={'entity_text': 'landuse', 'non_spatial_modify_statement': 'name technische'}
+# print(pick_match(a,'landuse'))
+# print(is_string_in_list_partial('technische', ids_of_attribute('landuse', 'name')))
+# print(judge_object_subject_multi('residential area close to park'))
+# a=ids_of_attribute('buildings','name')
+# print(is_string_in_list_partial('Studentenwohnheim', a))
+# print(a)

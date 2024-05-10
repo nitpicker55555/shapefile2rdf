@@ -156,9 +156,9 @@ def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None)
     bounding_query = f"""
     SELECT DISTINCT {fclass}
     FROM {graph_name_modify}
-    {bounding_judge_query}
-    """
 
+    """
+    #     {bounding_judge_query}
     # print(bounding_query)
 
 
@@ -200,8 +200,9 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
     fclass_row = ''
 
     for col_name,single_type_list in type_dict['non_area_col'].items():
+        # print(col_name,single_type_list)
         if single_type_list=='all':
-            fclass_row = ''
+            fclass_row += ''
         elif len(single_type_list)>1:
             fclass_row+=f"\n{col_name_mapping_dict[graph_name][col_name]} in {tuple(single_type_list)}"
         elif len(single_type_list)==1:
@@ -254,6 +255,8 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
         geo_dict = {}
 
     geo_dict.update(feed_back)
+    if len(feed_back)==0:
+        raise Exception(f'Nothing found for {type_dict}! Please change an area and search again.')
 
     return {'id_list':feed_back,'geo_map':geo_dict}
 
@@ -622,8 +625,8 @@ def sql_debug():
 #{'name': ['Berufs- und Technikerschule', 'Universität', 'TEH-Akademie', 'Berufsfachschule', 'Fakultät für Informatik der LMU', 'Technische Hochschule Ingolstadt', 'Bildungshaus', 'Berufsschule', 'Staatliche Fachoberschule und Berufsoberschule Altötting', 'Simmernschule', 'Berufsbildung- und Technologiezentrum | Kaminkehrer-Innung Oberbayern', 'Isardammschule', 'Knosporus CampusGarten', 'Sonderberufsschule', 'Wichtel Akademie'], 'fclass': ['school', 'college', 'university']
 
 # set_bounding_box("Munich ismaning")
-# type_dict={'non_area_col':{'name': {'Berufs- und Technikerschule', 'Universität', 'TEH-Akademie', 'Berufsfachschule', 'Fakultät für Informatik der LMU', 'Technische Hochschule Ingolstadt', 'Bildungshaus', 'Berufsschule', 'Staatliche Fachoberschule und Berufsoberschule Altötting', 'Simmernschule', 'Berufsbildung- und Technologiezentrum | Kaminkehrer-Innung Oberbayern', 'Isardammschule', 'Knosporus CampusGarten', 'Sonderberufsschule', 'Wichtel Akademie'}, 'fclass':'all'},'area_num':None}
-# print(ids_of_type('landuse', type_dict))
+# type_dict={'non_area_col':{'name': {'Hauptbahnhof'}, 'fclass':'all'},'area_num':None}
+# (ids_of_type('buildings', type_dict))
 # print(ids_of_attribute('landuse', 'name'))
 # a=(ids_of_type('soil', '82: Fast ausschließlich Kalkpaternia aus Carbonatfeinsand bis -schluff über Carbonatsand bis -kies (Auensediment, hellgrau)'))
 # print(ids_of_attribute('soil'))
@@ -638,3 +641,4 @@ def sql_debug():
 # a=ids_of_type('landuse','park')
 # geo_calculate(geo_result['subject']['id_list'])
 # set_bounding_box('munich')
+# print(len(ids_of_attribute('landuse')))

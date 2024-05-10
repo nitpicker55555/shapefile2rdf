@@ -48,9 +48,9 @@ def calculate_similarity(words, key_word,mode=None):
     sorted_dict_by_values = {k: v for k, v in sorted_items}
     return sorted_dict_by_values
 
-
-# Example usage
-# words = ['buildings']
-# key_word = "building"
-# similarity_scores = calculate_similarity(words, key_word)
+#
+# # Example usage
+# words = ['Technische Hochschule Rosenheim', 'Gemeindewerke Oberhaching Geothermie-Fernwärme Zentrallager / Technische Basis', 'Technische Hochschule Ingolstadt', 'Technische Universität München']
+# key_word = "technical university munich"
+# similarity_scores = calculate_similarity(words, key_word,'print')
 # print(similarity_scores)

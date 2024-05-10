@@ -5,6 +5,8 @@ import re
 import traceback
 
 from shapely.geometry import Polygon
+
+import geo_functions
 from geo_functions import *
 from ask_functions_multi import *
 from flask import Flask, Response, stream_with_context, request, render_template, jsonify,session
@@ -279,10 +281,13 @@ def home():
     # 加载包含 Markdown 容器的前端页面
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
-    print("初始化")
-    globals_dict = {}
-    global_id_attribute = {}
-    global_id_geo = {}
+    print("initial")
+    geo_functions.globals_dict={}
+    geo_functions.global_id_attribute={}
+    geo_functions.global_id_geo={}
+    # globals_dict = {}
+    # global_id_attribute = {}
+    # global_id_geo = {}
     ip_=request.headers.get('X-Real-IP')
     session['ip_']=ip_
     session['uploaded_indication'] = None
