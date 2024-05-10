@@ -9,7 +9,7 @@ print(f"Using device: {device}")  # Print the device being used
 model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2').to(device)
 
 
-def calculate_similarity(words, key_word):
+def calculate_similarity(words, key_word,mode=None):
     words=list(words)
     # Check if a GPU is available and select the appropriate device
 
@@ -33,12 +33,17 @@ def calculate_similarity(words, key_word):
 
     # Create a dictionary to store the similarities, only include words with similarity > 0.7
     similarity_dict = {}
+    similarity_dict_all = {}
     for word, similarity in zip(words, similarity_scores):
-        if similarity > 0.9:
+        similarity_dict_all[word] = float(similarity)
+        if similarity > 0.95:
             similarity_dict = {word: float(similarity)}
             break
         elif similarity > 0.7:
             similarity_dict[word] = float(similarity)
+    if mode=='print':
+        sorted_items_all = sorted(similarity_dict_all.items(), key=lambda x: x[1], reverse=True)
+        print(sorted_items_all)
     sorted_items = sorted(similarity_dict.items(), key=lambda x: x[1],reverse=True)
     sorted_dict_by_values = {k: v for k, v in sorted_items}
     return sorted_dict_by_values

@@ -22,6 +22,7 @@ def are_strings_similar(s1, s2, threshold_percentage=25):
     max_length = max(len(s1), len(s2))
     threshold = max_length * (threshold_percentage / 100)
     distance = levenshtein_distance(s1, s2)
+
     return distance <= threshold
 
 # # Example usage

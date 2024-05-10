@@ -19,6 +19,7 @@ from shapely.geometry import base
 globals_dict = {}
 global_id_attribute={}
 global_id_geo={}
+
 # sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
@@ -43,9 +44,16 @@ col_name_mapping_dict={
     "graph_name":"soilcomplete"
 
 }   ,
+    "soilcomplete":{
+    "osm_id":"objectid",
+    "fclass":"leg_text",
+    "select_query":"SELECT leg_text,objectid,geom",
+    "graph_name":"soilcomplete"
+
+}   ,
 "buildings":{
     "osm_id": "osm_id",
-    "fclass": "name",
+    "fclass": "fclass",
     "name": "name",
     "select_query": "SELECT buildings AS source_table, fclass,name,osm_id,geom",
     "graph_name":"buildings"
@@ -96,41 +104,22 @@ def auto_add_WHERE_AND(sql_query):
             else:
                 modified_query.append(line)
         if not modified_query[-1].strip().endswith(';'):
-            modified_query[-1] += ';'
+            modified_query[-1] += '\nLIMIT 20000;'
         # 将处理后的行合并回一个单一的字符串
         return '\n'.join(modified_query)
 
-
-def remove_semicolon_before_union(input_string):
-    # 将输入字符串分割成单独的行
-    aa=[]
-    lines = input_string.split('\n')
-    for i in lines:
-        if i.replace(' ','')!='':
-            aa.append(i)
-
-    aa[- 1] = aa[ - 1].rstrip(';\r')
-    aa.append('LIMIT 20000;')
-
-
-    # # # 遍历每一行，检查是否含有"UNION"
-    # for i in range(1, len(lines)):
-    #     if 'UNION' in lines[i]:
-    #         # 如果当前行包含"UNION"，删除上一行末尾的分号
-    #         lines[i - 1] = lines[i - 1].rstrip(';\r')
-
-    # 将处理过的行重新组合成一个字符串并返回
-    return '\n'.join(aa)
 def cur_action(query):
     try:
         query=auto_add_WHERE_AND(query)
 
-        print(query)
+        # print(query)
+
         cur.execute(query)
         rows =cur.fetchall()
         return rows
     except psycopg2.Error as e:
         cur.execute("ROLLBACK;")
+        print(query)
         raise Exception(f"SQL error: {e}")
 
 
@@ -160,12 +149,13 @@ def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None)
     attributes_set = set()
 
     fclass= col_name_mapping_dict[graph_name]['fclass']
-    graph_name= col_name_mapping_dict[graph_name]['graph_name']
+
     if specific_col!=None:
-        fclass=specific_col
+        fclass=col_name_mapping_dict[graph_name][specific_col]
+    graph_name_modify = col_name_mapping_dict[graph_name]['graph_name']
     bounding_query = f"""
     SELECT DISTINCT {fclass}
-    FROM {graph_name}
+    FROM {graph_name_modify}
     {bounding_judge_query}
     """
 
@@ -178,18 +168,7 @@ def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None)
     for row in rows:
         attributes_set.add(row[0])
     return attributes_set
-def extract_numbers(s):
-    # print(s)
-    # 使用正则表达式找出字符串中的所有数字
-    numbers = re.findall(r'\d+', s)
-    # print(numbers)
-    # 将找到的数字字符串转换为整数
-    a=1
-    if 'small' in s:
-       a=-1
-    if len(numbers)!=0:
-        return int(numbers[0])*a
-    else:return 1*a #如果没有显式说明最大数值，则为最大的
+
 def judge_area(type):
     if 'large' in str(type) or 'small' in str(type) or 'big' in str(type):
         return True
@@ -208,7 +187,7 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
     area_num=None
 
     select_query=col_name_mapping_dict[graph_name]['select_query']
-    graph_name=col_name_mapping_dict[graph_name]['graph_name']
+    graph_name_modify=col_name_mapping_dict[graph_name]['graph_name']
     fclass=col_name_mapping_dict[graph_name]['fclass']
     osm_id=col_name_mapping_dict[graph_name]['osm_id']
 
@@ -219,19 +198,21 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
         bounding_judge_query=f"ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
 
     fclass_row = ''
-    # 如果single_type_list是all或字符串，那么fclass_row就是默认值，为空
+
     for col_name,single_type_list in type_dict['non_area_col'].items():
-        if isinstance(single_type_list,list) and len(single_type_list)>1:
+        if single_type_list=='all':
+            fclass_row = ''
+        elif len(single_type_list)>1:
             fclass_row+=f"\n{col_name_mapping_dict[graph_name][col_name]} in {tuple(single_type_list)}"
-        elif isinstance(single_type_list,list) and len(single_type_list)==1:
-            fclass_row += f"\n{col_name_mapping_dict[graph_name][col_name]} = '{single_type_list[0]}'"
+        elif len(single_type_list)==1:
+            fclass_row += f"\n{col_name_mapping_dict[graph_name][col_name]} = '{list(single_type_list)[0]}'"
 
 
 
 
     bounding_query = f"""
     {select_query}
-    FROM {graph_name}
+    FROM {graph_name_modify}
     {bounding_judge_query}
     {fclass_row}
     """
@@ -256,8 +237,8 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
 
         else:
             #     select_query=f'SELECT {fclass},name,{osm_id},geom'
-            result_dict[str(row[0])+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] = (wkb.loads(bytes.fromhex(row[-1])))
-            global_id_attribute[str(row[0])+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] =  str(row[1]+str(row[2]))
+            result_dict[graph_name+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] = (wkb.loads(bytes.fromhex(row[-1])))
+            global_id_attribute[graph_name+ "_" + str(row[1])+"_"+str(row[2])+"_"+str(row[3])] =  str(row[1]+str(row[2]))
 
 
         global_id_geo.update(result_dict)
@@ -638,11 +619,11 @@ def sql_debug():
     # 关闭连接
     cur.close()
     conn.close()
-#
+#{'name': ['Berufs- und Technikerschule', 'Universität', 'TEH-Akademie', 'Berufsfachschule', 'Fakultät für Informatik der LMU', 'Technische Hochschule Ingolstadt', 'Bildungshaus', 'Berufsschule', 'Staatliche Fachoberschule und Berufsoberschule Altötting', 'Simmernschule', 'Berufsbildung- und Technologiezentrum | Kaminkehrer-Innung Oberbayern', 'Isardammschule', 'Knosporus CampusGarten', 'Sonderberufsschule', 'Wichtel Akademie'], 'fclass': ['school', 'college', 'university']
 
 # set_bounding_box("Munich ismaning")
-type_dict={'non_area_col':{'name':['Technische Universität München']},'area_num':3}
-ids_of_type('landuse',type_dict)
+# type_dict={'non_area_col':{'name': {'Berufs- und Technikerschule', 'Universität', 'TEH-Akademie', 'Berufsfachschule', 'Fakultät für Informatik der LMU', 'Technische Hochschule Ingolstadt', 'Bildungshaus', 'Berufsschule', 'Staatliche Fachoberschule und Berufsoberschule Altötting', 'Simmernschule', 'Berufsbildung- und Technologiezentrum | Kaminkehrer-Innung Oberbayern', 'Isardammschule', 'Knosporus CampusGarten', 'Sonderberufsschule', 'Wichtel Akademie'}, 'fclass':'all'},'area_num':None}
+# print(ids_of_type('landuse', type_dict))
 # print(ids_of_attribute('landuse', 'name'))
 # a=(ids_of_type('soil', '82: Fast ausschließlich Kalkpaternia aus Carbonatfeinsand bis -schluff über Carbonatsand bis -kies (Auensediment, hellgrau)'))
 # print(ids_of_attribute('soil'))

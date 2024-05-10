@@ -136,7 +136,26 @@ def complete_json(input_stream):
 
 
 # html_content = markdown2.markdown(markdown_text)
+def reorder_relations(relations):
+    for relation in relations:
+        if 0 not in (relation['head'], relation['tail']):
+            break
+    else:
+        # 0 simultaneously exists in all dictionaries
+        return relations
 
+    reordered_relations = []
+    zero_relation = None
+    for relation in relations:
+        if 0 in (relation['head'], relation['tail']):
+            zero_relation = relation
+        else:
+            reordered_relations.append(relation)
+
+    if zero_relation:
+        reordered_relations.append(zero_relation)
+
+    return reordered_relations
 def extract_code(code_str):
     return code_str.split("```python")[1].split("```")[0]
 def len_str2list(result):
@@ -358,7 +377,7 @@ def submit():
         if session['template']==True:
             code_list.append(data)
         else:
-            data=data.lower()
+            # data=data.lower()
             # if data.startswith('next'):
 
 
@@ -374,35 +393,27 @@ def submit():
 
 
             """
-            {
-              "query": "Identify residential buildings within 50 meters of parks with playgrounds on sandy soil under them?",
-              "entities": [
-                {
-                  "entity_text": "buildings",
-                  "non_spatial_modify_statement": "residential"
-                },
-                {
-                  "entity_text": "parks",
-                  "non_spatial_modify_statement": "with playgrounds"
-                },
-                {
-                  "entity_text": "soil",
-                  "non_spatial_modify_statement": "sandy"
-                }
-              ],
-              "spatial_relations": [
-                {
-                  "type": "within 50 meters of",
-                  "head": 0,
-                  "tail": 1
-                },
-                {
-                  "type": "under",
-                  "head": 2,
-                  "tail": 0
-                }
-              ]
-            }
+            What soil types are the houses near the farm on
+{
+  "entities": [
+    {
+      "entity_text": "soil",
+      "non_spatial_modify_statement": "types"
+    },
+    {
+      "entity_text": "houses",
+      "non_spatial_modify_statement": null
+    },
+    {
+      "entity_text": "farm",
+      "non_spatial_modify_statement": null
+    }
+  ],
+  "spatial_relations": [
+    {"type": "on", "head": 1, "tail": 0},
+    {"type": "near", "head": 1, "tail": 2}
+  ]
+}
             """
 
             # multi_result = {'entities': [{'entity_text': 'farmlands', 'non_spatial_modify_statement': None}, {'entity_text': 'soil', 'non_spatial_modify_statement': 'unsuitable for agriculture'}], 'spatial_relations': [{'type': 'on', 'head': 0, 'tail': 1}]}
@@ -419,8 +430,7 @@ all_geo_id={}
 
                 code_block+=(f"""
 graph{num} = judge_type(multi_result['entities'][{num}])["database"]
-graph_type_list = ids_of_attribute(graph{num})
-type{num} = pick_match(multi_result['entities'][{num}], graph_type_list, graph{num})
+type{num} = pick_match(multi_result['entities'][{num}], graph{num})
                 """)
             code_list.append(code_block)
             for num, entity in enumerate(multi_result['entities']):
@@ -429,7 +439,9 @@ id_list{num}=ids_of_type(graph{num},type{num})
 
                             """)
             if len(multi_result['spatial_relations'])!=0:
-                for num, relations in enumerate(multi_result['spatial_relations']):
+                modify_spatial_order=reorder_relations(multi_result['spatial_relations'])
+
+                for num, relations in enumerate(modify_spatial_order):
                     code_list.append(f"""
 geo_relation{num}=judge_geo_relation(multi_result['spatial_relations'][{num}]['type'])
 geo_result{num}=geo_calculate(id_list{relations['head']},id_list{relations['tail']},geo_relation{num}['type'],geo_relation{num}['num'])

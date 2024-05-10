@@ -3,9 +3,9 @@ import spacy
 from chat_py import *
 from levenshtein import are_strings_similar
 import json,re
-# from rag_model import calculate_similarity
+from rag_model import calculate_similarity
 from rag_model_openai import calculate_similarity_openai
-# from geo_functions import *
+from geo_functions import *
 global_paring_dict={}
 new_dict_num=0
 file_path = 'global_paring_dict.jsonl'
@@ -40,6 +40,14 @@ def limit_total_words(lst, max_length=10000):
 def error_test():
     print("normal output")
     raise Exception("asdasdawfdafc asdac zcx fwe")
+def is_string_in_list_partial(string, lst):
+    item_list=set()
+    for item in lst:
+        if string==item.lower():
+            return [item]
+        if string in item.lower().split(' '):
+            item_list.add(item)
+    return item_list
 def describe_label(query,given_list,table_name,messages=None):
     if messages == None:
         messages = []
@@ -162,6 +170,14 @@ def details_pick_chatgpt(query,given_list,table_name,messages=None):
         return new_paring_dict[query]
     raise Exception('no relevant item found for: ' + query)
 
+def judge_col_name(statement_split):
+
+    if 'name' in statement_split:
+        return 'name'
+    elif judge_area(statement_split):
+        return None
+    else:
+        return 'fclass'
 
 def details_pick(query, given_list, table_name, messages=None):
     def after_match(query_paring_list):
@@ -201,62 +217,107 @@ def judge_area(type):
         return True
     else:
         return False
-
-def pick_match(query_feature_ori,given_list,table_name):
+def extract_numbers(s):
+    # print(s)
+    # 使用正则表达式找出字符串中的所有数字
+    numbers = re.findall(r'\d+', s)
+    # print(numbers)
+    # 将找到的数字字符串转换为整数
+    a=1
+    if 'small' in s:
+       a=-1
+    if len(numbers)!=0:
+        return int(numbers[0])*a
+    else:return 1*a #如果没有显式说明最大数值，则为最大的
+def pick_match(query_feature_ori,table_name):
     #for query_feature_ori['entity_text']==table_name,
     #for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
 
     if query_feature_ori['non_spatial_modify_statement']:#如果有non_spatial_modify_statement，使用non_spatial_modify_statement。
+        if 'type' in query_feature_ori['non_spatial_modify_statement']:
+            query_feature_ori['non_spatial_modify_statement'] = ''
         query_feature = query_feature_ori['non_spatial_modify_statement']
         if query_feature_ori['entity_text'] != table_name: #如果entity_text和table名不一致，那么将entity_text也加入作为判断
             query_feature+=f',{query_feature_ori["entity_text"]}'
+
     else:
         query_feature = query_feature_ori['entity_text']#如果没有non_spatial_modify_statement，那么把entity当作pick的判断语
-
 
 
     if ',' in query_feature:#复合特征
         query_list=query_feature.split(",")
     else:
             query_list=[query_feature]
-    match_list=[]
+    match_list={'non_area_col':{},'area_num':None}
     for query in query_list:
-        if query in given_list or judge_area(query):
-            match_list.append(query)
-            continue
-        if are_strings_similar(query,table_name):
-            match_list.append('all')
-            continue
+        if query!='':
+            col_name=judge_col_name(query)
+            if col_name!=None:                                                  #fclass和name的粗选
+                print(query,table_name)
+                if are_strings_similar(query,table_name):
+                    match_list['non_area_col'][col_name] ='all'
+                    print('match')
+                    continue
+                if col_name not in match_list['non_area_col']:
+                    match_list['non_area_col'][col_name] =set()
+                given_list=ids_of_attribute(table_name,col_name)
+                partial_similar=is_string_in_list_partial(query,given_list)
 
-        find_pre_matched={}
-        if table_name in global_paring_dict:
-            if list(global_paring_dict[table_name].keys()) != []:
-                find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()), query)
+                if len(partial_similar)>=1:
+                    match_list['non_area_col'][col_name].update(set(partial_similar))
+                    # print('   as')
+                    continue
+                elif len(given_list)==1:
+                    match_list['non_area_col'][col_name].update(set(given_list))
+                    continue
+                else:                                                           #fclass和name的精选
+                        query=query.replace('name','').replace("is ",'')
 
-        if find_pre_matched != {}:
-            print(f'find_pre_matched for {query}:', find_pre_matched)
-            match_list_key = list(find_pre_matched.keys())[0]
-            match_list.extend( global_paring_dict[table_name][match_list_key])
-            # return match_list
-        else:
-            match_dict=calculate_similarity(given_list,query)
-            print(query+'\n')
-            # print(given_list)
-            print('\n\nmatch_dict:',match_dict)
-            if match_dict!={}:
-                return list(match_dict.keys())
 
-            else:
+                        find_pre_matched = {}
+                        if table_name in global_paring_dict:
+                            if list(global_paring_dict[table_name].keys()) != []:
+                                find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()), query)
 
-                match_list.extend(details_pick(query,given_list,table_name))
-                print(f'\n\nmatch_list for {query}:', match_list)
+                        if find_pre_matched != {}:
+                            print(f'find_pre_matched for {query}:', find_pre_matched)
+                            match_list_key = list(find_pre_matched.keys())[0]
+                            match_list['non_area_col'][col_name].update(set(global_paring_dict[table_name][match_list_key]))
+                            # return match_list
+                        else:
+                            match_dict = calculate_similarity(given_list, query)
+                            print(query + '\n')
+                            # print(given_list)
+                            print('\n\nmatch_dict:', match_dict)
+                            if match_dict != {}:
+                                 match_list['non_area_col'][col_name].update(set(match_dict.keys()))
+
+                            else:
+                                if col_name == 'fclass':
+                                    try:
+                                        match_list['non_area_col'][col_name].update(set(details_pick(query, given_list, table_name)))
+                                    except Exception as e:
+                                        raise Exception(e,query,table_name,given_list)
+                                    print(f'\n\nmatch_list for {query}:', match_list)
+                                else:
+                                    query_modify=general_gpt('what is name of '+query)
+                                    print(query_modify + '\n')
+                                    match_dict = calculate_similarity(given_list, query_modify)
+                                    print('\n\nmatch_dict:', match_dict)
+                                    if match_dict != {}:
+                                        match_list['non_area_col'][col_name].update(set(match_dict.keys()))
+
+            else:#area relate query
+                match_list['area_num'] = extract_numbers(query)
+                continue
+
 
     if match_list==[]:
         raise Exception('no relevant item found for: ' +query_feature + ' in given list.')
-    if len(match_list)==1 and judge_area(match_list[0]):
-        match_list.append('all') #为了问题如：largest 5 landuse
+
     return match_list
     # messages.append(message_template('assistant',result))
+
 def judge_bounding_box(query,messages=None):
     if messages==None:
         messages=[]
@@ -532,10 +593,9 @@ def judge_type(query,messages=None):
 
 
     ask_prompt="""
-    There are two database: [soil,landuse,buildings], 
+    There are two database: [soil,landuse], 
     'soil' database stores various soil types, such as swamps, wetlands, soil compositions.
-    'landuse' database stores various types of urban land use like park, forest, residential area, school.
-    'buildings' database stores various types of buildings.
+    'landuse' database stores various types of urban land use like park, forest, residential area, school, university.
     response the correct database name given the provided data name in json format like:
     {
     'database':database
@@ -557,6 +617,38 @@ def judge_type(query,messages=None):
 
     else:
         raise Exception('no relevant item found for: ' +str(query) + ' in given list.')
+def general_gpt(query,messages=None):
+    if isinstance(query,dict):
+        query=str(query)
+    if query==None:
+        return None
+    if messages==None:
+        messages=[]
+
+    ask_prompt="""
+    Please answer the question in few words, directly answer, no other words.
+    response in json format like:
+    {
+    'result':answer
+    }
+    """
+    if messages==None:
+        messages=[]
+
+    messages.append(message_template('system',ask_prompt))
+    messages.append(message_template('user',str(query)))
+    result=chat_single(messages,'json')
+    # print(result)
+    json_result=json.loads(result)
+    if 'result' in json_result:
+
+
+
+        return json_result['result']
+
+    else:
+        raise Exception('no relevant item found for: ' +str(query) + ' in given list.')
+
 
 
 def judge_result(query,messages=None):
@@ -649,11 +741,15 @@ def judge_result(query,messages=None):
 # print(pick_match('good fot agriculture', ids_of_attribute('soil')))
 
 # print(judge_geo_relation("I want to know where is good for planting strawberry",None))
-# print(judge_object_subject_multi('I want to know commercial kinds of buildings in around 100m of landuse which is forest'))
+# print(judge_object_subject_multi('What soil types are the houses near the farm on'))
 # print(judge_object_subject_multi('show farmlands', None))
 # print(judge_geo_relation('on'))
 
 # judge_object_subject_multi('I want to know buildings close to largest 5 park ')
 # a={'clothes', 'pitch', 'playground', 'scrub', 'newsagent', 'mobile_phone_shop', 'biergarten', 'kindergarten', 'track', 'bank', 'shelter', 'university', 'bicycle_rental', 'meadow', 'public_building', 'allotments', 'castle', 'toilet', 'parking_multistorey', 'parking', 'tourist_info', 'hostel', 'forest', 'bus_stop', 'butcher', 'memorial', 'museum', 'jeweller', 'restaurant', 'bus_station', 'embassy', 'graveyard', 'parking_underground', 'fast_food', 'water_works', 'furniture_shop', 'retail', 'hospital', 'riverbank', 'kiosk', 'commercial', 'courthouse', 'park', 'theatre', 'attraction', 'tower', 'grass', 'helipad', 'bicycle_shop', 'school', 'cemetery', 'water', 'cafe', 'fountain', 'fire_station', 'recreation_ground', 'bar', 'taxi', 'arts_centre', 'industrial', 'college', 'bookshop', 'library', 'monument', 'comms_tower', 'bakery', 'supermarket', 'chemist', 'hairdresser', 'police', 'artwork', 'convenience', 'parking_bicycle', 'hotel', 'residential'}
-# b={'entity_text': 'landuse', 'non_spatial_modify_statement': 'largest 5'}
-# print(pick_match(b, a, 'landuse'))
+# b={'entity_text': 'landuse', 'non_spatial_modify_statement': 'name technische universität münchen,largest 3,education'}
+# b={'entity_text': 'houses', 'non_spatial_modify_statement': None}
+# print(pick_match(b,'buildings'))
+# print(general_gpt('user wants to search name of tum, what is its full name'))
+# a={'entity_text': 'soil', 'non_spatial_modify_statement': ''}
+# print(pick_match(a,'soil'))
