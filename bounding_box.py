@@ -62,7 +62,7 @@ def find_boundbox(name):
             print("No results found.")
     else:
         print(f"Failed to retrieve data: {response.status_code}")
-    # print(bounding_box)
+    print(bounding_box)
     # coordinates = re.findall(r"\d+\.\d+", bounding_box)
 
     # 将字符串坐标转换为浮点数
@@ -107,4 +107,4 @@ def bounding_box_test(name):
         search_results = response.json()
         if search_results:
             print(search_results)
-# print(find_boundbox("munich ismaning"))
+print(find_boundbox("munich ismaning"))

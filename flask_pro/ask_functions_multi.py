@@ -517,11 +517,33 @@ like: residential area which has buildings.
     ask_prompt=multi_prompt
     messages.append(message_template('system',ask_prompt))
     messages.append(message_template('user',query))
-    result=chat_single(messages,'json','gpt-4-turbo')
+    result=chat_single(messages,'json','gpt-4o-2024-05-13')
     # print(result)
     json_result=json.loads(result)
     return json_result
-# def judge_graph_type(query):
+def id_list_of_entity(query):
+    """
+    graph{num} = judge_type(multi_result['entities'][{num}])["database"]
+    type{num} = pick_match(multi_result['entities'][{num}], graph{num})
+    :param query:
+    :return:
+    """
+    graph_str = judge_type(query)['database']
+    type_str=pick_match(query,graph_str)
+    ids_list=ids_of_type(graph_str,type_str)
+    return ids_list
+def geo_filter(id_subject,id_object,query):
+    """
+    geo_relation{num}=judge_geo_relation(multi_result['spatial_relations'][{num}]['type'])
+    geo_result{num}=geo_calculate(id_list{relations['head']},id_list{relations['tail']},geo_relation{num}['type'],geo_relation{num}['num'])
+
+    :param query:
+    :return:
+    """
+    geo_relation=judge_geo_relation(query)
+    geo_result=geo_calculate(id_subject,id_object,geo_relation['type'],geo_relation['num'])
+    return geo_result
+
 
 def judge_object_subject(query,geo_relation_dict,messages=None):
     print('query for judge_object_subject:',query)

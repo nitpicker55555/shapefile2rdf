@@ -247,7 +247,7 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
     feed_back=result_dict
     print(len(feed_back))
     if type_dict['area_num']!=None:
-        feed_back=area_calculate(feed_back,type_dict['area_num'])['id_list'] #计算面积约束
+        feed_back=area_filter(feed_back, type_dict['area_num'])['id_list'] #计算面积约束
         print(len(feed_back),'area_num',type_dict['area_num'])
     if "bounding_box_region_name" in globals_dict:
         geo_dict = {globals_dict["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
@@ -261,7 +261,7 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
     return {'id_list':feed_back,'geo_map':geo_dict}
 
 
-def area_calculate(data_list1_original,top_num=None):
+def area_filter(data_list1_original, top_num=None):
     print(top_num)
     top_num=int(top_num)
 
@@ -292,7 +292,7 @@ def area_calculate(data_list1_original,top_num=None):
 
 def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0):
     if mode=='area_calculate':
-        return area_calculate(data_list1_original,buffer_number)
+        return area_filter(data_list1_original, buffer_number)
 
 
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
