@@ -48,9 +48,13 @@ def is_string_in_list_partial(string, lst):
     # print(string,lst)
 
     item_list=set()
+
     for item in lst:
-        if string==item.lower():
-            return [item]
+        if string.lower()==item.lower():
+            if ' ' in string and not str(string).startswith(' '):
+                return [item]
+            else:
+                item_list.add(item)
         if string.lower() in item.lower().split(' '):
             item_list.add(item)
     return item_list
@@ -239,21 +243,10 @@ def pick_match(query_feature_ori,table_name):
     #for query_feature_ori['entity_text']==table_name,
     #for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
 
-    if query_feature_ori['non_spatial_modify_statement']:#如果有non_spatial_modify_statement，使用non_spatial_modify_statement。
-        if 'type' in query_feature_ori['non_spatial_modify_statement']:
-            query_feature_ori['non_spatial_modify_statement']=query_feature_ori['non_spatial_modify_statement'].replace('types','').replace('type','')
+    query_feature=query_feature_ori.replace("buildings",'').replace("soil",'').replace("landuse","").replace("building",'')
 
-
-        query_feature = query_feature_ori['non_spatial_modify_statement']
-        if query_feature_ori['entity_text'] != table_name: #如果entity_text和table名不一致，那么将entity_text也加入作为判断
-            query_feature+=f' {query_feature_ori["entity_text"]}'
-
-    else:
-        query_feature = query_feature_ori['entity_text']#如果没有non_spatial_modify_statement，那么把entity当作pick的判断语
-
-
-    if ',' in query_feature:#复合特征
-        query_list=query_feature.split(",")
+    if 'and' in query_feature:#复合特征
+        query_list=query_feature.split("and")
     else:
             query_list=[query_feature]
     match_list={'non_area_col':{},'area_num':None}
@@ -323,7 +316,7 @@ def pick_match(query_feature_ori,table_name):
 
     if match_list==[]:
         raise Exception('no relevant item found for: ' +query_feature + ' in given list.')
-
+    print(match_list,query_feature,table_name)
     return match_list
     # messages.append(message_template('assistant',result))
 
@@ -636,7 +629,6 @@ def judge_type(query,messages=None):
         return {'database': 'landuse'}
     if 'soil' in query.lower():
         return {'database': 'soil'}
-
 
 
     ask_prompt="""

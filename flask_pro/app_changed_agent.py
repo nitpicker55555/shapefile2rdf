@@ -8,17 +8,17 @@ from shapely.geometry import Polygon
 
 import geo_functions
 from geo_functions import *
-from ask_functions_multi import *
-from flask import Flask, Response, stream_with_context, request, render_template, jsonify,session
+from ask_functions_agent import *
+from flask import Flask, Response, stream_with_context, request, render_template, jsonify, session
 from werkzeug.utils import secure_filename
 import time
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import ast
-from langchain_community.tools import DuckDuckGoSearchResults
 from user_agents import parse
 import requests
+
 # import logging
 load_dotenv()
 api_key = os.getenv('OPENAI_API_KEY')
@@ -27,54 +27,22 @@ import sys
 from io import StringIO
 from datetime import datetime
 from flask_socketio import SocketIO, emit
+
 # from repair_data import repair,crs_transfer
 # from shape2ttf import shapefile_to_ttl
 output = StringIO()
 original_stdout = sys.stdout
 app = Flask(__name__)
 # app.logger.setLevel(logging.WARNING)
-app.secret_key = 'secret_key' # 用于启用 flash() 方法发送消息
+app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
 
-global_variables={}
+global_variables = {}
 
 # 示例的 Markdown 文本（包含图片链接）
 # ![示例图片](/static/data.png "这是一个示例图片")
-socketio =SocketIO(app,async_mode='threading')
+socketio = SocketIO(app, async_mode='threading')
 
 
-search = DuckDuckGoSearchResults()
-
-
-def chat_single(messages, mode="json"):
-    if mode == "json":
-
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
-            response_format={"type": "json_object"},
-            messages=messages,
-            stream=True,
-        max_tokens = 4096
-        )
-        return response
-        # return response.choices[0].message.content
-    else:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
-            stream=True,
-            messages=messages,
-        max_tokens=4096
-        )
-        return response
-def search_internet(news):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    async def async_task():
-        # 你的异步代码
-        print(search.run(news))
-
-    loop.run_until_complete(async_task())
-    loop.close()
 # async def async_task(news):
 #     # 你的异步代码
 #     print(search.run(news))
@@ -135,8 +103,6 @@ def complete_json(input_stream):
     return json.loads(input_stream)
 
 
-
-
 # html_content = markdown2.markdown(markdown_text)
 def reorder_relations(relations):
     for relation in relations:
@@ -158,18 +124,27 @@ def reorder_relations(relations):
         reordered_relations.append(zero_relation)
 
     return reordered_relations
-def extract_code(code_str):
-    return code_str.split("```python")[1].split("```")[0]
+
+
+def extract_code_blocks(code_str):
+    code_blocks = []
+    parts = code_str.split("```python")
+    for part in parts[1:]:  # 跳过第一个部分，因为它在第一个代码块之前
+        code_block = part.split("```")[0]
+        code_blocks.append(code_block)
+    return code_blocks
+
+
 def len_str2list(result):
-    if result==None:
+    if result == None:
         return 0
     # result=result.replace("None","").replace(" ","")
     try:
         # 尝试使用 ast.literal_eval 解析字符串
         result = ast.literal_eval(result)
         # 检查解析结果是否为列表
-        if result!=None:
-            if not isinstance(result,int):
+        if result != None:
+            if not isinstance(result, int):
                 return len(result)
             else:
                 return result
@@ -178,37 +153,41 @@ def len_str2list(result):
     except (ValueError, SyntaxError):
         # 如果解析时发生错误，说明字符串不是有效的列表字符串
         try:
-            dict_result=json.loads(result)
+            dict_result = json.loads(result)
             return len(dict_result)
         except:
 
-            return str(len(result))+"(String)"
+            return str(len(result)) + "(String)"
+
+
 def judge_list(result):
-        try:
-            # 尝试使用 ast.literal_eval 解析字符串
-            result = ast.literal_eval(result)
-            # 检查解析结果是否为列表
-            return True
-        except (ValueError, SyntaxError):
-            # 如果解析时发生错误，说明字符串不是有效的列表字符串
-            return False
-def details_span(result,run_time):
-    if result==None:
-        result="None"
+    try:
+        # 尝试使用 ast.literal_eval 解析字符串
+        result = ast.literal_eval(result)
+        # 检查解析结果是否为列表
+        return True
+    except (ValueError, SyntaxError):
+        # 如果解析时发生错误，说明字符串不是有效的列表字符串
+        return False
+
+
+def details_span(result, run_time):
+    if result == None:
+        result = "None"
     pattern = r"An error occurred:.*\)"
     match = re.search(pattern, result)
 
     if match:
         error_message = match.group(0)
-        aa=error_message
-        return {'error':result+" \n "+aa}
+        aa = error_message
+        return {'error': result + " \n " + aa}
     else:
-        length=len_str2list(str(result))
-        attention=''
-        if 'String' not in str(length) and int(length)>10000:
-            attention='Due to the large volume of data, visualization may take longer.'
-            if int(length)==20000:
-                attention='Due to the large volume of data in your current search area, only 20,000 entries are displayed.'
+        length = len_str2list(str(result))
+        attention = ''
+        if 'String' not in str(length) and int(length) > 10000:
+            attention = 'Due to the large volume of data, visualization may take longer.'
+            if int(length) == 20000:
+                attention = 'Due to the large volume of data in your current search area, only 20,000 entries are displayed.'
         aa = f"""
 <details>
     <summary>`Code result: Length:{length},Run_time:{round(run_time, 2)}s`</summary>
@@ -219,11 +198,12 @@ def details_span(result,run_time):
 
             """
 
+        return {'normal': aa}
 
-        return {'normal':aa}
+
 def short_response(text_list):
-    if len(str(text_list))>1000 and judge_list(text_list):
-        if len_str2list(text_list)<40:
+    if len(str(text_list)) > 1000 and judge_list(text_list):
+        if len_str2list(text_list) < 40:
             result = ast.literal_eval(text_list)
             short_suitable_types = [t[:35] for t in result]
             return str(short_suitable_types)
@@ -231,17 +211,21 @@ def short_response(text_list):
             return text_list[:1000]
     else:
         return text_list[:1000]
+
+
 # 设置文件上传的目录和大小限制
 UPLOAD_FOLDER = './uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg','doc','docx','xlsx','csv','ttl'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'xlsx', 'csv', 'ttl'}
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 50MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -257,24 +241,32 @@ def upload_file():
         return jsonify({"filename": filename}), 200
     else:
         return jsonify({"error": "File type not allowed"}), 400
+
+
 @app.route('/debug_mode', methods=['POST'])
 def debug_mode():
     data = request.get_json().get('message')  # 获取JSON数据
-    if data=='debug':
-        session['template']=True
+    if data == 'debug':
+        session['template'] = True
     else:
         session['template'] = False
     return jsonify({"text": True}), 400
+
+
 @app.route('/submit_email', methods=['POST'])
 def submit_email():
-    data=request.get_json().get('text')
-    with open("./static/email.text",'a',encoding='utf-8') as file:
-        file.write('\n'+json.dumps({"email":data,"time":str(datetime.now()),"ip":session['ip_'],"os":session['os'],"device":session['device_type'],'browser':session['browser']}))
+    data = request.get_json().get('text')
+    with open("./static/email.text", 'a', encoding='utf-8') as file:
+        file.write('\n' + json.dumps(
+            {"email": data, "time": str(datetime.now()), "ip": session['ip_'], "os": session['os'],
+             "device": session['device_type'], 'browser': session['browser']}))
     return jsonify({"text": True}), 400
+
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
     return jsonify({"error": "The file is too large. Maximum file size is 50MB."}), 413
+
 
 @app.route('/')
 def home():
@@ -282,14 +274,14 @@ def home():
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
     print("initial")
-    geo_functions.globals_dict={}
-    geo_functions.global_id_attribute={}
-    geo_functions.global_id_geo={}
+    geo_functions.globals_dict = {}
+    geo_functions.global_id_attribute = {}
+    geo_functions.global_id_geo = {}
     # globals_dict = {}
     # global_id_attribute = {}
     # global_id_geo = {}
-    ip_=request.headers.get('X-Real-IP')
-    session['ip_']=ip_
+    ip_ = request.headers.get('X-Real-IP')
+    session['ip_'] = ip_
     session['uploaded_indication'] = None
     # if 'messages2' not in session:
     #     session['messages2'] = []
@@ -299,9 +291,6 @@ def home():
     user_agent_string = request.headers.get('User-Agent')
     if user_agent_string:
         user_agent = parse(user_agent_string)
-
-
-
 
         os = user_agent.os.family
         browser = user_agent.browser.family
@@ -313,15 +302,15 @@ def home():
             device_type = 'Desktop'
         else:
             device_type = 'Unknown'
-        session['os']=os
-        session['browser']=browser
-        session['device_type']=device_type
+        session['os'] = os
+        session['browser'] = browser
+        session['device_type'] = device_type
     else:
-        session['os']=None
-        session['browser']=None
-        session['device_type']=None
-    session['template']=False
-    session['history']=[]
+        session['os'] = None
+        session['browser'] = None
+        session['device_type'] = None
+    session['template'] = False
+    session['history'] = []
     return render_template('index.html')
 
 
@@ -338,22 +327,21 @@ def polygons_to_geojson(polygons_dict):
         geojson_dict[key] = mapping(polygon)
     return geojson_dict
 
-def send_data(data,mode="data"):
-    if mode=="map":
-        data=polygons_to_geojson(data)
 
-    socketio.emit('text', {mode:  data})
+def send_data(data, mode="data"):
+    if mode == "map":
+        data = polygons_to_geojson(data)
+
+    socketio.emit('text', {mode: data})
+
 
 @app.route('/submit', methods=['POST', 'GET'])
 def submit():
     # 加载包含 Markdown 容器的前端页面
     data = request.get_json().get('text')  # 获取JSON数据
     messages = request.get_json().get('messages')  # 获取JSON数据
-    processed_response=[]
-
-
-
-
+    new_message = request.get_json().get('new_message')  # 获取JSON数据
+    processed_response = []
 
     def generate(data):
         compelete = False
@@ -371,46 +359,34 @@ def submit():
             # chat_response = str(datetime.now())+"   "+str(len(messages)) #test
 
             code_list = []
+            #
             if session['template'] == True:
                 code_list.append(data)
+                compelete=True
             else:
-                template = False
+                bounding_box, new_message = judge_bounding_box(data)
+                if bounding_box:
+                    code_list.append(f"set_bounding_box('{bounding_box}')")
+                    messages.append(message_template('user', new_message))
+                else:
+                    messages.append(message_template('user', data))
 
-                chat_response = (chat_single(messages, "stream"))
-            content_str = ''
-            chat_result = ''
-            chunk_num = 0
-            if template:
-                print(true_step, len(chat_response))
+                print(messages)
 
-                for chunk in chat_response[true_step - 1]:
-                    if chunk_num == 0:
-                        char = "\n" + chunk
-                        # char = "\n"+chunk #test
-                    else:
-                        char = chunk
-                        # char =  chunk #test
-                    chunk_num += 1
-                    chat_result += char
-                    time.sleep(0.001)
-                    if true_step == 1:
-                        template = False
-                        # chat_response = (chat_single(messages, ""))
-                        # stop_step=True
+                chat_response = (chat_single(messages, "stream", 'gpt-4o-2024-05-13'))
+                content_str = ''
+                chat_result = ''
+                chunk_num = 0
 
-                    yield char
-            else:
                 for chunk in chat_response:
                     if chunk is not None:
                         # if chunk['message']['content'] is not None:
                         if chunk_num == 0:
                             char = "\n" + chunk.choices[0].delta.content
-                            # char = "\n" + chunk['message']['content']
-                            # char = "\n"+chunk #test
+
                         else:
-                            # char = chunk['message']['content']
                             char = chunk.choices[0].delta.content
-                            # char =  chunk #test
+
                         chunk_num += 1
 
                         print(char, end="", flush=True)
@@ -419,121 +395,81 @@ def submit():
 
                             yield char
 
-            full_result = (chat_result)
-            processed_response.append({'role': 'assistant', 'content': chat_result})
-            messages.append({'role': 'assistant', 'content': chat_result})
+                full_result = (chat_result)
+                processed_response.append({'role': 'assistant', 'content': chat_result})
+                messages.append({'role': 'assistant', 'content': chat_result})
 
-            compelete = False
-            # print("complete: ", compelete)
+                compelete = False
+                # print("complete: ", compelete)
 
-            if "```" in full_result and ".env" not in full_result and "pip install" not in full_result:
+                if "```python" in full_result and ".env" not in full_result and "pip install" not in full_result:
+
+                    code_list .extend( extract_code_blocks(full_result))
+                    compelete=True
+                else:
+                    steps += 1
+                    if steps < 2 and whole_step < 5:
+                        messages.append({"role": "user",
+                                         "content": "ok"})
+                        processed_response.append({"role": "user",
+                                                   "content": "ok"})
+                        final_conv = 'ok'
+            print(code_list)
+            for line_num, lines in enumerate(code_list):
+
+                yield f"\n\n```python\n{lines}\n```"
                 yield "\n\n`Code running...`\n"
-
-                # code_str = re.sub(r'(?<!\\)\\n', r'\\\\n', extract_code(full_result['content']))
-                code_str = extract_code(full_result)
                 plt_show = False
-                if "plt.show()" in code_str:
+                if "plt.show()" in lines:
                     plt_show = True
                     print("plt_show")
                     filename = f"plot_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
-                    code_str = code_str.replace("import matplotlib.pyplot as plt",
-                                                "import matplotlib.pyplot as plt\nfrom matplotlib.font_manager import FontProperties\nfont = FontProperties(fname=r'static\msyh.ttc')\n")
-                    code_str = code_str.replace("plt.show()", f"plt.savefig('static/{filename}')")
+                    lines = lines.replace("import matplotlib.pyplot as plt",
+                                          "import matplotlib.pyplot as plt\nfrom matplotlib.font_manager import FontProperties\nfont = FontProperties(fname=r'static\msyh.ttc')\n")
+                    lines = lines.replace("plt.show()", f"plt.savefig('static/{filename}')")
 
-                    print(code_str)
-                else:
-                    lines = code_str.strip().split('\n')
-                    # last_line = [line for line in lines if '=' in line][-1]
-                    if "print" not in lines[-1] and "=" not in lines[-1] and "#" not in lines[
-                        -1] and "search_internet" not in lines[-1]:
-                        code_str += f"""
-        try:
-                print({lines[-1]})
-        except:
-                pass
-                                    """
-                    # var_name = last_line.split('=')[0].strip()
-                print(code_str)
-                sys.stdout = output
-                try:
-                    exec(code_str, globals())
-                except Exception as e:
-                    print(f"An error occurred: {repr(e)}")
-                code_result = output.getvalue().replace('\00', '')
-                output.truncate(0)
-                sys.stdout = original_stdout
+                    print(lines)
 
-                if plt_show and "An error occurred: " not in code_result:
-                    code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
-                    whole_step = 5  # 确保图返回结果只会被描述一次
-                    yield code_result
-                else:
-                    code_result = code_result
-
-                    yield details_span(code_result)
-
-                send_result = "code_result:" + short_response(code_result)
-                print(send_result)
-                messages.append({"role": "user",
-                                 "content": send_result})
-                processed_response.append({'role': 'user', 'content': send_result})
-                compelete = False
-                final_conv = send_result
-
-            lines_list = code_list
-
-            for line_num, lines in enumerate(lines_list):
-                yield f"\n\n```python\n{lines}\n```"
-                yield "\n\n`Code running...`\n"
                 lines = lines.split('\n')
                 # lines=[lines]
                 # print(lines)
                 filtered_lst = [item for item in lines if item.strip()]
-                for i in filtered_lst:
-                    print('----', i)
                 lines = filtered_lst
+                new_lines = []
+                for each_line in lines:
 
-                if '=' in lines[-1] and (
-                        'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
-                    -1]):
+                    if '=' in each_line and (
+                            'geo_filter' in each_line or 'id_list_of_entity' in each_line or 'area_filter(' in each_line or 'set_bounding_box' in each_line):
 
-                    variable_str = lines[-1].split('=')[0]
-                    explain_row = ''
-                    if 'set_bounding_box' not in lines[-1] and line_num == (len(lines_list) - 1):
-                        explain_row = f"""
-            explain=id_explain({variable_str})
-            print(judge_result(explain))
-            """
-                    new_line = f"""
-            send_data({variable_str}['geo_map'],'map')
+                        variable_str = each_line.split('=')[0]
 
-                        """
-                    lines.append(new_line)
-                elif '=' not in lines[-1] and (
-                        'geo_calculate' in lines[-1] or 'ids_of_type' in lines[-1] or 'set_bounding_box' in lines[
-                    -1]):
-                    explain_row = ''
-                    if 'set_bounding_box' not in lines[-1] and line_num == (len(lines_list) - 1):
-                        explain_row = f"""
-            explain=id_explain(temp_result)
-            print(judge_result(explain))    
+                        new_line = f"""
+send_data({variable_str}['geo_map'],'map')
+    
                             """
-                    new_line = f"""
-            temp_result={lines[-1]}
-            send_data(temp_result['geo_map'],'map')
+                        new_lines.append(each_line)
+                        new_lines.append(new_line)
+                    elif '=' not in each_line and (
+                            'geo_filter' in each_line or 'id_list_of_entity' in each_line or 'area_filter(' in each_line or 'set_bounding_box' in each_line):
 
-                        """
-                    lines[-1] = new_line
-                elif '=' not in lines[-1] and 'send_data' not in lines[-1]:
+                        new_line = f"""
+temp_result={each_line}
+send_data(temp_result['geo_map'],'map')
+    
+                            """
+                        new_lines.append(each_line)
+                        new_lines.append(new_line)
+                    else:
+                        new_lines.append(each_line)
+                if '=' not in new_lines[-1] and 'send_data' not in new_lines[-1]:
                     new_line = f"""
-            print({lines[-1]})
+print({lines[-1]})
                                         """
-                    lines[-1] = new_line
+                    new_lines[-1] = new_line
 
+                code_str = '\n'.join(new_lines)
 
-                code_str = '\n'.join(lines)
-
-                # print(code_str)
+                print(code_str)
                 sys.stdout = output
                 start_time = time.time()  # 记录函数开始时间
 
@@ -545,19 +481,28 @@ def submit():
                     exc_info = traceback.format_exc()
                     # 打印错误信息和代码行
                     print(f"An error occurred: {repr(e)}\n{exc_info}")
+
                 end_time = time.time()  # 记录函数结束时间
                 run_time = end_time - start_time
                 code_result = str(output.getvalue().replace('\00', ''))
                 output.truncate(0)
                 sys.stdout = original_stdout
                 code_result = str(code_result)
-                show_template=details_span(code_result, run_time)
+                if plt_show and "An error occurred: " not in code_result:
+                    code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
+                    whole_step = 5  # 确保图返回结果只会被描述一次
+                    yield code_result
+                show_template = details_span(code_result, run_time)
                 yield list(show_template.values())[0]
                 if 'error' in show_template:
-                    break
+                    return
+                send_result = "code_result:" + short_response(code_result)
+                print(send_result)
+                messages.append({"role": "user",
+                                 "content": send_result})
+                processed_response.append({'role': 'user', 'content': send_result})
 
-
-
+        send_data(processed_response)
 
         data_with_response = {
             'len': str(len(messages)),
@@ -572,12 +517,12 @@ def submit():
             # 'answer': response_str
         }
 
-
         formatted_data = json.dumps(data_with_response, indent=2, ensure_ascii=False)
 
         # 写入文本文件
         with open('static/data3.txt', 'a', encoding='utf-8') as file:
             file.write(formatted_data)
+
     return Response(stream_with_context(generate(data)))
 
 
@@ -601,6 +546,5 @@ def query_ip_location(ip):
         return ip
 
 
-
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True,host='0.0.0.0',port=9090)
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True, host='0.0.0.0', port=9090)

@@ -181,7 +181,9 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
     """
     globals_dict["bounding_box_region_name"]=region_name
     globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
-
+set_bounding_box("munich")
+a={'non_area_col':{'fclass':'all'},'area_num':0}
+ids_of_type('landuse',a)
     type_dict={'non_area_col':{'fclass':fclass_list...,'name':name_list...},'area_num':area_num}
     """
     area_num=None
@@ -290,8 +292,8 @@ def area_filter(data_list1_original, top_num=None):
 
     return {'area_list':area_list,'geo_map':geo_dict,'id_list':geo_dict}
 
-def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0):
-    if mode=='area_calculate':
+def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0,versa_sign=False):
+    if mode=='area_filter':
         return area_filter(data_list1_original, buffer_number)
 
 
@@ -356,11 +358,9 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     # 创建空间索引
     sindex2 = gseries2.sindex
     sindex1 = gseries1.sindex
-    result_list = []
-    all_id_list = []
     osmId1_dict = {}
-    parent_list=[]
-    child_list=[]
+    parent_set=set()
+    child_set=set()
     if mode == "in":
         # 检查包含关系
 
@@ -374,8 +374,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
                 # all_id_list.append(osmId1)
                 osmId1_dict[osmId1]=geom1
                 # all_id_list.extend(matching_osmIds)
-                parent_list.extend(matching_osmIds)
-                child_list.append(osmId1)
+                parent_set.update(set(matching_osmIds))
+                child_set.add(osmId1)
                 # result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
                 # print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
         print(len(osmId1_dict))
@@ -396,8 +396,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
                 # all_id_list.append(osmId2)
                 osmId1_dict[osmId2]=geom2
                 # all_id_list.extend(matching_osmIds)
-                child_list.extend(matching_osmIds)
-                parent_list.append(osmId2)
+                child_set.update(set(matching_osmIds))
+                parent_set.add(osmId2)
                 # result_list.append(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
                 # print(f"set1 id {osmId1} in buffer of set2 id {matching_osmIds} ")
 
@@ -414,8 +414,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
                 # all_id_list.append(osmId1)
                 osmId1_dict[osmId1]=geom1
                 # all_id_list.extend(matching_osmIds)
-                parent_list.extend(matching_osmIds)
-                child_list.append(osmId1)
+                parent_set.update(set(matching_osmIds))
+                child_set.add(osmId1)
                 # print(f"set1 id {osmId1} intersects with set2 id {matching_osmIds}")
 
     elif mode == "shortest_distance":
@@ -434,8 +434,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
         # print("distance between set1 id " + str(closest_pair[0]) + " set2 id " + str(
         #     closest_pair[1]) + " is closest: " + str(min_distance) + " m")
 
-        result_list.append("distance between set1 id " + str(closest_pair[0]) + " set2 id " + str(
-            closest_pair[1]) + " is closest: " + str(min_distance) + " m")
+        # result_list.append("distance between set1 id " + str(closest_pair[0]) + " set2 id " + str(
+        #     closest_pair[1]) + " is closest: " + str(min_distance) + " m")
     elif mode == "single_distance":
         distance = list(data_list1[0].values())[0].distance(list(data_list2[0].values())[0])
         # print(distance)
@@ -451,8 +451,13 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     else:
         geo_dict = {}
     # data_list1.update(data_list2)
-    parent_geo_dict=transfer_id_list_2_geo_dict(parent_list, data_list2)
-    child_geo_dict=transfer_id_list_2_geo_dict(child_list, data_list1)
+    parent_geo_dict=transfer_id_list_2_geo_dict(list(parent_set), data_list2)
+    if versa_sign:
+
+        child_geo_dict=transfer_id_list_2_geo_dict(list(set(data_list1)-child_set), data_list1)
+    else:
+        child_geo_dict=transfer_id_list_2_geo_dict(list(child_set), data_list1)
+
     geo_dict.update(parent_geo_dict)
     geo_dict.update(child_geo_dict)
 
@@ -464,19 +469,19 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
 
     return {'object':{'id_list':parent_geo_dict},'subject':{'id_list':child_geo_dict},'geo_map':geo_dict}
-    # return {'subject_id_list':parent_list,'object_id_list':child_list,'geo_map':geo_dict}
-    # return child_list,parent_list,geo_dict
+    # return {'subject_id_list':parent_set,'object_id_list':child_set,'geo_map':geo_dict}
+    # return child_set,parent_set,geo_dict
     # return geo_dict
 
-    # return {'subject_id_list':parent_list,'object_id_list':child_list,'geo_map':geo_dict}
-    # return child_list,parent_list,geo_dict
+    # return {'subject_id_list':parent_set,'object_id_list':child_set,'geo_map':geo_dict}
+    # return child_set,parent_set,geo_dict
     # return geo_dict
 
 
 #
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
-def id_explain(id_list):
+def id_list_explain(id_list,col=None):
 
     if isinstance(id_list, dict): #ids_of_type return的id_list是可以直接计算的字典
         if 'id_list' in id_list:

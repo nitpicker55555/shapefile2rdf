@@ -25,16 +25,8 @@ Usage: Use this function only when the user explicitly asks for the entities wit
 Input: An id_list and a query condition (e.g., type/name).
 Output: A dictionary containing the count of each type/name occurrence.
 Usage: Use this function to provide explanations based on user queries. For instance, if the user asks, "I want to know soil types," first use id_list_of_entity to get the soil_id_list, then use id_list_explain(soil_id_list, ‘type’) to get the soil type distribution. This function is used only when the user needs an explanation.
-    Example:
-    I want to know largest 4 commerical buildings in 200 m of landuse which is forest
     
-    response:
-    ```python
-    id_list1=id_list_of_entity('commerical buildings')
-    id_list2=id_list_of_entity('landuse which is forest')
-    id_list_geo_result=geo_filter(id_list1,id_list2,'in 200 m of')
-    id_list_area_filtered=area_filter(id_list_geo_result['subject'], 4)
-    ```
+
     """
 
     # print(len(ask_prompt))
@@ -43,7 +35,7 @@ Usage: Use this function to provide explanations based on user queries. For inst
 
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', query))
-    result = chat_single(messages,'','gpt-4o-2024-05-13')
+    result = chat_single(messages,'')
     return result
     # print(result)
-print(misson_planner('largest 4 buildings around smallest 3 landuse which is park, first get 4 largest buildings and then search landuse then filter with smallest3 '))
+print(misson_planner('I want to know buildings name technische in forest'))

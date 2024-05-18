@@ -36,16 +36,18 @@ def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
         )
     elif mode == 'stream':
         response = client.chat.completions.create(
-        model="gpt-3.5-turbo-0125",
+        model=model,
         messages=messages,
+            temperature=0,
         stream=True
 
     )
         return response
     else:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo-0125",
-            messages=messages
+            model=model,
+            messages=messages,
+        temperature = 0,
 
         )
     # print(response.choices[0].message.content)
