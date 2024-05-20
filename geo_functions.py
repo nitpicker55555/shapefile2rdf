@@ -40,6 +40,7 @@ col_name_mapping_dict={
 "soil":{
     "osm_id":"objectid",
     "fclass":"leg_text",
+    "name":"leg_text",
     "select_query":"SELECT leg_text,objectid,geom",
     "graph_name":"soilcomplete"
 
@@ -67,7 +68,19 @@ col_name_mapping_dict={
 }
 
 }
-def auto_add_WHERE_AND(sql_query):
+def format_sql_query(names):
+    formatted_names = []
+    for name in names:
+        # Replace single quote with two single quotes for SQL escape
+        formatted_name = name.replace("'", "''")
+        # Wrap the name with single quotes
+        formatted_name = f"'{formatted_name}'"
+        formatted_names.append(formatted_name)
+
+    # Join all formatted names with a comma
+    formatted_names_str = ", ".join(formatted_names)
+    return f"({formatted_names_str})"
+def auto_add_WHERE_AND(sql_query,mode='query'):
 
         # 将 SQL 查询分割成多行
         lines_ori = sql_query.splitlines()
@@ -104,13 +117,16 @@ def auto_add_WHERE_AND(sql_query):
             else:
                 modified_query.append(line)
         if not modified_query[-1].strip().endswith(';'):
-            modified_query[-1] += '\nLIMIT 20000;'
+            if mode!='attribute':
+                modified_query[-1] += '\nLIMIT 20000;'
+            else:
+                modified_query[-1]+=';'
         # 将处理后的行合并回一个单一的字符串
         return '\n'.join(modified_query)
 
-def cur_action(query):
+def cur_action(query,mode='query'):
     try:
-        query=auto_add_WHERE_AND(query)
+        query=auto_add_WHERE_AND(query,mode)
 
         # print(query)
 
@@ -124,21 +140,7 @@ def cur_action(query):
 
 
 
-def set_bounding_box(region_name):
-    if region_name!=None:
-        globals_dict["bounding_box_region_name"] = region_name
-        globals_dict['bounding_coordinates'], globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
 
-        # print(wkb.loads(bytes.fromhex(globals_dict['bounding_wkb'])))
-
-        geo_dict = {
-                globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
-
-
-
-        return {'geo_map':geo_dict}
-    else:
-        return None
 
 def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None):
     bounding_judge_query=''
@@ -162,7 +164,7 @@ def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None)
     # print(bounding_query)
 
 
-    rows = cur_action(bounding_query)
+    rows = cur_action(bounding_query,'attribute')
 
 
     for row in rows:
@@ -203,10 +205,11 @@ ids_of_type('landuse',a)
 
     for col_name,single_type_list in type_dict['non_area_col'].items():
         # print(col_name,single_type_list)
-        if single_type_list=='all':
+        # print(col_name,single_type_list)
+        if single_type_list=={'all'}:
             fclass_row += ''
         elif len(single_type_list)>1:
-            fclass_row+=f"\n{col_name_mapping_dict[graph_name][col_name]} in {tuple(single_type_list)}"
+            fclass_row+=f"\n{col_name_mapping_dict[graph_name][col_name]} in {format_sql_query(list(single_type_list))}"
         elif len(single_type_list)==1:
             fclass_row += f"\n{col_name_mapping_dict[graph_name][col_name]} = '{list(single_type_list)[0]}'"
 
@@ -223,7 +226,7 @@ ids_of_type('landuse',a)
 
     # print(bounding_query)
     # final_query = "UNION ALL".join(queries)
-    # print(final_query)
+    # print(bounding_query)
     rows = cur_action(bounding_query)
 
     result_dict = {}
@@ -247,7 +250,7 @@ ids_of_type('landuse',a)
         global_id_geo.update(result_dict)
 
     feed_back=result_dict
-    print(len(feed_back))
+    # print(len(feed_back))
     if type_dict['area_num']!=None:
         feed_back=area_filter(feed_back, type_dict['area_num'])['id_list'] #计算面积约束
         print(len(feed_back),'area_num',type_dict['area_num'])
@@ -295,7 +298,7 @@ def area_filter(data_list1_original, top_num=None):
 def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=0,versa_sign=False):
     if mode=='area_filter':
         return area_filter(data_list1_original, buffer_number)
-
+    reverse_sign=False
 
     #data_list1.keys() <class 'shapely.geometry.polygon.Polygon'>
     """
@@ -310,6 +313,7 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     data_list1=copy.deepcopy(data_list1_original)
     data_list2=copy.deepcopy(data_list2_original)
     if mode=='contains':
+        reverse_sign=True
         mode='in'
         data_list1 = copy.deepcopy(data_list2_original)
         data_list2 = copy.deepcopy(data_list1_original)
@@ -378,7 +382,7 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
                 child_set.add(osmId1)
                 # result_list.append(f"set1 id {osmId1} in set2 id {matching_osmIds}")
                 # print(f"set1 id {osmId1} in set2 id {matching_osmIds}")
-        print(len(osmId1_dict))
+        # print(len(osmId1_dict))
 
     elif mode == "buffer":
         for osmId2, geom2 in tqdm(gseries2.items(), desc="buffer"):
@@ -461,12 +465,13 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     geo_dict.update(parent_geo_dict)
     geo_dict.update(child_geo_dict)
 
-    print(len(geo_dict))
+    # print(len(geo_dict))
 
     # html=draw_geo_map(geo_dict, "geo")
     # with open('my_list.pkl', 'wb') as file:
     #     pickle.dump(osmId1_list, file)
-
+    if reverse_sign==True:
+        parent_geo_dict,child_geo_dict=child_geo_dict,parent_geo_dict
 
     return {'object':{'id_list':parent_geo_dict},'subject':{'id_list':child_geo_dict},'geo_map':geo_dict}
     # return {'subject_id_list':parent_set,'object_id_list':child_set,'geo_map':geo_dict}
@@ -481,28 +486,52 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 #
 # print(all_graph_name)
 # list_type_of_graph_name('http://example.com/landuse')
-def id_list_explain(id_list,col=None):
-
-    if isinstance(id_list, dict): #ids_of_type return的id_list是可以直接计算的字典
+def id_list_explain(id_list,col='fclass'):
+    if isinstance(id_list,dict):
         if 'id_list' in id_list:
-            id_list = id_list['id_list']
-        elif 'subject' in id_list:
-            id_list = id_list['object']['id_list']
-    # print(id_list)
+            id_list=id_list['id_list']
 
-    element_count = {}
+    result = {}
+    if col=='name':
+        extract_index=2
+    else:
+        extract_index=1
 
-    # Iterate over each element in the input list
-    for element in id_list:
-        # If the element is already in the dictionary, increment its count
-        attribute=global_id_attribute[element]
-        if attribute in element_count:
-            element_count[attribute] += 1
-        # If the element is not in the dictionary, add it with a count of 1
-        else:
-            element_count[attribute] = 1
+    # 遍历输入列表中的每个元素
+    for item in id_list:
+        # 使用split方法按'_'分割字符串，并提取所需的部分
+        parts = item.split('_')
+        if len(parts) > 2:
+            key = parts[extract_index]
+            # 更新字典中的计数
+            if key in result:
+                result[key] += 1
+            else:
+                result[key] = 1
 
-    return dict(sorted(element_count.items(), key=lambda item: item[1], reverse=True))
+
+    # if isinstance(id_list, dict): #ids_of_type return的id_list是可以直接计算的字典
+    #     if 'id_list' in id_list:
+    #         id_list = id_list['id_list']
+    #     elif 'subject' in id_list:
+    #         id_list = id_list['object']['id_list']
+    # # print(id_list)
+    #
+    # element_count = {}
+    #
+    # # Iterate over each element in the input list
+    # for element in id_list:
+    #     # If the element is already in the dictionary, increment its count
+    #     attribute=global_id_attribute[element]
+    #     if attribute in element_count:
+    #         element_count[attribute] += 1
+    #     # If the element is not in the dictionary, add it with a count of 1
+    #     else:
+    #         element_count[attribute] = 1
+    # print(result)
+    print(dict(sorted(result.items(), key=lambda item: item[1], reverse=True)))
+    return dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+
 
 def transfer_id_list_2_geo_dict(id_list, raw_dict=None):
     result_dict = {}
@@ -646,4 +675,7 @@ def sql_debug():
 # a=ids_of_type('landuse','park')
 # geo_calculate(geo_result['subject']['id_list'])
 # set_bounding_box('munich')
-# print(len(ids_of_attribute('landuse')))
+# print(len(ids_of_attribute('landuse','name')))
+# a={'non_area_col':{'fclass':['water']},'area_num':None}
+# print((list(ids_of_type('landuse',a)['id_list'])[:200]))
+# id1=ids_of_type('landuse','name')

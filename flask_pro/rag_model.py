@@ -39,7 +39,7 @@ def calculate_similarity(words, key_word,mode=None):
         if similarity > 0.95:
             similarity_dict = {word: float(similarity)}
             break
-        elif similarity > 0.7:
+        elif similarity > 0.6:
             similarity_dict[word] = float(similarity)
     if mode=='print':
         sorted_items_all = sorted(similarity_dict_all.items(), key=lambda x: x[1], reverse=True)
@@ -50,7 +50,7 @@ def calculate_similarity(words, key_word,mode=None):
 
 #
 # # Example usage
-# words = ['Technische Hochschule Rosenheim', 'Gemeindewerke Oberhaching Geothermie-Fernwärme Zentrallager / Technische Basis', 'Technische Hochschule Ingolstadt', 'Technische Universität München']
-# key_word = "technical university munich"
+# words = ['water','riverbank']
+# key_word = "lake"
 # similarity_scores = calculate_similarity(words, key_word,'print')
 # print(similarity_scores)

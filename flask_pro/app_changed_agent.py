@@ -340,7 +340,7 @@ def submit():
     # 加载包含 Markdown 容器的前端页面
     data = request.get_json().get('text')  # 获取JSON数据
     messages = request.get_json().get('messages')  # 获取JSON数据
-    new_message = request.get_json().get('new_message')  # 获取JSON数据
+    # new_message = request.get_json().get('new_message')  # 获取JSON数据
     processed_response = []
 
     def generate(data):
@@ -351,7 +351,7 @@ def submit():
         true_step = 0  # 总返回数
         stop_step = False  # 强制该轮停止
 
-        while compelete != True and steps < 3 and whole_step <= 5 and stop_step != True:
+        while compelete != True and steps < 2 and whole_step <= 5 and stop_step != True:
             # print(messages)
             print(whole_step, "whole_step")
             whole_step += 1
@@ -366,7 +366,8 @@ def submit():
             else:
                 bounding_box, new_message = judge_bounding_box(data)
                 if bounding_box:
-                    code_list.append(f"set_bounding_box('{bounding_box}')")
+
+                    code_list.append(f"set_bounding_box('{bounding_box}','{data}')")
                     messages.append(message_template('user', new_message))
                 else:
                     messages.append(message_template('user', data))
@@ -403,7 +404,7 @@ def submit():
                 # print("complete: ", compelete)
 
                 if "```python" in full_result and ".env" not in full_result and "pip install" not in full_result:
-
+                    steps += 1
                     code_list .extend( extract_code_blocks(full_result))
                     compelete=True
                 else:
@@ -439,9 +440,10 @@ def submit():
                 for each_line in lines:
 
                     if '=' in each_line and (
-                            'geo_filter' in each_line or 'id_list_of_entity' in each_line or 'area_filter(' in each_line or 'set_bounding_box' in each_line):
+                            'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
 
                         variable_str = each_line.split('=')[0]
+
 
                         new_line = f"""
 send_data({variable_str}['geo_map'],'map')
@@ -450,7 +452,7 @@ send_data({variable_str}['geo_map'],'map')
                         new_lines.append(each_line)
                         new_lines.append(new_line)
                     elif '=' not in each_line and (
-                            'geo_filter' in each_line or 'id_list_of_entity' in each_line or 'area_filter(' in each_line or 'set_bounding_box' in each_line):
+                            'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
 
                         new_line = f"""
 temp_result={each_line}
