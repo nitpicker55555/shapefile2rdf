@@ -143,4 +143,4 @@ def bounding_box_test(name):
         search_results = response.json()
         if search_results:
             print(search_results)
-# print(find_boundbox("munich ismaning"))
+# print(find_boundbox("Munich Moosach"))

@@ -4,7 +4,7 @@ import json
 import re
 import traceback
 
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, mapping
 
 import geo_functions
 from geo_functions import *
@@ -364,14 +364,17 @@ def submit():
                 code_list.append(data)
                 compelete=True
             else:
-                bounding_box, new_message = judge_bounding_box(data)
-                if bounding_box:
+                # bounding_box, new_message = judge_bounding_box(data)
+                # if bounding_box:
 
-                    code_list.append(f"set_bounding_box('{bounding_box}','{data}')")
-                    messages.append(message_template('user', new_message))
-                else:
-                    messages.append(message_template('user', data))
-
+                    # code_list.append(f"set_bounding_box('{bounding_box}','{data}')")
+                    # messages.append(message_template('user', new_message))
+                # else:
+                #     messages.append(message_template('user', data))
+                address_list, query_without_address = judge_bounding_box(data)
+                # entity_suggest = judge_object_subject_multi(query_without_address)
+                suggest_info = f"# address_in_query:{address_list}"
+                messages.append(message_template('user', data+suggest_info))
                 print(messages)
 
                 chat_response = (chat_single(messages, "stream", 'gpt-4o-2024-05-13'))
@@ -427,7 +430,7 @@ def submit():
                     filename = f"plot_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
                     lines = lines.replace("import matplotlib.pyplot as plt",
                                           "import matplotlib.pyplot as plt\nfrom matplotlib.font_manager import FontProperties\nfont = FontProperties(fname=r'static\msyh.ttc')\n")
-                    lines = lines.replace("plt.show()", f"plt.savefig('static/{filename}')")
+                    lines = lines.replace("plt.show()", f"plt.tight_layout()\nplt.savefig('static/{filename}')")
 
                     print(lines)
 
@@ -437,13 +440,15 @@ def submit():
                 filtered_lst = [item for item in lines if item.strip()]
                 lines = filtered_lst
                 new_lines = []
+                variable_dict={}
                 for each_line in lines:
+
 
                     if '=' in each_line and (
                             'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
 
                         variable_str = each_line.split('=')[0]
-
+                        variable_dict[variable_str]=each_line
 
                         new_line = f"""
 send_data({variable_str}['geo_map'],'map')
@@ -463,7 +468,10 @@ send_data(temp_result['geo_map'],'map')
                         new_lines.append(new_line)
                     else:
                         new_lines.append(each_line)
-                if '=' not in new_lines[-1] and 'send_data' not in new_lines[-1]:
+                if '=' not in new_lines[-1] and 'send_data' not in new_lines[-1] and 'id_list_explain(' not in new_lines[-1]:
+                    if new_lines[-1] in variable_dict:
+                        if 'id_list_explain(' in variable_dict[new_lines[-1]]:
+                            continue
                     new_line = f"""
 print({lines[-1]})
                                         """

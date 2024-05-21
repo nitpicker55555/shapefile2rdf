@@ -6,7 +6,7 @@ from rag_model import calculate_similarity
 from rag_model_openai import calculate_similarity_openai
 from geo_functions import *
 import spacy
-
+from bounding_box import find_boundbox
 
 # 加载spaCy的英语模型
 nlp = spacy.load('en_core_web_sm')
@@ -271,7 +271,7 @@ def extract_numbers(s):
         return 1 * a  # 如果没有显式说明最大数值，则为最大的
 
 
-def pick_match(query_feature_ori, table_name):
+def pick_match(query_feature_ori, table_name,verbose=False):
     # for query_feature_ori['entity_text']==table_name,
     # for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
     try:
@@ -468,7 +468,7 @@ Please ensure accuracy and precision in your responses, as these are critical fo
 
 def judge_object_subject_multi(query, messages=None):
     multi_prompt = """
-You are an excellent linguist，Help me identify all entities from this statement and their non_spatial_modify_statement and spatial_relations. Please format your response in JSON. 
+You are an excellent linguist，Help me identify all entities from this statement and spatial_relations. Please format your response in JSON. 
 Example:
 query: "I want to know which soil types the commercial buildings near farm on"
 response:
@@ -477,15 +477,12 @@ response:
 [
   {
     'entity_text': 'soil',
-    'non_spatial_modify_statement': ""
   },
   {
-    'entity_text': 'buildings',
-    'non_spatial_modify_statement': "commercial"
+    'entity_text': 'commercial buildings',
   },
     {
     'entity_text': 'farm',
-    'non_spatial_modify_statement': null
   }
 ],
  "spatial_relations": [
@@ -494,41 +491,37 @@ response:
   ]
 }
 
-query: "I want to know commercial kinds of buildings in around 100m of landuse which is forest"
+query: "I want to know residential area in around 100m of land which is forest"
 response:
 {
   "entities": [
     {
-      "entity_text": "buildings",
-      "non_spatial_modify_statement": "commercial"
+      "entity_text": "residential area",
     },
     {
-      "entity_text": "landuse",
-      "non_spatial_modify_statement": "forest"
+      "entity_text": "land which is forest",
     },
   ],
   "spatial_relations": [
     {"type": "in around 100m of", "head": 0, "tail": 1},
   ]
 }
-query: "show landuse which is university and has name TUM"
+query: "show land which is university and has name TUM"
 response:
 {
   "entities": [
     {
-      "entity_text": "landuse",
-      "non_spatial_modify_statement": "university,name TUM"
+      "entity_text": "land which is university and has name TUM",
     },
   ],
   "spatial_relations": []
 }
-query: "show landuse which is university or bus stop"
+query: "show land which is university or bus stop"
 response:
 {
   "entities": [
     {
-      "entity_text": "landuse",
-      "non_spatial_modify_statement": "university,bus stop"
+      "entity_text": "land which is university or bus stop",
     },
   ],
   "spatial_relations": []
@@ -546,7 +539,11 @@ like: residential area which has buildings.
     json_result = json.loads(result)
     return json_result
 
-
+def remove_non_spatial_modify_statements(data):
+    for entity in data.get("entities", []):
+        if "non_spatial_modify_statement" in entity:
+            del entity["non_spatial_modify_statement"]
+    return data
 def id_list_of_entity(query):
     """
     graph{num} = judge_type(multi_result['entities'][{num}])["database"]
@@ -571,19 +568,23 @@ def find_negation(text):
     return False, None
 
 
-def judge_bounding_box(query, messages=None):
+def judge_bounding_box(query,filter=False, messages=None):
     if messages == None:
         messages = []
+    new_query=None
     # if 'munich ismaning' in query.lower():
     #     return 'munich ismaning'
     locations=['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
          'Oberschleissheim']
+    final_address=[]
     for address in locations:
         if address.lower() in query.lower():
-            new_query=process_query(str({'location name':address,'query':query}))
-            return address, new_query
+            final_address.append(address)
+    if filter:
+        new_query=process_query(str({'location name':final_address,'query':query}))
+    return final_address, new_query
 
-    return None, query.strip()
+    # return final_address
 
 
 def geo_filter(query,id_list_subject, id_list_object):
@@ -683,15 +684,15 @@ def judge_type(query, messages=None):
     if 'building' in query.lower() and 'soil' not in query.lower():
         return {'database': 'buildings'}
 
-    if 'landuse' in query.lower() and 'soil' not in query.lower():
-        return {'database': 'landuse'}
+    if 'land' in query.lower() and 'soil' not in query.lower():
+        return {'database': 'land'}
     if 'soil' in query.lower():
         return {'database': 'soil'}
 
     ask_prompt = """
-    There are two database: [soil,landuse], 
+    There are two database: [soil,land], 
     'soil' database stores various soil types, such as swamps, wetlands, for agriculture or planting or construction.
-    'landuse' database stores various types of urban land use like park, forest, residential area, school, university, water, river.
+    'land' database stores various types of urban land use like park, forest, residential area, school, university, water, river.
     response the correct database name given the provided data name in json format like:
     {
     'database':database
@@ -714,6 +715,7 @@ def judge_type(query, messages=None):
 
 
 def general_gpt(query, messages=None):
+    print(query)
     if isinstance(query, dict):
         query = str(query)
     if query == None:
@@ -722,32 +724,41 @@ def general_gpt(query, messages=None):
         messages = []
 
     ask_prompt = """
-You have following tools available to answer user queries, please only write code, do not say anything else except user ask you to describe:
-I have three kinds of data:buildings, landuse (different kinds of area), soil.
 
-1.id_list_of_entity(description of entity):
+You have following tools available to answer user queries, please only write code, do not say anything else except user ask you to describe:
+I have three kinds of data:buildings, land (different kinds of area), soil.
+1.set_bounding_box(address):
+Input:An address which you want search limited in.
+Output:None, it establishes a global setting that restricts future searches to the defined region.
+Usage:By providing an address, you can limit the scope of subsequent searches to a specific area. This function does not produce any output, but it establishes a global setting that restricts future searches to the defined region. For example, if you want to find buildings in Munich, you should first set the bounding box to Munich by using set_bounding_box("Munich").
+Notice:Please include the directional words like east/south/east/north of query in the address sent to set_bounding_box
+
+2.id_list_of_entity(description of entity):
 Input: Description of the entity, like adj or prepositional phrase like good for commercial,good for planting potatoes.
 Output: A list of IDs (id_list) corresponding to the described entity.
 Usage: Use this function to obtain an id_list which will be used as input in the following functions.
+Notice: Some times the description may have complex description like:"I want to know land which named see and is water", input the whole description into function.
+Notice: Do not input geographical relation like 'in/on/under/in 200m of/close' into this function, it is not description of entity.
 
-2.geo_filter(id_list_subject, id_list_object, 'their geo_relation'):
+3.geo_filter('their geo_relation',id_list_subject, id_list_object):
 Input: Two id_lists (one as subject and one as object) and their corresponding geographical relationship.
 Output: A dict contains 'subject','object' two keys as filtered id_lists based on the geographical relationship.
-Usage: This function is used only when the user wants to query multiple entities that are geographically related. Common geographical relationships are like: 'in/on/under/in 200m of/close'
+Usage: This function is used only when the user wants to query multiple entities that are geographically related. Common geographical relationships are like: 'in/on/under/in 200m of/close/contains...'
+Notice: id_list_subject should be the subject of the geo_relation, in example: soil under the buildings, soil is subject.
 
-3.area_filter(id_list, num):
+4.area_filter(id_list, num):
 Notice: only use it when user wants to filter result by area.
 Input: An id_list and a number representing either the maximum or minimum count.
 Output: An id_list filtered by area.
 Usage: Use this function only when the user explicitly asks for the entities with the largest or smallest areas. For example, input 3 for the largest three, and -3 for the smallest three.
 
-4.id_list_explain(variable name, category to explain(name or type)):
+5.id_list_explain(variable name, category to explain(name or type)):
+Input: id_list generated by function 'id_list_of_entity' or 'geo_filter' or 'area_filter'
 Output: A dictionary containing the count of each type/name occurrence.
 Usage: Use this function to provide explanations based on user queries.
 
-
-
-Variable in history is available to call.
+Please always set an output variable for each function you called. Variable in history is available to call.
+If user ask you to draw a diagram, please always use the true variable in previous code to draw but not assume fake value.
     """
     if messages == None:
         messages = []
@@ -786,12 +797,7 @@ def routing_agent(query, messages=None):
         return None
     if messages == None:
         messages = []
-    if 'draw' in query:
-        return 'chart_agent'
-    if 'explain' in query or 'searched' in query or 'found' in query:
-        return 'explain_agent'
-    else:
-        return 'query_agent'
+
     ask_prompt = """
 You are a task planner. Based on the user's query, select the next function to execute and inform them of the task to be performed. There are three functions available:
 
@@ -800,9 +806,7 @@ chart_agent: Create charts for the user.
 query_agent: Query information for the user.
 Choose the most appropriate function and provide clear instructions on what work needs to be done.
 output as json format like:
-{
-'function':name
-}
+
     """
     if messages == None:
         messages = []
@@ -817,18 +821,32 @@ output as json format like:
 def set_bounding_box(region_name, query=None):
 
     if region_name != None:
+        locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
+                     'Oberschleissheim']
+
+        location_name=''
+        for i in locations:
+            if i.lower() in region_name.lower():
+
+                location_name=i
+
+        if len(region_name.lower().replace(location_name.lower(),'').strip())!=0: #除了地名外还有额外修饰
+                print(' s')
+                query=region_name
+                region_name=location_name
 
         geo_functions.globals_dict["bounding_box_region_name"] = region_name
         geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
 
         if query!=None:
+
             modify_query={
                 'Original_bounding_box_of_'+region_name:str(geo_functions.globals_dict['bounding_coordinates']),
                           "query":query
                           }
-
+            print(modify_query)
             modified_box=process_boundingbox(str(modify_query))
-            # print(modified_box)
+            print(modified_box)
             geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict['bounding_wkb'], response_str = find_boundbox(modified_box,'changed')
             # print(wkb.loads(bytes.fromhex(geo_functions.globals_dict['bounding_wkb'])))
 
@@ -863,6 +881,7 @@ json
     result = chat_single(messages, 'json', 'gpt-4o-2024-05-13')
 
     return json.loads(result)['boundingbox']
+
 def process_query(query,messages=None):
     if query == None:
         return None
@@ -877,11 +896,11 @@ def process_query(query,messages=None):
 }
 
     Example:
-    Query:I want to know landuse which named see in south of Munich 
+    Query:I want to know land which named see in south of Munich 
     Response:
     json
 {
-  "query_filtered": 'I want to know landuse which named see'
+  "query_filtered": 'I want to know land which named see'
 }
 
 
@@ -896,19 +915,27 @@ def process_query(query,messages=None):
     return json.loads(result)['query_filtered']
 #ge_object_subject_multi('I want to know buildings close to largest 5 park ')
 # a={'clothes', 'pitch', 'playground', 'scrub', 'newsagent', 'mobile_phone_shop', 'biergarten', 'kindergarten', 'track', 'bank', 'shelter', 'university', 'bicycle_rental', 'meadow', 'public_building', 'allotments', 'castle', 'toilet', 'parking_multistorey', 'parking', 'tourist_info', 'hostel', 'forest', 'bus_stop', 'butcher', 'memorial', 'museum', 'jeweller', 'restaurant', 'bus_station', 'embassy', 'graveyard', 'parking_underground', 'fast_food', 'water_works', 'furniture_shop', 'retail', 'hospital', 'riverbank', 'kiosk', 'commercial', 'courthouse', 'park', 'theatre', 'attraction', 'tower', 'grass', 'helipad', 'bicycle_shop', 'school', 'cemetery', 'water', 'cafe', 'fountain', 'fire_station', 'recreation_ground', 'bar', 'taxi', 'arts_centre', 'industrial', 'college', 'bookshop', 'library', 'monument', 'comms_tower', 'bakery', 'supermarket', 'chemist', 'hairdresser', 'police', 'artwork', 'convenience', 'parking_bicycle', 'hotel', 'residential'}
-# b={'entity_text': 'landuse', 'non_spatial_modify_statement': 'name technische universität münchen,largest 3,education'}
+# b={'entity_text': 'land', 'non_spatial_modify_statement': 'name technische universität münchen,largest 3,education'}
 # b={'entity_text': 'buildings', 'non_spatial_modify_statement': 'name Hauptbahnhof'}
 # print(pick_match(b,'buildings'))
-# print(general_gpt('user wants to search name of tum, what is its full name'))
+# print(general_gpt('I want to know forest in residential area'))
+# query='I want to know commercial buildings in residential area which around 10m of hospital in north of Munich'
+# address_list,query_without_address=judge_bounding_box(query)
+# entity_suggest=judge_object_subject_multi(query_without_address)
+# suggest_info=f"#address_list:{address_list},entity_suggest:{(entity_suggest)}"
+# set_bounding_box('Oberschleissheim')
+# id1=id_list_of_entity('land which named See')
+# print(id_list_explain(id1, 'area'))
+# print(general_gpt(query+suggest_info))
 # a={'entity_text': 'soil', 'non_spatial_modify_statement': ''}
-# a={'entity_text': 'landuse', 'non_spatial_modify_statement': 'name technische'}
-# print(pick_match(a,'landuse'))
-# print(is_string_in_list_partial('technische', ids_of_attribute('landuse', 'name')))
+# a={'entity_text': 'land', 'non_spatial_modify_statement': 'name technische'}
+# print(pick_match(a,'land'))
+# print(is_string_in_list_partial('technische', ids_of_attribute('land', 'name')))
 # print(judge_object_subject_multi('residential area close to park'))
 # a=ids_of_attribute('buildings','name')
 # print(is_string_in_list_partial('Studentenwohnheim', a))
 # print(a)
-# pick_match('named see','landuse')
+# pick_match('named see','land')
 # query="""
 # Previous code:*9+-
 # residential_area_ids = id_list_of_entity("residential area")
@@ -921,23 +948,23 @@ def process_query(query,messages=None):
 #
 # print(process_boundingbox('Munich:[48.178202, 48.248098, 11.625186, 11.804967],I want to know buildings in north Munich'))
 # a={ 'Waginger See', 'Tierarztpraxis Eberhard', 'Holnstainer Grundschule', 'Hölbinger Weiher', 'Triebenbach', 'Instanbul Kebap', 'Bayersoier Hof', 'Wertstoffhof Weichering', 'Kinderhaus "kleine Hände - große Taten"', 'Haus Thier', 'Lechstaustufe 8 - Sperber', 'Schlatt', 'SV Wangen', 'Realschule', 'Langbürgner See', 'Wallner Alm', 'Campus West Garching Forschungszentrum', 'Hub', 'Eichendorffplatz', 'Tennisclub am Brandl e.V.', 'Genrlinden (S)', 'Streetball-Platz', 'Reutbergstüberl', 'Café Konditorei Schwarz', 'Schlagenhofen', 'Hundeplatz', 'Am Saum', 'Der Haartreff', 'Sultan Imbiss', 'P Arztpraxis', 'Städtisches Adolf-Weber-Gymnasium', 'NAT Arena', 'SV Alzgern', 'Gasthof Steininger', 'Comfort Hotel', 'Wassertretanlage', 'EKC Rottach-Egern', 'Scherer', 'Hanneslabauer', 'Cobra', 'Beim Jäger', 'Bogenschießanlage', 'Hans Kurfer Möbelhaus', 'Wasserrad', 'Gewerbegebiet Feldlerchenstraße', 'Bräuhaus', 'Brummi-Bistro', 'Marka', 'Opel', 'Sudetendeutsches Museum', 'Tipbet', 'Alpenhäusl', 'Gasthaus Huber', 'Höhe', 'Kindertagesstätte Christkönig', 'Betzwiese', 'Mariahilfplatz', 'Karakuş Automobile', 'Kemmler Baustoffe & Fliesen', 'Amtsgericht Landsberg am Lech', 'Hotel Seehof'}
-# pick_match('landuse named see','landuse')
+# pick_match('land named see','land')
 # print(is_string_in_list_partial('see', a))
 # set_bounding_box("Munich")
 # print(id_list_of_entity('buildings'))
 # judge_bounding_box()
-# print(pick_match('landuse', 'landuse'))
-# print(judge_bounding_box('show all landuse in center of Oberschleissheim'))
+# print(pick_match('land', 'land'))
+# print(judge_bounding_box('show all land in center of Oberschleissheim'))
 # set_bounding_box('Oberschleissheim')
-# id1=id_list_of_entity('landuse forest')
+# id1=id_list_of_entity('land forest')
 # id2=id_list_of_entity('buildings')
 # aa=geo_filter('in',id2,id1)
 # print(aa.keys())
 # print(aa['subject'])
 # print(id_list_explain(aa['subject'],'name'))
-# id_list_see_water = id_list_of_entity("landuse which named see and is water")
+# id_list_see_water = id_list_of_entity("land which named see and is water")
 # print(id_list_see_water)
-# set_bounding_box('Oberschleissheim','show me landuse in North of Oberschleissheim')
+# set_bounding_box('Oberschleissheim','show me land in North of Oberschleissheim')
 # forest_ids = id_list_of_entity("forest")
 # building_ids = id_list_of_entity("buildings")
 # geo_result = geo_filter('in', building_ids, forest_ids)
@@ -954,6 +981,9 @@ def process_query(query,messages=None):
 # geo_relation_soil_result = geo_filter('under', geo_relation_result['object'], id_list_soil)
 # id_list_explain_soil = id_list_explain(geo_relation_soil_result['object'], 'type')
 # print(geo_relation_soil_result)
-# type_list=ids_of_attribute('landuse')
+# type_list=ids_of_attribute('land')
 
-# id_list_lake_landuse = id_list_of_entity("landuse is lake")
+# id_list_lake_landuse = id_list_of_entity("land is lake")
+# print(set_bounding_box('Munich Moosach'))
+
+# set_bounding_box('center 3km*3kn of munich')

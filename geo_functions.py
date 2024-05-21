@@ -1,21 +1,15 @@
-import ast
-import re
-
+from pyproj import CRS, Transformer
+from shapely.geometry import Polygon,MultiPolygon
 import psycopg2
-import time
-from shapely.geometry import shape
+import numpy as np
 import geopandas as gpd
-from shapely.wkt import loads
-from shapely.geometry import mapping
 # from draw_geo import draw_geo_map
-from SPARQLWrapper import SPARQLWrapper, JSON
 from tqdm import tqdm
-from bounding_box import find_boundbox
 from shapely import wkb
 from shapely import wkt
 from itertools import islice
 import copy
-from shapely.geometry import base
+import pandas as pd
 globals_dict = {}
 global_id_attribute={}
 global_id_geo={}
@@ -59,7 +53,7 @@ col_name_mapping_dict={
     "select_query": "SELECT buildings AS source_table, fclass,name,osm_id,geom",
     "graph_name":"buildings"
 },
-"landuse":{
+"land":{
     "osm_id": "osm_id",
     "fclass": "fclass",
     "name":"name",
@@ -483,52 +477,103 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
     # return geo_dict
 
 
-#
-# print(all_graph_name)
-# list_type_of_graph_name('http://example.com/landuse')
+def calculate_areas(input_dict):
+    """
+    输入一个键值为WKT字符串的字典，返回一个键值为对应几何图形面积的字典。
+
+    参数：
+        input_dict (dict): 键值为WKT字符串的字典。
+
+    返回：
+        dict: 键值为对应几何图形面积的字典。
+    """
+    if isinstance(input_dict,dict):
+        if 'id_list' in input_dict:
+            input_dict=input_dict['id_list']
+    crs_wgs84 = CRS("EPSG:4326")
+    # 定义UTM投影坐标系，这里使用UTM 33区
+    crs_utm = CRS("EPSG:32633")
+
+    # 创建坐标转换器
+    transformer = Transformer.from_crs(crs_wgs84, crs_utm, always_xy=True)
+    total_area = 0
+    output_dict = {}
+    for key, value in input_dict.items():
+
+        if isinstance(value, Polygon):
+            coords = np.array(value.exterior.coords)
+            utm_coords = np.array(transformer.transform(coords[:, 0], coords[:, 1])).T
+            utm_polygon = Polygon(utm_coords)
+            total_area= utm_polygon.area
+        elif isinstance(value, MultiPolygon):
+
+            for poly in value.geoms:
+                coords = np.array(poly.exterior.coords)
+                utm_coords = np.array(transformer.transform(coords[:, 0], coords[:, 1])).T
+                utm_polygon = Polygon(utm_coords)
+                total_area += utm_polygon.area
+        # 将结果存入输出字典
+        output_dict[key] = total_area
+    return output_dict
+
+
+def quantile_value_stats(data_dict):
+    # 将字典值转换为DataFrame
+    num_values = len(data_dict)
+
+    # 选择分位数的数量的规则（可以根据实际情况调整）
+    if num_values <= 10:
+        num_quantiles = 3
+    elif num_values <= 50:
+        num_quantiles = 5
+    elif num_values <= 100:
+        num_quantiles = 10
+    else:
+        num_quantiles = 20
+    data = pd.DataFrame(list(data_dict.items()), columns=['Key', 'Value'])
+
+    # 计算分位数
+    quantiles = np.linspace(0, 1, num_quantiles + 1)
+    quantile_ranges = data['Value'].quantile(quantiles)
+
+    # 创建一个新的字典存储结果
+    result = {}
+    for i in range(num_quantiles):
+        lower_bound = quantile_ranges.iloc[i]
+        upper_bound = quantile_ranges.iloc[i + 1]
+        count = data[(data['Value'] > lower_bound) & (data['Value'] <= upper_bound)].shape[0]
+        range_key = f"{lower_bound:.2f} - {upper_bound:.2f}"
+        result[range_key] = count
+
+    return result
+
 def id_list_explain(id_list,col='fclass'):
     if isinstance(id_list,dict):
         if 'id_list' in id_list:
             id_list=id_list['id_list']
-
+    fclass_list=['fclass','type','class','name']
     result = {}
-    if col=='name':
-        extract_index=2
-    else:
-        extract_index=1
+    if col  in fclass_list:
+        if col=='name':
+            extract_index=2
+        else:
+            extract_index=1
 
-    # 遍历输入列表中的每个元素
-    for item in id_list:
-        # 使用split方法按'_'分割字符串，并提取所需的部分
-        parts = item.split('_')
-        if len(parts) > 2:
-            key = parts[extract_index]
-            # 更新字典中的计数
-            if key in result:
-                result[key] += 1
-            else:
-                result[key] = 1
+        # 遍历输入列表中的每个元素
+        for item in id_list:
+            # 使用split方法按'_'分割字符串，并提取所需的部分
+            parts = item.split('_')
+            if len(parts) > 2:
+                key = parts[extract_index]
+                # 更新字典中的计数
+                if key in result:
+                    result[key] += 1
+                else:
+                    result[key] = 1
+    if col=='area':
+        result=quantile_value_stats(calculate_areas(id_list))
 
 
-    # if isinstance(id_list, dict): #ids_of_type return的id_list是可以直接计算的字典
-    #     if 'id_list' in id_list:
-    #         id_list = id_list['id_list']
-    #     elif 'subject' in id_list:
-    #         id_list = id_list['object']['id_list']
-    # # print(id_list)
-    #
-    # element_count = {}
-    #
-    # # Iterate over each element in the input list
-    # for element in id_list:
-    #     # If the element is already in the dictionary, increment its count
-    #     attribute=global_id_attribute[element]
-    #     if attribute in element_count:
-    #         element_count[attribute] += 1
-    #     # If the element is not in the dictionary, add it with a count of 1
-    #     else:
-    #         element_count[attribute] = 1
-    # print(result)
     print(dict(sorted(result.items(), key=lambda item: item[1], reverse=True)))
     return dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
 
@@ -589,93 +634,3 @@ def search_attribute(dict_,key,value):
     # html=draw_geo_map(result_dict,"geo")
     print(len(result_dict))
     return result_dict
-def get_table_for_sql():
-    query = """
-            SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';
-            """
-
-def sql_debug():
-    def sql_get_tabel():
-        query = """
-        SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';
-        """
-
-    # 数据库连接参数
-    # engine = create_engine('postgresql://postgres:9417941@localhost:5432/osm_database')
-
-    set_bounding_box('munich maxvorstadt')
-    # 创建连接
-    bounding_box_coordinats = globals_dict['bounding_coordinates']
-    min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-    # 定义边界框
-
-    srid = 4326  # 假设使用WGS 84
-
-    # 执行查询
-    bounding_query = f"""
-    SELECT *
-    FROM buildings
-    WHERE ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {srid}));
-    """
-    print(bounding_query)
-
-    attribute_query = f"""
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'buildings';
-    """
-
-    query = """
-    SELECT * FROM buildings;
-
-    """
-    start_time = time.time()
-    # from shapely.wkb import loads
-    rows = cur_action(bounding_query)
-
-    end_time = time.time()
-    print(end_time - start_time)
-    # 打印结果
-    print(len(rows))
-    result_dict = {}
-    start_time = time.time()
-    for row in rows:
-        result_dict[row[2] + "_" + row[3]+"_" + row[4]] = (wkb.loads(bytes.fromhex(row[6])))
-        # print(row)
-        # crs = CRS.from_user_input(loads((row[6]), hex=True).srid)
-        # print(crs.to_epsg())
-
-        break
-    print(result_dict)
-    end_time = time.time()
-    print(end_time - start_time)
-    geo_dict = {
-        globals_dict["bounding_box_region_name"]: mapping(wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
-    geo_dict.update(result_dict)
-    # draw_geo_map(geo_dict, 'geo')
-    # 关闭连接
-    cur.close()
-    conn.close()
-#{'name': ['Berufs- und Technikerschule', 'Universität', 'TEH-Akademie', 'Berufsfachschule', 'Fakultät für Informatik der LMU', 'Technische Hochschule Ingolstadt', 'Bildungshaus', 'Berufsschule', 'Staatliche Fachoberschule und Berufsoberschule Altötting', 'Simmernschule', 'Berufsbildung- und Technologiezentrum | Kaminkehrer-Innung Oberbayern', 'Isardammschule', 'Knosporus CampusGarten', 'Sonderberufsschule', 'Wichtel Akademie'], 'fclass': ['school', 'college', 'university']
-
-# set_bounding_box("Munich ismaning")
-# type_dict={'non_area_col':{'name': {'Hauptbahnhof'}, 'fclass':'all'},'area_num':None}
-# (ids_of_type('buildings', type_dict))
-# print(ids_of_attribute('landuse', 'name'))
-# a=(ids_of_type('soil', '82: Fast ausschließlich Kalkpaternia aus Carbonatfeinsand bis -schluff über Carbonatsand bis -kies (Auensediment, hellgrau)'))
-# print(ids_of_attribute('soil'))
-# print(ids_of_attribute('soil'))
-# print(ids_of_attribute('buildings'))
-# print(ids_of_attribute('soil'))
-# aa=['21: Fast ausschließlich humusreiche Pararendzina aus Carbonatsandkies bis -schluffkies (Schotter), gering verbreitet mit flacher Flussmergeldecke', '57: Fast ausschließlich Rendzina aus Kalktuff oder Alm', '4a: Überwiegend Parabraunerde und verbreitet Braunerde aus Schluff bis Schluffton (Lösslehm) über Carbonatschluff (Löss)']
-# ids_of_type('landuse',['smallest 3','park'])
-# print(ids_of_attribute('landuse','name'))
-# print(ids_of_attribute('landuse'))
-# print(ids_of_attribute('soil')
-# a=ids_of_type('landuse','park')
-# geo_calculate(geo_result['subject']['id_list'])
-# set_bounding_box('munich')
-# print(len(ids_of_attribute('landuse','name')))
-# a={'non_area_col':{'fclass':['water']},'area_num':None}
-# print((list(ids_of_type('landuse',a)['id_list'])[:200]))
-# id1=ids_of_type('landuse','name')
