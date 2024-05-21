@@ -189,6 +189,7 @@ def details_span(result, run_time):
             if int(length) == 20000:
                 attention = 'Due to the large volume of data in your current search area, only 20,000 entries are displayed.'
         aa = f"""
+\n
 <details>
     <summary>`Code result: Length:{length},Run_time:{round(run_time, 2)}s`</summary>
        {str(result)}
@@ -351,7 +352,10 @@ def submit():
         true_step = 0  # 总返回数
         stop_step = False  # 强制该轮停止
 
+
+
         while compelete != True and steps < 2 and whole_step <= 5 and stop_step != True:
+            compelete = True
             # print(messages)
             print(whole_step, "whole_step")
             whole_step += 1
@@ -362,6 +366,7 @@ def submit():
             #
             if session['template'] == True:
                 code_list.append(data)
+                yield data
                 compelete=True
             else:
                 # bounding_box, new_message = judge_bounding_box(data)
@@ -381,25 +386,52 @@ def submit():
                 content_str = ''
                 chat_result = ''
                 chunk_num = 0
-
+                in_code_block = False
+                code_block_start = "```python"
+                code_block_end = "```"
+                buffer = ""
+                line_buffer = ""
+                total_buffer = ""
+                total_char_list=[]
                 for chunk in chat_response:
                     if chunk is not None:
-                        # if chunk['message']['content'] is not None:
-                        if chunk_num == 0:
-                            char = "\n" + chunk.choices[0].delta.content
-
-                        else:
-                            char = chunk.choices[0].delta.content
-
-                        chunk_num += 1
-
-                        print(char, end="", flush=True)
                         if chunk.choices[0].delta.content is not None:
-                            chat_result += char
+                            if chunk_num == 0:
+                                char = "\n" + chunk.choices[0].delta.content
 
-                            yield char
+                            else:
+                                char = chunk.choices[0].delta.content
+                            chunk_num+=1
+                            total_buffer+=char
 
-                full_result = (chat_result)
+                            total_char_list.append(char)
+                            print(char, end='', flush=True)
+
+
+                            line_buffer += char
+                            # 检查是否遇到了Python代码块的起始标志
+                            if code_block_start.startswith(line_buffer) and not in_code_block:
+                                in_code_block = True
+                                line_buffer = ""  # 清空行缓冲区
+                                continue
+                            # 检查是否遇到了Python代码块的结束标志
+                            elif code_block_end.startswith(line_buffer) and in_code_block:
+                                in_code_block = False
+                                line_buffer = ""  # 清空行缓冲区
+                                continue
+
+                            # 如果不在代码块中，则打印行缓冲区内容
+                            if (not in_code_block and line_buffer) or line_buffer.startswith('#'):
+                                yield char.replace('#','><;.')
+                                # time.sleep(0.1)  # 模拟逐字打印的效果
+
+                            # 如果遇到换行符，重置line_buffer
+                            if '\n' in char:
+                                line_buffer = ""
+
+                print(total_char_list)
+                chat_result=total_buffer
+                full_result = chat_result
                 processed_response.append({'role': 'assistant', 'content': chat_result})
                 messages.append({'role': 'assistant', 'content': chat_result})
 
@@ -410,18 +442,19 @@ def submit():
                     steps += 1
                     code_list .extend( extract_code_blocks(full_result))
                     compelete=True
-                else:
-                    steps += 1
-                    if steps < 2 and whole_step < 5:
-                        messages.append({"role": "user",
-                                         "content": "ok"})
-                        processed_response.append({"role": "user",
-                                                   "content": "ok"})
-                        final_conv = 'ok'
+                # else:
+                #     steps += 1
+                #     if steps < 2 and whole_step < 5:
+                #         messages.append({"role": "user",
+                #                          "content": "ok"})
+                #         processed_response.append({"role": "user",
+                #                                    "content": "ok"})
+                #         final_conv = 'ok'
+
             print(code_list)
             for line_num, lines in enumerate(code_list):
 
-                yield f"\n\n```python\n{lines}\n```"
+                # yield f"\n\n```python\n{lines}\n```"
                 yield "\n\n`Code running...`\n"
                 plt_show = False
                 if "plt.show()" in lines:

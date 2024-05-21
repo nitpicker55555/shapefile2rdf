@@ -819,7 +819,9 @@ output as json format like:
 
 
 def set_bounding_box(region_name, query=None):
-
+    if region_name=='':
+        geo_functions.globals_dict={}
+        return
     if region_name != None:
         locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
                      'Oberschleissheim']
