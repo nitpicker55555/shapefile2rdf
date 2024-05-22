@@ -1,33 +1,32 @@
-import re
+import time
 
+# 输入的列表
+input_list = ['\n', '\n```', '\npython', '\n\n', '\n#', '\n Set', '\n the', '\n bounding', '\n box', '\n to', '\n Munich', '\n Max', '\nvor', '\nstadt', '\n\n', '\nset', '\n_b', '\nounding', '\n_box', '\n("', '\nMun', '\nich', '\n Max', '\nvor', '\nstadt', '\n,', '\n Munich', '\n")\n\n', '\n#', '\n Get', '\n the', '\n ID', '\n list', '\n of', '\n residential', '\n areas', '\n\n', '\nres', '\nidential', '\n_', '\nareas', '\n =', '\n id', '\n_list', '\n_of', '\n_entity', '\n("', '\nres', '\nidential', '\n area', '\n")\n\n', '\n#', '\n Get', '\n the', '\n ID', '\n list', '\n of', '\n forests', '\n\n', '\nfore', '\nsts', '\n =', '\n id', '\n_list', '\n_of', '\n_entity', '\n("', '\nforest', '\n")\n\n', '\n#', '\n Filter', '\n residential', '\n areas', '\n that', '\n are', '\n within', '\n ', '\n100', '\nm', '\n of', '\n forests', '\n\n', '\nres', '\nidential', '\n_ne', '\nar', '\n_fore', '\nsts', '\n =', '\n geo', '\n_filter', '\n("', '\nin', '\n ', '\n100', '\nm', '\n of', '\n",', '\n residential', '\n_', '\nareas', '\n,', '\n forests', '\n)\n\n', '\n#', '\n Output', '\n the', '\n result', '\n\n', '\nres', '\nidential', '\n_ne', '\nar', '\n_fore', '\nsts', '\n\n', '\n```']
+# 定义一个标志变量来标记是否在Python代码块中
+in_code_block = False
+code_block_start = "```python"
+code_block_end = "```"
+line_buffer = ""
 
-def parse_coordinates_with_spaces(input_string):
-    # Split input string by lines
-    lines = input_string.strip().split('\n')
+for item in input_list:
+    line_buffer += item
 
-    coordinates_dict = {}
+    # 检查是否遇到了Python代码块的起始标志
+    if code_block_start.startswith(line_buffer) and not in_code_block:
+        in_code_block = True
+        line_buffer = ""  # 清空行缓冲区
+        continue
+    # 检查是否遇到了Python代码块的结束标志
+    elif code_block_end.startswith(line_buffer) and in_code_block:
+        in_code_block = False
+        line_buffer = ""  # 清空行缓冲区
+        continue
 
-    for line in lines:
-        # Use regex to capture coordinates and place names with spaces
-        match = re.match(r'([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+(.+)', line)
-        if match:
-            lon1, lat1, lon2, lat2, place = match.groups()
-            # Create list with latitudes first, then longitudes
-            coordinates = [lat1, lat2, lon1, lon2]
-            coordinates_dict[place] = coordinates
+    # 如果不在代码块中，则打印行缓冲区内容
+    if (not in_code_block and line_buffer) or line_buffer.startswith('#'):
+        print(item, end='', flush=True)
+        time.sleep(0.1)  # 模拟逐字打印的效果
 
-    return coordinates_dict
-
-
-input_string = """
-11.360777	48.061625	11.72291	48.248098 Munich
-10.7634	48.2581	10.9593	48.4587 Augsburg
-11.465675	48.165392	11.541543	48.205211 Munich Moosach
-11.538923	48.139603	11.588192	48.157637 Munich Maxvorstadt
-11.643546	48.201643	11.759782	48.278978 Munich Ismaning
-11.640451	48.330606	11.792508	48.449032 Freising
-11.499759	48.213303	11.615142	48.280737 Oberschleissheim
-"""
-
-coordinates_dict = parse_coordinates_with_spaces(input_string)
-print(coordinates_dict.keys())
+    # 如果遇到换行符，重置line_buffer
+    if '\n' in item  :
+        line_buffer = ""

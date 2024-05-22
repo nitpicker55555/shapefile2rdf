@@ -209,9 +209,9 @@ def short_response(text_list):
             short_suitable_types = [t[:35] for t in result]
             return str(short_suitable_types)
         else:
-            return text_list[:1000]
+            return text_list[:600]
     else:
-        return text_list[:1000]
+        return text_list[:600]
 
 
 # 设置文件上传的目录和大小限制
@@ -329,11 +329,37 @@ def polygons_to_geojson(polygons_dict):
     return geojson_dict
 
 
-def send_data(data, mode="data"):
+def send_data(data, mode="data",index=""):
     if mode == "map":
-        data = polygons_to_geojson(data)
+        if not isinstance(data,str) and len(data)!=0:
+            data = polygons_to_geojson(data)
 
-    socketio.emit('text', {mode: data})
+    socketio.emit('text', {mode: data,'index':index})
+
+def find_insert_comment_position(multiline_str, code_line,mode=False):
+    lines = multiline_str
+    comment_positions = []
+    if mode:
+        normal_special_char='#><;'
+    else:
+        normal_special_char='#'
+
+
+    for i, line in enumerate(lines):
+        if line.strip().startswith("#"):
+            comment_positions.append((i, line.strip()))
+
+    for idx, (pos, comment) in enumerate(comment_positions):
+        if idx + 1 < len(comment_positions):
+            next_comment_pos = comment_positions[idx + 1][0]
+            if pos < lines.index(code_line) < next_comment_pos:
+                return comment.replace(normal_special_char,'').replace("'",'').strip()
+        else:
+            if pos < lines.index(code_line):
+                return comment.replace(normal_special_char,'').replace("'",'').strip()
+
+    result = (-1, "")
+    return result[1][4:].strip()
 
 
 @app.route('/submit', methods=['POST', 'GET'])
@@ -365,6 +391,7 @@ def submit():
             code_list = []
             #
             if session['template'] == True:
+
                 code_list.append(data)
                 yield data
                 compelete=True
@@ -378,7 +405,10 @@ def submit():
                 #     messages.append(message_template('user', data))
                 address_list, query_without_address = judge_bounding_box(data)
                 # entity_suggest = judge_object_subject_multi(query_without_address)
-                suggest_info = f"# address_in_query:{address_list}"
+                if address_list!=[]:
+                    suggest_info = f"# address_in_query:'{address_list}'"
+                else:
+                    suggest_info=''
                 messages.append(message_template('user', data+suggest_info))
                 print(messages)
 
@@ -422,7 +452,7 @@ def submit():
 
                             # 如果不在代码块中，则打印行缓冲区内容
                             if (not in_code_block and line_buffer) or line_buffer.startswith('#'):
-                                yield char.replace('#','><;.')
+                                yield char.replace('#','#><;').replace("'",'')
                                 # time.sleep(0.1)  # 模拟逐字打印的效果
 
                             # 如果遇到换行符，重置line_buffer
@@ -474,7 +504,7 @@ def submit():
                 lines = filtered_lst
                 new_lines = []
                 variable_dict={}
-                for each_line in lines:
+                for line_num,each_line in enumerate(lines):
 
 
                     if '=' in each_line and (
@@ -482,19 +512,20 @@ def submit():
 
                         variable_str = each_line.split('=')[0]
                         variable_dict[variable_str]=each_line
+                        comment_index=find_insert_comment_position(lines,each_line,session['template'])
 
                         new_line = f"""
-send_data({variable_str}['geo_map'],'map')
+send_data({variable_str}['geo_map'],'map','{comment_index}')
     
                             """
                         new_lines.append(each_line)
                         new_lines.append(new_line)
                     elif '=' not in each_line and (
                             'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
-
+                        comment_index = find_insert_comment_position(lines, each_line)
                         new_line = f"""
 temp_result={each_line}
-send_data(temp_result['geo_map'],'map')
+send_data(temp_result['geo_map'],'map','{comment_index}')
     
                             """
                         new_lines.append(each_line)

@@ -1,3 +1,5 @@
+import time
+
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon,MultiPolygon
 import psycopg2
@@ -120,12 +122,18 @@ def auto_add_WHERE_AND(sql_query,mode='query'):
 
 def cur_action(query,mode='query'):
     try:
+        start_time = time.time()
         query=auto_add_WHERE_AND(query,mode)
 
         # print(query)
 
         cur.execute(query)
         rows =cur.fetchall()
+        end_time = time.time()
+
+        # 计算耗时
+        elapsed_time = end_time - start_time
+        # print(f"代码执行耗时: {elapsed_time} 秒",len(rows))
         return rows
     except psycopg2.Error as e:
         cur.execute("ROLLBACK;")
@@ -513,44 +521,44 @@ def calculate_areas(input_dict):
                 utm_polygon = Polygon(utm_coords)
                 total_area += utm_polygon.area
         # 将结果存入输出字典
-        output_dict[key] = total_area
+        output_dict[key] = round(total_area,2)
     return output_dict
 
-
-def quantile_value_stats(data_dict):
+def equal_interval_stats(data_dict, num_intervals=5):
     # 将字典值转换为DataFrame
-    num_values = len(data_dict)
 
-    # 选择分位数的数量的规则（可以根据实际情况调整）
-    if num_values <= 10:
-        num_quantiles = 3
-    elif num_values <= 50:
-        num_quantiles = 5
-    elif num_values <= 100:
-        num_quantiles = 10
-    else:
-        num_quantiles = 20
-    data = pd.DataFrame(list(data_dict.items()), columns=['Key', 'Value'])
+        data = pd.DataFrame(list(data_dict.items()), columns=['Key', 'Value'])
 
-    # 计算分位数
-    quantiles = np.linspace(0, 1, num_quantiles + 1)
-    quantile_ranges = data['Value'].quantile(quantiles)
+        # 获取数据的最小值和最大值
+        min_value = data['Value'].min()
+        max_value = data['Value'].max()
 
-    # 创建一个新的字典存储结果
-    result = {}
-    for i in range(num_quantiles):
-        lower_bound = quantile_ranges.iloc[i]
-        upper_bound = quantile_ranges.iloc[i + 1]
-        count = data[(data['Value'] > lower_bound) & (data['Value'] <= upper_bound)].shape[0]
-        range_key = f"{lower_bound:.2f} - {upper_bound:.2f}"
-        result[range_key] = count
 
-    return result
+
+        # 创建等间距区间
+        intervals = np.linspace(min_value, max_value, num_intervals + 1)
+        interval_labels = [f"{intervals[i]:.2f} - {intervals[i + 1]:.2f}" for i in range(len(intervals) - 1)]
+
+        # 创建一个新的字典存储结果
+        result = {label: 0 for label in interval_labels}
+
+        # 计算每个区间内的数量
+        for i in range(len(intervals) - 1):
+            lower_bound = intervals[i]
+            upper_bound = intervals[i + 1]
+            count = data[(data['Value'] > lower_bound) & (data['Value'] <= upper_bound)].shape[0]
+            result[interval_labels[i]] = count
+
+        return result
 
 def id_list_explain(id_list,col='fclass'):
     if isinstance(id_list,dict):
+        if 'subject' in id_list:
+            id_list=id_list['subject']
+
         if 'id_list' in id_list:
             id_list=id_list['id_list']
+
     fclass_list=['fclass','type','class','name']
     result = {}
     if col  in fclass_list:
@@ -571,7 +579,7 @@ def id_list_explain(id_list,col='fclass'):
                 else:
                     result[key] = 1
     if col=='area':
-        result=quantile_value_stats(calculate_areas(id_list))
+        result=calculate_areas(id_list)
 
 
     print(dict(sorted(result.items(), key=lambda item: item[1], reverse=True)))

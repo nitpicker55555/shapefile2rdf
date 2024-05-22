@@ -205,7 +205,7 @@ def details_pick_chatgpt(query, given_list, table_name, messages=None):
 
 
 def judge_col_name(statement_split):
-    if 'name' in statement_split:
+    if 'name' in statement_split or 'call' in statement_split:
         return 'name'
     elif judge_area(statement_split):
         return None
@@ -269,8 +269,12 @@ def extract_numbers(s):
         return int(numbers[0]) * a
     else:
         return 1 * a  # 如果没有显式说明最大数值，则为最大的
-
-
+def remove_substrings_from_text(text, substrings):
+    for substring in substrings:
+        # 使用正则表达式匹配确切的子字符串，并替换为空字符串
+        pattern = r'\b' + re.escape(substring) + r'\b'
+        text = re.sub(pattern, '', text)
+    return text
 def pick_match(query_feature_ori, table_name,verbose=False):
     # for query_feature_ori['entity_text']==table_name,
     # for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
@@ -300,7 +304,9 @@ def pick_match(query_feature_ori, table_name,verbose=False):
                     continue
 
                 given_list = ids_of_attribute(table_name, col_name)
-                query = query.replace(table_name, '').replace('named', '').replace("name", '').replace("is ", '').replace('which','').replace('where','').strip()#去除两边空格
+                query=remove_substrings_from_text(query,['named','name','is','which','where','call','called',table_name]).strip()
+                print(query)
+                # query = query.replace('named', '').replace("name", '').replace("is ", '').replace('which','').replace('where','').strip()#去除两边空格
                 # print(query,table_name)
                 partial_similar = is_string_in_list_partial(query, given_list)
                 # print(partial_similar)
@@ -375,13 +381,14 @@ def pick_match(query_feature_ori, table_name,verbose=False):
 
 def judge_geo_relation(query, messages=None):
     sample_list=['in','contains']
+    if query in sample_list:
+        return {'type':query,'num':0}
     if 'under' in query:
         return {'type':'contains','num':0}
     if 'on' in query:
         return {'type':'in','num':0}
 
-    if query in sample_list:
-        return {'type':query,'num':0}
+
     if messages == None:
         messages = []
     ask_prompt = """You are a search query analyst tasked with analyzing user queries to determine if they include 
@@ -604,6 +611,8 @@ def geo_filter(query,id_list_subject, id_list_object):
     if versa_sign:
         query = query.replace(negation_word, '')
     geo_relation = judge_geo_relation(query)
+    print( geo_relation['type'])
+    print(id_list_subject)
     geo_result = geo_calculate(id_list_subject, id_list_object, geo_relation['type'], geo_relation['num'], versa_sign=versa_sign)
     return geo_result
 
@@ -821,10 +830,10 @@ output as json format like:
 def set_bounding_box(region_name, query=None):
     if region_name=='':
         geo_functions.globals_dict={}
-        return
+        return {'geo_map': ''}
+    locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
+                 'Oberschleissheim']
     if region_name != None:
-        locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
-                     'Oberschleissheim']
 
         location_name=''
         for i in locations:
@@ -833,10 +842,10 @@ def set_bounding_box(region_name, query=None):
                 location_name=i
 
         if len(region_name.lower().replace(location_name.lower(),'').strip())!=0: #除了地名外还有额外修饰
-                print(' s')
                 query=region_name
                 region_name=location_name
-
+        if region_name not in locations:
+            region_name="Munich Maxvorstadt"
         geo_functions.globals_dict["bounding_box_region_name"] = region_name
         geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
 
@@ -846,9 +855,7 @@ def set_bounding_box(region_name, query=None):
                 'Original_bounding_box_of_'+region_name:str(geo_functions.globals_dict['bounding_coordinates']),
                           "query":query
                           }
-            print(modify_query)
             modified_box=process_boundingbox(str(modify_query))
-            print(modified_box)
             geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict['bounding_wkb'], response_str = find_boundbox(modified_box,'changed')
             # print(wkb.loads(bytes.fromhex(geo_functions.globals_dict['bounding_wkb'])))
 
@@ -987,5 +994,17 @@ def process_query(query,messages=None):
 
 # id_list_lake_landuse = id_list_of_entity("land is lake")
 # print(set_bounding_box('Munich Moosach'))
+# farmland_ids=id_list_of_entity('land which is farmland')
+# potato_landuse_ids = id_list_of_entity("good for planting potatoes")
+# filtered_farmland_ids = geo_filter('on', potato_landuse_ids, farmland_ids)
+# set_bounding_box('Munich')
 
-# set_bounding_box('center 3km*3kn of munich')
+# print(len(id_list_of_entity('buildings')['id_list']))
+
+# id1=id_list_of_entity('park')
+# id2=id_list_of_entity('buildings')
+# print(geo_filter('contains', id1, id2))
+
+# print(id_list_explain(id1,'area'))
+# set_bounding_box('Munich')
+# print(len(id_list_of_entity('buildings')['id_list']))

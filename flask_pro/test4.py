@@ -21,3 +21,37 @@ conda activate puzhenenv
 python app_changed_agent.py
 python ask_functions_agent.py
 """
+"""
+land details\nfiltered_farmland_details\n']
+#><;><;><; Munich
+set_bounding_box("Munich")
+#><;><;><; AAC
+farmland_ids=id_list_of_entity('land which is farmland')
+#><;><;><; Get the list of IDs for landuse good for planting potatoes
+potato_landuse_ids = id_list_of_entity("good for planting potatoes")
+#><;><;><; Filter the farmland IDs to find those good for planting potatoes
+filtered_farmland_ids = geo_filter('on', potato_landuse_ids, farmland_ids)
+#><;><;><; Ober
+set_bounding_box("Oberschleissheim")
+
+
+#><;><;><; Output the filtered farmland details
+
+print(filtered_farmland_details)
+
+
+
+
+time.sleep(4)
+#><; Set the bounding box to Munich
+set_bounding_box("Oberschleissheim")
+
+#><; Get the id
+engli = id_list_of_entity("land")
+
+
+
+
+"""
+
+

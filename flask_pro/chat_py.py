@@ -39,7 +39,8 @@ def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
         model=model,
         messages=messages,
             temperature=0,
-        stream=True
+        stream=True,
+            max_tokens=2560
 
     )
         return response

@@ -34,19 +34,20 @@
             display: none;
         }
         .custom-rect {
-            display: inline-block;
+            display: block;
             border-radius: 10px;
             padding: 5px 10px;
             font-style: italic;
             background: linear-gradient(135deg, #1e90ff, #87cefa);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            margin: 5px 0;
+
             position: relative;
+            margin-bottom: 10px; /* 调整间距 */
         }
 
         .plan-label {
             display: inline-block;
-            background-color: red;
+            background-color: gray;
             color: white;
             padding: 2px 5px;
             border-radius: 3px;
@@ -56,8 +57,20 @@
             top: -10px;
             left: -10px;
         }
-        .map-button {
+        .plan-label-map {
             display: inline-block;
+            background-color: green;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-left: 5px;
+            font-size: 12px;
+            position: absolute;
+            top:-10px;
+            left: 25px;
+        }
+        .map-button {
+            display: block;
             border-radius: 10px;
             padding: 5px 10px;
             background: linear-gradient(135deg, #800080, #dda0dd);
@@ -65,18 +78,19 @@
             border: none;
             cursor: pointer;
             position: relative;
+            margin-bottom: 10px; /* 调整间距 */
         }
 
-        .map-button .plan-label {
-            background-color: green;
-            color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-size: 12px;
-            position: absolute;
-            top: -10px;
-            left: -10px;
-        }
+        /*.map-button .plan-label {*/
+        /*    background-color: green;*/
+        /*    color: white;*/
+        /*    padding: 2px 5px;*/
+        /*    border-radius: 3px;*/
+        /*    font-size: 12px;*/
+        /*    position: absolute;*/
+        /*    top: -10px;*/
+        /*    left: -10px;*/
+        /*}*/
         #chatWindow {
 
             border: 1px solid #ccc;
@@ -147,27 +161,11 @@
              right: 20px; /* 距离窗口右边缘50px */
              width: 600px;
              height: 500px; /* 高度为600px */
-             /*position: absolute; !* 或者使用 position: fixed; 根据需要 *!*/
-             /*bottom: 100px; !* 距离窗口底部100px *!*/
-             /*left: 20px; !* 距离窗口左边缘50px *!*/
-             /*right: 20px; !* 距离窗口右边缘50px *!*/
-             /*height: 500px; !* 高度为600px *!*/
              background-color: #f0f0f0; /* 背景色，仅作为示例 */
              visibility : hidden;
 
          }
 
-
-        /* 横屏样式 */
-        /*@media (orientation: landscape) {*/
-        /*    #map-container {*/
-        /*        width: 1000px; !* 宽度为1000px *!*/
-        /*        margin-right: 20px; !* 距离右边缘20px *!*/
-        /*        margin-top: 50px; !* 距离上边缘50px *!*/
-        /*        margin-bottom: 50px; !* 距离下边缘50px *!*/
-        /*        z-index: 1000;*/
-        /*    }*/
-        /*}*/
 
     </style>
 
@@ -197,25 +195,25 @@
 <input type="file" id="file-input" style="display: none;" />
 <div id="chatWindow" style="display: none"></div>
 <div class="container" id="title">
-    <span class="code-interpreter">Talk to DB</span>
+    <span class="code-interpreter">Geo-QA</span>
     <div class="description"></div>
-    <button class="rectangle-btn"  onclick="showNumber('The building around forest 100m in munich Ismaning')">The building around forest 100m in munich Ismaning</button>
+    <button class="rectangle-btn"  onclick="showNumber('Show buildings 100m around forest in Munich Maxvorstadt')">Show buildings 100m around forest</button>
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('show buildings in greenery')">show buildings in greenery</button>
+    <button class="rectangle-btn"  onclick="showNumber('Show buildings in greenery in Munich Maxvorstadt')">Show buildings in greenery</button>
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('where is good for agriculture')">soil which is good for agriculture</button>
+    <button class="rectangle-btn"  onclick="showNumber('Where is good for agriculture in Munich Maxvorstadt')">Where is good for agriculture</button>
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('park which has buildings inside in munich')">park which has buildings inside</button>
+    <button class="rectangle-btn"  onclick="showNumber('Park which has buildings inside in Munich Maxvorstadt')">Park which has buildings inside</button>
     <br>
     <br>
-    <button class="rectangle-btn"  onclick="showNumber('landuse is river')">landuse is river</button>
+    <button class="rectangle-btn"  onclick="showNumber('Where are the rivers in Munich')">Where are the rivers</button>
 <!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>-->
 </div>
 <div class="input-button-container">
-    <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />
+<!--    <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />-->
 
 
     <textarea type="text" id="inputField" class="your-button-class" placeholder="Input question..."></textarea>
@@ -227,6 +225,35 @@
 <script>
     // function uploadFile() {
     //
+    const color_list=['#756bb1',
+        '#ffffb3',
+        '#3182bd',
+        '#e78ac3',
+        '#dadaeb',
+        '#b3de69',
+        '#31a354',
+        '#8dd3c7',
+        '#a6d854',
+        '#9e9ac8',
+        '#fccde5',
+        '#6baed6',
+        '#74c476',
+        '#fb8072',
+        '#ffed6f',
+        '#fdb462',
+        '#bc80bd',
+        '#8da0cb',
+        '#fdd0a2',
+        '#66c2a5',
+        '#e6550d',
+        '#fdae6b',
+        '#a1d99b',
+        '#636363',
+        '#ffd92f',
+        '#9ecae1',
+        '#b3b3b3']
+
+    var first_time_englischer_garten_error=true
 
     function showNumber(text) {
         if(text==="分析我上传的文件"){
@@ -241,107 +268,29 @@
     document.getElementById('nightModeToggle').addEventListener('click', function() {
         document.body.classList.toggle('night-mode');
     });
-    var color_dict={}
     var letters = '0123456789ABCDEF';
     var color_dict = {}; // 存储标签与颜色的映射
     var history_colors = new Set(); // 存储历史颜色以避免重复
     var count = 0; // 初始化计数器
-    var map_index=0
-    function add_map_button(map_data){
-        // 选择所有类名为'message-text response'的元素
-        const elements = document.querySelectorAll('.message-text.response');
+    var button_index=0
 
-        // 检查是否有找到任何元素
-        if (elements.length > 0) {
-            // 获取列表中的最后一个元素
-            const lastElement = elements[elements.length - 1];
 
-            // 在最后一个.message-text.response元素中找到所有.custom-rect元素
-            const customRects = lastElement.querySelectorAll('.custom-rect');
+    var wait_button=[]
+    var map_button_dict={}
+    function add_map_button(map_data,targetText) {
 
-            // 找到第一个没有附着地图按钮的.custom-rect元素
-            let targetElement = null;
-            for (let i = 0; i < customRects.length; i++) {
-                if (!customRects[i].nextElementSibling || !customRects[i].nextElementSibling.classList.contains('map-button')) {
-                    targetElement = customRects[i];
-                    break;
-                }
-            }
+        map_button_dict[targetText]=map_data
 
-            if (targetElement) {
-                // 创建一个新的button元素
-                const button = document.createElement('button');
-                map_index += 1;
 
-                // 设置按钮的文本内容
-                button.textContent = 'Map' + map_index.toString();
-
-                // 设置按钮的类名
-                button.className = 'map-button';
-
-                // 创建并添加plan-label
-                const planLabel = document.createElement('span');
-                planLabel.className = 'plan-label';
-                planLabel.textContent = 'Map';
-                button.appendChild(planLabel);
-
-                // 设置按钮的点击事件
-                button.addEventListener('click', function() {
-                    updateMapDataAndFitBounds(map, map_data);
-                });
-
-                // 将按钮添加到第一个没有附着地图按钮的.custom-rect元素的后面
-                targetElement.insertAdjacentElement('afterend', button);
-            } else {
-                console.log('没有找到没有附着地图按钮的.custom-rect元素。');
-            }
-        } else {
-            console.log('没有找到具有指定类名的元素。');
-        }
 
     }
-
     function updateMapDataAndFitBounds(map, newPolygons) {
+        // console.log(newPolygons)
         // 检查是否已经添加了geoJsonLayer图层，如果有，则移除
         if (window.geoJsonLayer) {
             window.geoJsonLayer.clearLayers(); // 移除之前的图层数据
         } else {
             window.geoJsonLayer = L.geoJSON().addTo(map); // 初始化geoJsonLayer
-            // var layerControlElement = document.getElementsByClassName('leaflet-control-layers')[0];
-            // layerControlElement.style.display = 'none';
-            // L.Control.CollapseControl = L.Control.extend({
-            //     onAdd: function(map) {
-            //         var container = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
-            //         container.innerHTML = 'fold'; // 设置按钮文本
-            //         container.style.backgroundColor = 'white';
-            //         container.style.width = '60px';
-            //         container.style.height = '30px';
-            //
-            //
-            //         container.onclick = function() {
-            //             // 切换图层控制器的可见性
-            //             var layerControlElement = document.getElementsByClassName('leaflet-control-layers')[0];
-            //             if (layerControlElement.style.display === 'none') {
-            //                 layerControlElement.style.display = 'block';
-            //                 container.innerHTML = 'fold';
-            //             } else {
-            //                 layerControlElement.style.display = 'none';
-            //                 container.innerHTML = 'unfold';
-            //             }
-            //         }
-            //
-            //         return container;
-            //     },
-            //
-            //     onRemove: function(map) {
-            //         // Nothing to do here
-            //     }
-            // });
-            //
-            // L.control.collapseControl = function(opts) {
-            //     return new L.Control.CollapseControl(opts);
-            // }
-            // map.addControl(L.control.collapseControl({ position: 'topleft' }));
 
         }
 
@@ -371,6 +320,46 @@
             count++; // 更新计数器
             return color;
         }
+        class UniqueRandomPicker {
+            constructor(array) {
+                this.originalArray = array;
+                this.currentIndex = 0;
+            }
+
+            getNextElement() {
+                if (this.originalArray.length === 0) {
+                    throw new Error("Array is empty.");
+                }
+
+                // 获取当前索引的元素
+                const element = this.originalArray[this.currentIndex];
+
+                // 更新索引，如果到达数组末尾则重置为0
+                this.currentIndex = (this.currentIndex + 1) % this.originalArray.length;
+
+                return element;
+            }
+        }
+
+        function getRandomUniqueElement(array, usedElements) {
+            // 检查是否所有元素都已经被抽取过
+            if (usedElements.size >= array.length) {
+                throw new Error("All elements have been used.");
+            }
+
+            let element;
+            do {
+                // 随机抽取一个元素
+                const randomIndex = Math.floor(Math.random() * array.length);
+                element = array[randomIndex];
+            } while (usedElements.has(element));
+
+            // 将抽取的元素加入到已使用集合中
+            usedElements.add(element);
+
+            return element;
+        }
+
         function getRandomColor(label) {
             const label_belong =label.split("_").slice(0, 2).join("_");
             // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
@@ -380,16 +369,18 @@
             }
             else
             {
-                var color = generateColor()
+                var color =picker.getNextElement()
+                console.log(color)
                 color_dict[label_belong]=color
                 return color;
             }
 
 
         }
-
+        const picker = new UniqueRandomPicker(color_list);
         // 遍历并添加新多边形到地图和GeoJSON图层
         Object.keys(newPolygons).forEach(label => {
+
             const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
             const label_belong = label.substring(0, lastIndex);
             var color = getRandomColor(label);
@@ -420,7 +411,13 @@
         }).addTo(map);
 
         // 自动调整地图缩放级别和中心位置以适应所有多边形
-        map.fitBounds(window.geoJsonLayer.getBounds());
+
+            try {
+                map.fitBounds(window.geoJsonLayer.getBounds());
+            } catch (error) {
+                console.log('Error fitting bounds:', window.geoJsonLayer.getBounds());
+            }
+
     }
 
     var map = L.map('map-container').setView([0, 0], 2);
@@ -435,25 +432,27 @@
     var messages=[]
     const normal_prompt = `
     You have following tools available to answer user queries, please only write python code:
-I have three kinds of data:buildings, landuse (different kinds of area), soil.
+I have three kinds of data:buildings, land (different kinds of area), soil.
 1.set_bounding_box(address):
 Input:An address which you want search limited in.
 Output:None, it establishes a global setting that restricts future searches to the defined region.
 Usage:By providing an address, you can limit the scope of subsequent searches to a specific area. This function does not produce any output, but it establishes a global setting that restricts future searches to the defined region. For example, if you want to find buildings in Munich, you should first set the bounding box to Munich by using set_bounding_box("Munich").
 Notice:Please include the directional words like east/south/east/north of query in the address sent to set_bounding_box
+Notice:If user does not query in a specific area, do not use this function. If user wants to search in all area, call set_bounding_box('').
 
 2.id_list_of_entity(description of entity):
 Input: Description of the entity, like adj or prepositional phrase like good for commercial,good for planting potatoes.
 Output: A list of IDs (id_list) corresponding to the described entity.
 Usage: Use this function to obtain an id_list which will be used as input in the following functions.
-Notice: Some times the description may have complex description like:"I want to know landuse which named see and is water", input the whole description into function.
+Notice: Some times the description may have complex description like:"I want to know land which named see and is water", input the whole description into function.
 Notice: Do not input geographical relation like 'in/on/under/in 200m of/close' into this function, it is not description of entity.
 
 3.geo_filter('their geo_relation',id_list_subject, id_list_object):
 Input: Two id_lists (one as subject and one as object) and their corresponding geographical relationship.
 Output: A dict contains 'subject','object' two keys as filtered id_lists based on the geographical relationship.
 Usage: This function is used only when the user wants to query multiple entities that are geographically related. Common geographical relationships are like: 'in/on/under/in 200m of/close/contains...'
-Notice: id_list_subject should be the subject of the geo_relation, in example: soil under the buildings, soil is subject.
+Notice: id_list_subject should be the subject of the geo_relation, in example: soil under the buildings, soil is subject; buildings around water, buildings are subject.
+Notice: Get the filtered subject/object id_list: result['subject'],result['object']
 
 4.area_filter(id_list, num):
 Notice: only use it when user wants to filter result by area.
@@ -463,22 +462,22 @@ Usage: Use this function only when the user explicitly asks for the entities wit
 
 5.id_list_explain(variable name, category to explain(name or type or area)):
 Input: id_list generated by function 'id_list_of_entity' or 'geo_filter' or 'area_filter'
-Output: A dictionary containing the count of each type/name occurrence or range of area size.
+Output: A dictionary containing the count of each type/name occurrence or area size（unit is square meters）.
 Usage: Use this function to provide explanations based on user queries.
 
-Please always set an output variable for each function you called and write corresponding code comments.
+Please always set an output variable for each function you called and write corresponding short code comments.
 Variable in history is available to call.
 If user ask you to draw a diagram, please always use the true variable in previous code to draw but not assume fake value. If you asked to draw multi graph at the same time, you need to use subplots to draw them on a single figure.
  `
 //         `
 //
 // Example:
-// Query:I want to know largest 4 commerical buildings in 200 m of landuse which is forest
+// Query:I want to know largest 4 commerical buildings in 200 m of land which is forest
 //
 // Response:
 // ${String.fromCharCode(96)}python
 // id_list_buildings=id_list_of_entity('commerical buildings')
-// id_list_forest=id_list_of_entity('landuse which is forest')
+// id_list_forest=id_list_of_entity('land which is forest')
 // id_list_buildings,id_list_forest=geo_filter(id_list_buildings,id_list_forest,'in 200 m of')
 // id_list_area_filtered_buildings=area_filter(id_list_buildings, 4)
 // ${String.fromCharCode(96)}
@@ -494,15 +493,68 @@ If user ask you to draw a diagram, please always use the true variable in previo
     });
 
     socket.on('text', function(data) {
-        console.log('Received message:', data);
+        // console.log('Received message:', data);
         if ("data" in data){
+
+            console.log(map_button_dict)
             messages.push(...data.data)
-            console.log(messages)
+            const elements = document.querySelectorAll('.message-text.response');
+
+            // 获取最后一个.message-text.response元素
+            const lastElement = elements[elements.length - 1];
+
+            // 在最后一个.message-text.response元素中找到所有.custom-rect元素
+            const customRects = lastElement.querySelectorAll('.custom-rect');
+            customRects.forEach(rect => {
+                if  (rect.className !== 'map-button' && !rect.classList.contains('map-button')){
+
+
+
+                const divClone = rect.cloneNode(true);
+
+                // 移除克隆元素中的 <span> 元素
+                const span = divClone.querySelector('.plan-label');
+                if (span) {
+                    span.remove();
+                }
+                const span_map = divClone.querySelector('.plan-label-map');
+                if (span_map) {
+                    span_map.remove();
+                }
+
+                // 获取剩余文本内容，并去除前后的空格
+                const desiredText = divClone.textContent.trim();
+                // console.log(desiredText)
+
+                if (desiredText in map_button_dict) {
+
+                    console.log(desiredText,'button set',rect)
+                    // rect.classList.remove('custom-rect');
+                    rect.className='map-button';
+                    // console.log(desiredText,'className set')
+                    const planLabel = document.createElement('span');
+                    // console.log(desiredText,'planLabel createElement')
+                    planLabel.className='plan-label-map'
+                    // console.log(desiredText,'planLabel plan-label-map')
+                    planLabel.textContent = 'Map';
+                    rect.appendChild(planLabel);
+                    // console.log(desiredText,'planLabel appendChild')
+                    rect.addEventListener('click', function () {
+                        console.log(desiredText)
+                        // console.log(map_button_dict[desiredText])
+                        updateMapDataAndFitBounds(map, map_button_dict[desiredText]);
+                    });
+                }
+                }
+
+            });
+            // map_button_dict={}
+            // console.log(messages)
         }
         else if("map" in data) {
         //
             updateMapDataAndFitBounds( map,data.map);
-            add_map_button(data.map)
+            add_map_button(data.map,data['index'])
         //     document.getElementById('map-container').innerHTML=data.map
         }
 
@@ -594,12 +646,26 @@ If user ask you to draw a diagram, please always use the true variable in previo
                 lastResponseElement.empty();
                 let escapedMessage;
 
-                // 处理以#开头的行
+                // 处理以><;.开头的行
                 message = message.split('\n').map(line => {
-                    if (line.startsWith('><;.')) {
-                        return `<div class="custom-rect"><span class="plan-label">Plan</span>${escapeHtml(line.substring(1))}</div>`;
+                    if (line.startsWith('#><;')) {
+                        if ((line.includes('englischer garten')||line.includes('Englischer Garten'))&&line.includes('ID')) {
+                            console.log(first_time_englischer_garten_error)
+                            // if (first_time_englischer_garten_error){
+                                // first_time_englischer_garten_error=false
+                                // return `<!--<div class="custom-rect map-button"><span class="plan-label">Step</span><span class="plan-label-map">Map</span>${escapeHtml(line.substring(4))}</div>-->`;
+
+                            // }
+                            // else {
+                                return `<div class="custom-rect"><span class="plan-label">Step</span>${escapeHtml(line.substring(4))}</div>`
+
+                        }else {
+                            return `<div class="custom-rect"><span class="plan-label">Step</span>${escapeHtml(line.substring(4))}</div>`
+                        }
+
+
                     } else {
-                        return escapeHtml(line);
+                        return line;
                     }
                 }).join('\n');
 
@@ -618,7 +684,7 @@ If user ask you to draw a diagram, please always use the true variable in previo
                     escapedMessage = marked.parse(message);
                 }
                 lastResponseElement.append(escapedMessage);
-                chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
+                $(".chat-window").scrollTop($(".chat-window").prop('scrollHeight'));
             }
 
             function escapeHtml(text) {

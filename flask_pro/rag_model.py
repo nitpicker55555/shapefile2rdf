@@ -44,7 +44,12 @@ def calculate_similarity(words, key_word,mode=None):
     if mode=='print':
         sorted_items_all = sorted(similarity_dict_all.items(), key=lambda x: x[1], reverse=True)
         print(sorted_items_all)
-    sorted_items = sorted(similarity_dict.items(), key=lambda x: x[1],reverse=True)
+
+    # sorted_items = sorted(similarity_dict.items(), key=lambda x: x[1],reverse=True)
+    # sorted_dict_by_values = {k: v for k, v in sorted_items}
+
+    filtered_items = {k: v for k, v in similarity_dict.items() if v > 0.8}
+    sorted_items = sorted(filtered_items.items(), key=lambda x: x[1], reverse=True)
     sorted_dict_by_values = {k: v for k, v in sorted_items}
     return sorted_dict_by_values
 

@@ -103,7 +103,11 @@ def find_boundbox(name,mode='keep'):
     if mode=='changed':
         bounding_box=name
     else:
-        bounding_box=address_dict[name]
+        if name in address_dict:
+
+            bounding_box=address_dict[name]
+        else:
+            bounding_box=address_dict['Munich Maxvorstadt']
 
     coordinates = [float(coord) for coord in bounding_box]
     # print(coordinates)
