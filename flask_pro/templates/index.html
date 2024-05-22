@@ -225,8 +225,9 @@
 <script>
     // function uploadFile() {
     //
+    const usedElements = [];
+    var currentIndex = 0;
     const color_list=['#756bb1',
-        '#ffffb3',
         '#3182bd',
         '#e78ac3',
         '#dadaeb',
@@ -284,6 +285,58 @@
 
 
     }
+    function observeDOMChanges() {
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE && (node.className==='custom-rect'||node.classList.contains('custom-rect'))) {
+                        checkAndUpdateElement(node);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+    function checkAndUpdateElement(element) {
+
+        const divClone = element.cloneNode(true);
+
+        // 移除克隆元素中的 <span> 元素
+        const span = divClone.querySelector('.plan-label');
+        if (span) {
+            span.remove();
+        }
+        const span_map = divClone.querySelector('.plan-label-map');
+        if (span_map) {
+            span_map.remove();
+        }
+
+        // 获取剩余文本内容，并去除前后的空格
+        const desiredText = divClone.textContent.trim();
+        // console.log(desiredText)
+
+        if (desiredText in map_button_dict) {
+
+            console.log(desiredText,'dom detect',element)
+            // rect.classList.remove('custom-rect');
+            element.className='map-button';
+            // console.log(desiredText,'className set')
+            const planLabel = document.createElement('span');
+            // console.log(desiredText,'planLabel createElement')
+            planLabel.className='plan-label-map'
+            // console.log(desiredText,'planLabel plan-label-map')
+            planLabel.textContent = 'Map';
+            element.appendChild(planLabel);
+            // console.log(desiredText,'planLabel appendChild')
+            element.addEventListener('click', function () {
+                console.log(desiredText)
+                // console.log(map_button_dict[desiredText])
+                updateMapDataAndFitBounds(map, map_button_dict[desiredText]);
+            });
+        }
+    }
+    observeDOMChanges();
     function updateMapDataAndFitBounds(map, newPolygons) {
         // console.log(newPolygons)
         // 检查是否已经添加了geoJsonLayer图层，如果有，则移除
@@ -320,25 +373,35 @@
             count++; // 更新计数器
             return color;
         }
-        class UniqueRandomPicker {
-            constructor(array) {
-                this.originalArray = array;
-                this.currentIndex = 0;
+        function createSequentialPicker(array) {
+            if (!Array.isArray(array) || array.length === 0) {
+                throw new Error("Array must be a non-empty array.");
             }
 
-            getNextElement() {
-                if (this.originalArray.length === 0) {
-                    throw new Error("Array is empty.");
-                }
 
+
+
+            function getNextElement() {
                 // 获取当前索引的元素
-                const element = this.originalArray[this.currentIndex];
+                const element = array[currentIndex];
 
                 // 更新索引，如果到达数组末尾则重置为0
-                this.currentIndex = (this.currentIndex + 1) % this.originalArray.length;
+                currentIndex = (currentIndex + 1) % array.length;
+
+                // 记录已经抽取过的元素
+                usedElements.push(element);
 
                 return element;
             }
+
+            function getUsedElements() {
+                return usedElements;
+            }
+
+            return {
+                getNextElement,
+                getUsedElements
+            };
         }
 
         function getRandomUniqueElement(array, usedElements) {
@@ -360,6 +423,17 @@
             return element;
         }
 
+
+// 更新字典并检查当前DOM中的元素
+        function updateDictionary(key, value) {
+            dictionary[key] = value;
+            document.querySelectorAll('.custom-rect').forEach(element => {
+                if (element.innerText === key) {
+                    element.classList.replace('custom-rect', 'map-button');
+                }
+            });
+        }
+
         function getRandomColor(label) {
             const label_belong =label.split("_").slice(0, 2).join("_");
             // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
@@ -369,15 +443,15 @@
             }
             else
             {
-                var color =picker.getNextElement()
-                console.log(color)
+                const color =picker.getNextElement()
+                console.log(color,label_belong)
                 color_dict[label_belong]=color
                 return color;
             }
 
 
         }
-        const picker = new UniqueRandomPicker(color_list);
+        const picker = createSequentialPicker(color_list);
         // 遍历并添加新多边形到地图和GeoJSON图层
         Object.keys(newPolygons).forEach(label => {
 
