@@ -1,3 +1,5 @@
+import random
+
 import geo_functions
 from chat_py import *
 from levenshtein import are_strings_similar
@@ -377,7 +379,28 @@ def pick_match(query_feature_ori, table_name,verbose=False):
     # print(match_list, query_feature, table_name)
     return match_list
     # messages.append(message_template('assistant',result))
-
+def print_process(*args):
+    for content in args:
+        # print(type(content))
+        if isinstance(content,dict):
+            if 'id_list' in content:
+                if len(content['id_list'])!=0:
+                    print_content = 'id_list length '
+                    print_content+=str(len(content['id_list']))
+                    print_content+=',id_list print samples:'
+                    if len(content['id_list'])>=3:
+                        print_content+=str(random.sample(list(content['id_list'].items()), 2))
+                    else:
+                        print_content += str(random.sample(list(content['id_list'].items()), len(content['id_list'])))
+                    print(print_content)
+                else:
+                    print('id_list length 0')
+            else:
+                # pass
+                print(content)
+        else:
+            # pass
+            print(content)
 
 def judge_geo_relation(query, messages=None):
     sample_list=['in','contains']
@@ -612,7 +635,7 @@ def geo_filter(query,id_list_subject, id_list_object):
         query = query.replace(negation_word, '')
     geo_relation = judge_geo_relation(query)
     print( geo_relation['type'])
-    print(id_list_subject)
+    # print(id_list_subject)
     geo_result = geo_calculate(id_list_subject, id_list_object, geo_relation['type'], geo_relation['num'], versa_sign=versa_sign)
     return geo_result
 
@@ -1008,3 +1031,19 @@ def process_query(query,messages=None):
 # print(id_list_explain(id1,'area'))
 # set_bounding_box('Munich')
 # print(len(id_list_of_entity('buildings')['id_list']))
+# set_bounding_box("Munich Maxvorstadt")
+#
+# # Get the list of IDs for buildings
+# buildings_id_list = id_list_of_entity("buildings")
+#
+# # Get the list of IDs for greenery
+# greenery_id_list = id_list_of_entity("land which is park")
+#
+# # Filter buildings that are in greenery
+# filtered_result = geo_filter('in', buildings_id_list, greenery_id_list)
+#
+# # Extract the filtered buildings ID list
+# filtered_buildings_id_list = filtered_result['subject']
+# # Output the filtered buildings ID list
+#
+# print_process(filtered_buildings_id_list)

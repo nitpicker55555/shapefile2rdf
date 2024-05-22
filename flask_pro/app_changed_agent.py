@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import json
+import random
 import re
 import traceback
 
@@ -537,7 +538,7 @@ send_data(temp_result['geo_map'],'map','{comment_index}')
                         if 'id_list_explain(' in variable_dict[new_lines[-1]]:
                             continue
                     new_line = f"""
-print({lines[-1]})
+print_process({lines[-1]})
                                         """
                     new_lines[-1] = new_line
 
