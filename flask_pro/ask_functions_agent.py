@@ -4,14 +4,14 @@ import geo_functions
 from chat_py import *
 from levenshtein import are_strings_similar
 import json, re
-from rag_model import calculate_similarity
-from rag_model_openai import calculate_similarity_openai
+# from rag_model import calculate_similarity
+# from rag_model_openai import calculate_similarity_openai
 from geo_functions import *
 import spacy
 from bounding_box import find_boundbox
 
 # 加载spaCy的英语模型
-nlp = spacy.load('en_core_web_sm')
+# nlp = spacy.load('en_core_web_sm')
 global_paring_dict = {}
 
 new_dict_num = 0
@@ -23,22 +23,22 @@ file_path = 'global_paring_dict.jsonl'
 #         fclass_dict[key]=ids_of_attribute(key)
 #     if key not in name_dict:
 #         name_dict[key]=ids_of_attribute(key,'name')
-if os.path.exists(file_path):
-    with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
-        # 逐行读取并处理每一行
-        for line in file:
-            current_dict = json.loads(line)
-            key = next(iter(current_dict))  # 获取当前字典的键
-            # 如果键不存在于全局字典中，直接添加
-            if key not in global_paring_dict:
-                global_paring_dict[key] = current_dict[key]
-            else:
-                # 如果键已存在，更新该键对应的字典
-                global_paring_dict[key].update(current_dict[key])
-    for key, sub_dict in global_paring_dict.items():
-        for sub_key, value in sub_dict.items():
-            print(f'{key} -> {sub_key}')
-
+# if os.path.exists(file_path):
+#     with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
+#         # 逐行读取并处理每一行
+#         for line in file:
+#             current_dict = json.loads(line)
+#             key = next(iter(current_dict))  # 获取当前字典的键
+#             # 如果键不存在于全局字典中，直接添加
+#             if key not in global_paring_dict:
+#                 global_paring_dict[key] = current_dict[key]
+#             else:
+#                 # 如果键已存在，更新该键对应的字典
+#                 global_paring_dict[key].update(current_dict[key])
+#     for key, sub_dict in global_paring_dict.items():
+#         for sub_key, value in sub_dict.items():
+#             print(f'{key} -> {sub_key}')
+#
 
 def limit_total_words(lst, max_length=10000):
     total_length = 0
@@ -271,6 +271,35 @@ def extract_numbers(s):
         return int(numbers[0]) * a
     else:
         return 1 * a  # 如果没有显式说明最大数值，则为最大的
+def extract_and_reformat_area_words(input_string):
+    # 定义要查找的大小描述词
+    size_words = ['large', 'small', 'little', 'largest', 'smallest', 'biggest', 'littlest']
+
+    # 使用正则表达式查找大小描述词和其后可能的数字
+    pattern = re.compile(r'\b(' + '|'.join(size_words) + r')\b\s*(\d*)', re.IGNORECASE)
+
+    match = pattern.search(input_string)
+    if match:
+        size_word = match.group(1)
+        number = match.group(2)
+
+        # 提取到的描述词和数字
+        extracted_part = size_word + ' ' + number if number else size_word
+
+        # 去掉提取到的部分，保留剩余字符串
+        remaining_part = input_string[:match.start()] + input_string[match.end():]
+
+        # 移除剩余字符串的首尾空格
+        remaining_part = remaining_part.strip()
+
+        # 返回格式化后的字符串
+        if remaining_part:
+            return f"{extracted_part} and {remaining_part}"
+        else:
+            return extracted_part
+    else:
+        return input_string
+
 def remove_substrings_from_text(text, substrings):
     for substring in substrings:
         # 使用正则表达式匹配确切的子字符串，并替换为空字符串
@@ -376,7 +405,7 @@ def pick_match(query_feature_ori, table_name,verbose=False):
 
     if match_list == []:
         raise Exception('no relevant item found for: ' + query_feature + ' in given list.')
-    # print(match_list, query_feature, table_name)
+    print(match_list, query_feature, table_name)
     return match_list
     # messages.append(message_template('assistant',result))
 def print_process(*args):
@@ -582,6 +611,7 @@ def id_list_of_entity(query):
     :return:
     """
     graph_str = judge_type(query)['database']
+    query=extract_and_reformat_area_words(query)
     type_str = pick_match(query, graph_str)
     ids_list = ids_of_type(graph_str, type_str)
     return ids_list
@@ -605,7 +635,7 @@ def judge_bounding_box(query,filter=False, messages=None):
     # if 'munich ismaning' in query.lower():
     #     return 'munich ismaning'
     locations=['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
-         'Oberschleissheim']
+         'Oberschleissheim','Hadern']
     final_address=[]
     for address in locations:
         if address.lower() in query.lower():
@@ -757,47 +787,31 @@ def general_gpt(query, messages=None):
 
     ask_prompt = """
 
-You have following tools available to answer user queries, please only write code, do not say anything else except user ask you to describe:
+You have following tools available to answer user queries, please only write code, do not write code comments and other words:
 I have three kinds of data:buildings, land (different kinds of area), soil.
-1.set_bounding_box(address):
-Input:An address which you want search limited in.
-Output:None, it establishes a global setting that restricts future searches to the defined region.
-Usage:By providing an address, you can limit the scope of subsequent searches to a specific area. This function does not produce any output, but it establishes a global setting that restricts future searches to the defined region. For example, if you want to find buildings in Munich, you should first set the bounding box to Munich by using set_bounding_box("Munich").
-Notice:Please include the directional words like east/south/east/north of query in the address sent to set_bounding_box
-
-2.id_list_of_entity(description of entity):
+1.id_list_of_entity(description of entity):
 Input: Description of the entity, like adj or prepositional phrase like good for commercial,good for planting potatoes.
 Output: A list of IDs (id_list) corresponding to the described entity.
 Usage: Use this function to obtain an id_list which will be used as input in the following functions.
 Notice: Some times the description may have complex description like:"I want to know land which named see and is water", input the whole description into function.
 Notice: Do not input geographical relation like 'in/on/under/in 200m of/close' into this function, it is not description of entity.
 
-3.geo_filter('their geo_relation',id_list_subject, id_list_object):
+2.geo_filter('their geo_relation',id_list_subject, id_list_object):
 Input: Two id_lists (one as subject and one as object) and their corresponding geographical relationship.
 Output: A dict contains 'subject','object' two keys as filtered id_lists based on the geographical relationship.
 Usage: This function is used only when the user wants to query multiple entities that are geographically related. Common geographical relationships are like: 'in/on/under/in 200m of/close/contains...'
 Notice: id_list_subject should be the subject of the geo_relation, in example: soil under the buildings, soil is subject.
 
-4.area_filter(id_list, num):
-Notice: only use it when user wants to filter result by area.
-Input: An id_list and a number representing either the maximum or minimum count.
-Output: An id_list filtered by area.
-Usage: Use this function only when the user explicitly asks for the entities with the largest or smallest areas. For example, input 3 for the largest three, and -3 for the smallest three.
-
-5.id_list_explain(variable name, category to explain(name or type)):
-Input: id_list generated by function 'id_list_of_entity' or 'geo_filter' or 'area_filter'
-Output: A dictionary containing the count of each type/name occurrence.
-Usage: Use this function to provide explanations based on user queries.
-
+Please notice to add ['object'] or ['subject'] in corresponding result of geo_filter
 Please always set an output variable for each function you called. Variable in history is available to call.
-If user ask you to draw a diagram, please always use the true variable in previous code to draw but not assume fake value.
     """
     if messages == None:
         messages = []
 
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', str(query)))
-    result = chat_single(messages, '','gpt-4o-2024-05-13')
+    # result = chat_single(messages, '','gpt-4o-2024-05-13')
+    result = chat_single(messages, '')
     return result
 
 
@@ -855,7 +869,7 @@ def set_bounding_box(region_name, query=None):
         geo_functions.globals_dict={}
         return {'geo_map': ''}
     locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
-                 'Oberschleissheim']
+                 'Oberschleissheim','Hadern']
     if region_name != None:
 
         location_name=''
@@ -1031,7 +1045,7 @@ def process_query(query,messages=None):
 # print(id_list_explain(id1,'area'))
 # set_bounding_box('Munich')
 # print(len(id_list_of_entity('buildings')['id_list']))
-# set_bounding_box("Munich Maxvorstadt")
+# set_bounding_box("Munich")
 #
 # # Get the list of IDs for buildings
 # buildings_id_list = id_list_of_entity("buildings")
@@ -1047,3 +1061,5 @@ def process_query(query,messages=None):
 # # Output the filtered buildings ID list
 #
 # print_process(filtered_buildings_id_list)
+# print(id_list_of_entity('largest hospital'))
+# print(general_gpt('"Could you explain doityourself area which name is Peter Khal intersects with parking_bicycle area which is good for living, and laundry area which is good for study intersects with doityourself area"'))

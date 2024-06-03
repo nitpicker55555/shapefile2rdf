@@ -276,7 +276,8 @@ def home():
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
     print("initial")
-    geo_functions.globals_dict = {}
+    geo_functions.globals_dict = {'bounding_box_region_name': 'Munich', 'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291], 'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
+
     geo_functions.global_id_attribute = {}
     geo_functions.global_id_geo = {}
     # globals_dict = {}
@@ -334,7 +335,7 @@ def send_data(data, mode="data",index=""):
     if mode == "map":
         if not isinstance(data,str) and len(data)!=0:
             data = polygons_to_geojson(data)
-
+    print('map data length: ',len(data))
     socketio.emit('text', {mode: data,'index':index})
 
 def find_insert_comment_position(multiline_str, code_line,mode=False):
@@ -465,8 +466,6 @@ def submit():
                 full_result = chat_result
                 processed_response.append({'role': 'assistant', 'content': chat_result})
                 messages.append({'role': 'assistant', 'content': chat_result})
-
-                compelete = False
                 # print("complete: ", compelete)
 
                 if "```python" in full_result and ".env" not in full_result and "pip install" not in full_result:
@@ -481,7 +480,9 @@ def submit():
                 #         processed_response.append({"role": "user",
                 #                                    "content": "ok"})
                 #         final_conv = 'ok'
+                else:
 
+                    compelete = True
             print(code_list)
             for line_num, lines in enumerate(code_list):
 
@@ -555,7 +556,11 @@ print_process({lines[-1]})
                 except Exception as e:
                     exc_info = traceback.format_exc()
                     # 打印错误信息和代码行
-                    print(f"An error occurred: {repr(e)}\n{exc_info}")
+                    if session['template']==True:
+                        print(f"An error occurred: {repr(e)}\n{exc_info}")
+                    else:
+                        print("Nothing can I get! Please change an area and search again :)")
+                    # print(f"An error occurred: {repr(e)}\n{exc_info}")
 
                 end_time = time.time()  # 记录函数结束时间
                 run_time = end_time - start_time
@@ -569,7 +574,7 @@ print_process({lines[-1]})
                     yield code_result
                 show_template = details_span(code_result, run_time)
                 yield list(show_template.values())[0]
-                if 'error' in show_template:
+                if 'error' in show_template or 'Nothing can I get! Please change an area and search again' in show_template:
                     return
                 send_result = "code_result:" + short_response(code_result)
                 print(send_result)
