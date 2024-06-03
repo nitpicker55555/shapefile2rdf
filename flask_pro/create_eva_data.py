@@ -4,7 +4,17 @@ import random
 from geo_functions import *
 type_list=[f"{id} area" for id in list(ids_of_attribute('land'))]
 
-type_list.extend(['buildings']*len(type_list))
+
+def unique_elements(lst, n):
+    # 使用集合去除重复元素
+    unique_set = set(lst)
+
+    # 将集合转换回列表
+    unique_list = list(unique_set)
+
+    # 如果n小于或等于唯一元素的数量，则返回前n个元素，否则返回整个列表
+    return unique_list[:min(n, len(unique_list))]
+type_list.extend(['buildings']*int(len(type_list)))
 for i in type_list:
     if '_' in i:
         type_list.remove(i)
@@ -96,7 +106,7 @@ def first_eva():
             file.write(json_line + '\n')
 def second_eva():
     for i in range(100):
-        entity_list=random.sample(type_list,3)
+        entity_list=unique_elements(type_list,3)
         name_mo_list=random.sample(name_list,2)
         fclass_mo_list=random.sample(modify_list,1)[0]
         modify_random=name_mo_list
@@ -118,7 +128,7 @@ def second_eva():
         random_expression=random.sample(expressions,1)[0]
         template_first= {
             f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {ob_sub[random_index]}':
-                [{entity_list[0]:modify_random[random_index]},{entity_list[1]:modify_random[1-random_index]},{entity_list[2]:modify_random2[random_index2]},random_relation,random_relation2]}
+                [{entity_list[0]:modify_random[random_index]},{entity_list[1]:modify_random[1-random_index]},{entity_list[2]:modify_random2[random_index2]},random_relation,random_relation2,ob_sub[random_index]]}
         eva_list_first.append(template_first)
     with open('data_eva_second.jsonl', 'w') as file:
         for item in eva_list_first:

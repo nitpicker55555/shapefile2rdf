@@ -1,6 +1,7 @@
 import psycopg2
 from shapely import wkt
 # 连接参数
+from smaller_polygon import half_area_polygon,double_area_polygon
 import pyproj
 from shapely.ops import transform
 # conn_params = "dbname='evaluation' user='postgres' host='localhost' password='9417941'"
@@ -34,13 +35,21 @@ def translate_polygon_north(polygon_wkt, distance_meters):
     translated_polygon = transform(inverse_project, translated_projected_polygon)
 
     return translated_polygon.wkt
-def create_eva(data1,data2,data3,cursor,conn,geo_relation=None,distance=None):
+def create_eva(data1,data2,data3,cursor,conn,geo_relations,distances=None):
+    geo_relation=geo_relations[0]
+    geo_relation2=geo_relations[1]
+    geo_relation2_object=geo_relations[2]
+
+    distance=distances[0]
+    distance2=distances[1]
     print(data1,data2,geo_relation,distance)
     # name1 = "Sample Location"
     fclass1,name1 = data1
 
     fclass2,name2 = data2
     fclass3,name3 = data3
+    relation_first_mapping={fclass1:'a1',fclass2:'a2',fclass3:'a3'}
+
     name1=name1.replace('which ','').replace('name ','').replace('named ','').replace('is ','')
     name2=name2.replace('which ','').replace('name ','').replace('named ','').replace('is ','')
     name3=name3.replace('which ','').replace('name ','').replace('named ','').replace('is ','')
@@ -57,57 +66,86 @@ def create_eva(data1,data2,data3,cursor,conn,geo_relation=None,distance=None):
         table_name3='land'
     else:
         table_name3='buildings'
-    wkt_geom = "POLYGON ((29.5 9.5, 30.5 9.5, 30.5 10.5, 29.5 10.5, 29.5 9.5))"  # WKT格式的几何数据
-    smaller_geom = "POLYGON ((29.75 9.75, 30.25 9.75, 30.25 10.25, 29.75 10.25, 29.75 9.75))"  # WKT格式的几何数据
+    bigger_geom = "POLYGON ((29.5 9.5, 30.5 9.5, 30.5 10.5, 29.5 10.5, 29.5 9.5))"  # WKT格式的几何数据
+    smaller_geom = half_area_polygon(bigger_geom)
+
+    wkt_geom_subject=bigger_geom
+    wkt_geom_object=smaller_geom
     if distance:
         distance_meters = distance*150000*10/19  # 将距离设置为一个变量
-        new_wkt_geom = translate_polygon_north(wkt_geom, distance_meters)
+        wkt_geom_subject=bigger_geom
+        wkt_geom_object = translate_polygon_north(bigger_geom, distance_meters)
     else:
         if geo_relation:
             if geo_relation=='in':
-                wkt_geom,smaller_geom=smaller_geom,wkt_geom
-                new_wkt_geom=smaller_geom
+                wkt_geom_subject,wkt_geom_object=smaller_geom,bigger_geom
             else:
-                new_wkt_geom=smaller_geom
+                wkt_geom_subject=bigger_geom
+                wkt_geom_object=smaller_geom
+    wkt_geom_subject_mapping={fclass1:wkt_geom_subject,fclass2:wkt_geom_object,fclass3:'a3'}
+
+    if distance2:
+        distance_meters = distance2*150000*10/19  # 将距离设置为一个变量
+        wkt_geom_subject2 = translate_polygon_north(wkt_geom_subject_mapping[geo_relation2_object], distance_meters)
+    else:
+        if geo_relation2:
+            if geo_relation2=='in':
+                wkt_geom_subject2=half_area_polygon(wkt_geom_subject_mapping[geo_relation2_object])
+            else:
+                wkt_geom_subject2=double_area_polygon(wkt_geom_subject_mapping[geo_relation2_object])
+
     # 插入到第一个表
-    insert_query1 = f"""
-    INSERT INTO {table_name1} (name, fclass, geom)
-    VALUES (%s, %s, ST_GeomFromText(%s, 4326));
-    """
+
     sql_remove_buildings = 'TRUNCATE TABLE buildings;'
     sql_remove_land = 'TRUNCATE TABLE land;'
     cursor.execute(sql_remove_land)
     cursor.execute(sql_remove_buildings)
-    cursor.execute(insert_query1, (name1, fclass1, wkt_geom))
+
+    insert_query1 = f"""
+    INSERT INTO {table_name1} (name, fclass, geom)
+    VALUES (%s, %s, ST_GeomFromText(%s, 4326));
+    """
+    cursor.execute(insert_query1, (name1, fclass1, wkt_geom_subject))
     # 插入到第二个表
     insert_query2 = f"""
     INSERT INTO {table_name2} (name, fclass, geom)
     VALUES (%s, %s, ST_GeomFromText(%s, 4326));
     """
+    cursor.execute(insert_query2, (name2, fclass2, wkt_geom_object))
+
+    insert_query3 = f"""
+    INSERT INTO {table_name3} (name, fclass, geom)
+    VALUES (%s, %s, ST_GeomFromText(%s, 4326));
+    """
+    cursor.execute(insert_query3, (name3, fclass3, wkt_geom_subject2))
 
 
-    cursor.execute(insert_query2, (name2, fclass2, new_wkt_geom))
 
     # 提交更改
     conn.commit()
     ['intersects with', 'in', 'in 100m of', 'around 100m of', 'close', 'contains']
     relation_dict={'intersects with':'ST_Intersects(b.geom, l.geom);','in':"ST_Contains(l.geom, b.geom);","in 100m of":"ST_DWithin(b.geom, l.geom,100);","around 100m of":"ST_DWithin(b.geom, l.geom,100);","close":"ST_DWithin(b.geom, l.geom,10);","contains":"ST_Contains(b.geom, l.geom);"}
     template=f"""
-     SELECT l.*
+     SELECT a1.*
  FROM
-     {table_name1} b,
-     {table_name2} l
+     {table_name1} a1,
+     {table_name2} a2,
+     {table_name3} a3
  WHERE
-     b.name = '{name1}' AND
-     b.fclass = '{fclass1}' AND
-     l.name = '{name2}' AND
-     l.fclass = '{fclass2}' AND
-     {relation_dict[geo_relation]}
+     a1.name = '{name1}' AND
+     a1.fclass = '{fclass1}' AND
+     a2.name = '{name2}' AND
+     a2.fclass = '{fclass2}' AND
+     a3.name = '{name3}' AND
+     a3.fclass = '{fclass3}' AND
+     {relation_dict[geo_relation].replace('b.geom','a1.geom').replace('l.geom','a2.geom').replace(';','')} AND
+     {relation_dict[geo_relation2].replace('b.geom','a3.geom').replace('l.geom',f'{relation_first_mapping[geo_relation2_object]}.geom')}
     """
 
     print('template',template)
     cursor.execute(template)
     rows = cursor.fetchall()
+    print(rows)
     if len(rows)!=0:
         return True
     else:
@@ -123,7 +161,7 @@ def create_eva(data1,data2,data3,cursor,conn,geo_relation=None,distance=None):
 # cursor = conn.cursor()
 #
 # # create_eva(['general',''],['Park area',''],cursor,conn,geo_relation='contains')
-# create_eva(['general',''],['Park area',''],cursor,conn,geo_relation='in 100m of',distance=100)
+# create_eva(['general',''],['Park area',''],['ass area',''],cursor,conn,geo_relations=['in 100m of','contains','general'],distances=[100,None])
 """
 SELECT l.*
 FROM
