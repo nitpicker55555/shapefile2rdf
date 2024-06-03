@@ -79,15 +79,16 @@ def basic_eva():
 def first_eva():
     for i in range(50):
         entity_list=random.sample(type_list,2)
-        name_mo_list=random.sample(name_list,1)[0]
+        name_mo_list=random.sample(name_list,2)
         fclass_mo_list=random.sample(modify_list,1)[0]
-        modify_random=[name_mo_list,fclass_mo_list]
+        modify_random=name_mo_list
         random_index=random.randint(0, 1)
         entity_subject=entity_list[0]+' which '+modify_random[random_index]
         entity_object=entity_list[1]+' which '+modify_random[1-random_index]
         random_relation=random.sample(geo_relation_list,1)[0]
         random_expression=random.sample(expressions,1)[0]
-        template_first=f'{random_expression} {entity_subject} {random_relation} {entity_object}'
+        template_first= {f'{random_expression} {entity_subject} {random_relation} {entity_object}':[{entity_list[0]:modify_random[random_index]},random_relation,{entity_list[1]:modify_random[1-random_index]}]}
+
         eva_list_first.append(template_first)
     with open('data_eva_first.jsonl', 'w') as file:
         for item in eva_list_first:
@@ -96,26 +97,28 @@ def first_eva():
 def second_eva():
     for i in range(100):
         entity_list=random.sample(type_list,3)
-        name_mo_list=random.sample(name_list,1)[0]
+        name_mo_list=random.sample(name_list,2)
         fclass_mo_list=random.sample(modify_list,1)[0]
-        modify_random=[name_mo_list,fclass_mo_list]
+        modify_random=name_mo_list
         random_index=random.randint(0, 1)
         entity_subject=entity_list[0]+' which '+modify_random[random_index]
         entity_object=entity_list[1]+' which '+modify_random[1-random_index]
         random_relation=random.sample(geo_relation_list,1)[0]
 
-        name_mo_list=random.sample(name_list,1)[0]
+        name_mo_list=random.sample(name_list,2)
         fclass_mo_list=random.sample(modify_list,1)[0]
-        modify_random=[name_mo_list,fclass_mo_list]
+        modify_random2=name_mo_list
         ob_sub=[entity_list[0],entity_list[1]]
         random_index=random.randint(0, 1)
         random_index2=random.randint(0, 1)
-        entity_third = entity_list[2] + ' which ' + modify_random[random_index2]
+        entity_third = entity_list[2] + ' which ' + modify_random2[random_index2]
         random_relation2=random.sample(geo_relation_list,1)[0]
 
 
         random_expression=random.sample(expressions,1)[0]
-        template_first=f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {ob_sub[random_index]}'
+        template_first= {
+            f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {ob_sub[random_index]}':
+                [{entity_list[0]:modify_random[random_index]},{entity_list[1]:modify_random[1-random_index]},{entity_list[2]:modify_random2[random_index2]},random_relation,random_relation2]}
         eva_list_first.append(template_first)
     with open('data_eva_second.jsonl', 'w') as file:
         for item in eva_list_first:
@@ -158,5 +161,5 @@ def third_eva():
         for item in eva_list_first:
             json_line = json.dumps(item)
             file.write(json_line + '\n')
-basic_eva()
+second_eva()
 # print(random.sample(type_list,2))

@@ -34,7 +34,7 @@ def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
             temperature=0,
             messages=messages
         )
-        print(response.usage.total_tokens)
+        # print(response.usage)
     elif mode == 'stream':
         response = client.chat.completions.create(
         model=model,
@@ -53,7 +53,8 @@ def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
 
         )
 
-        print(response.usage.total_tokens)
+    print(response.usage.prompt_tokens)
+
     # print(response.choices[0].message.content)
 
-    return response.choices[0].message.content
+    return response.choices[0].message.content,response.usage.total_tokens
