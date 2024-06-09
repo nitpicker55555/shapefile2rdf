@@ -225,6 +225,7 @@
 <script>
     // function uploadFile() {
     //
+    var sid=''
     const usedElements = [];
     var currentIndex = 0;
     const color_list=['#756bb1',
@@ -556,7 +557,7 @@ If user ask you to draw a diagram, please always use the true variable in previo
     var socket = io();  // 连接WebSocket服务器
 
     socket.on('connect', function() {
-        console.log('Connected to WebSocket server!');
+        socket.emit('join', {'username': 'user1', 'room': 'room1'});
     });
 
     socket.on('text', function(data) {
@@ -624,6 +625,13 @@ If user ask you to draw a diagram, please always use the true variable in previo
             add_map_button(data.map,data['index'])
         //     document.getElementById('map-container').innerHTML=data.map
         }
+
+        else if("sid" in data) {
+        //
+            sid=data['sid']
+        //     document.getElementById('map-container').innerHTML=data.map
+        }
+
 
 
         // 在这里处理接收到的数据
@@ -822,7 +830,7 @@ If user ask you to draw a diagram, please always use the true variable in previo
                     headers: {
                         'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
                     },
-                    body: JSON.stringify({ text: userInput ,'messages':messages,'new_message':userInput}) // 将用户输入转换为JSON字符串
+                    body: JSON.stringify({ text: userInput ,'messages':messages,'new_message':userInput,'sid':sid}) // 将用户输入转换为JSON字符串
                 })
                     .then(response => {
                         // response.json()

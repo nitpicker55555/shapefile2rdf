@@ -37,11 +37,11 @@ app = Flask(__name__)
 # app.logger.setLevel(logging.WARNING)
 app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
 
-global_variables = {}
+# global_variables = {}
 
 # 示例的 Markdown 文本（包含图片链接）
 # ![示例图片](/static/data.png "这是一个示例图片")
-socketio = SocketIO(app, async_mode='threading')
+socketio = SocketIO(app, manage_session=True,async_mode='threading')
 
 
 # async def async_task(news):
@@ -53,6 +53,14 @@ socketio = SocketIO(app, async_mode='threading')
 #     pool = eventlet.GreenPool()
 #     pool.spawn(async_task,news)
 #     pool.waitall()
+@socketio.on('join')
+def on_join(data):
+    print(data)
+    session['sid'] =  request.sid
+    send_data(session['sid'],'sid',sid=session['sid'])
+
+    # print(session['username'])
+
 def complete_json(input_stream):
     """
     尝试补全一个不完整的JSON字符串，包括双引号和括号。
@@ -286,6 +294,7 @@ def home():
     ip_ = request.headers.get('X-Real-IP')
     session['ip_'] = ip_
     session['uploaded_indication'] = None
+    session['sid']=''
     # if 'messages2' not in session:
     #     session['messages2'] = []
     #     session['messages2'].append({"role": "system",
@@ -331,13 +340,16 @@ def polygons_to_geojson(polygons_dict):
     return geojson_dict
 
 
-def send_data(data, mode="data",index=""):
+def send_data(data, mode="data",index="",sid=''):
     if mode == "map":
         if not isinstance(data,str) and len(data)!=0:
             data = polygons_to_geojson(data)
     print('map data length: ',len(data))
-    socketio.emit('text', {mode: data,'index':index})
-
+    if sid !='':
+        print(sid,"session['sid']")
+        socketio.emit('text', {mode: data,'index':index},room=sid)
+    else:
+        print('no sid')
 def find_insert_comment_position(multiline_str, code_line,mode=False):
     lines = multiline_str
     comment_positions = []
@@ -369,6 +381,7 @@ def submit():
     # 加载包含 Markdown 容器的前端页面
     data = request.get_json().get('text')  # 获取JSON数据
     messages = request.get_json().get('messages')  # 获取JSON数据
+    sid = request.get_json().get('sid')  # 获取JSON数据
     # new_message = request.get_json().get('new_message')  # 获取JSON数据
     processed_response = []
 
@@ -517,7 +530,7 @@ def submit():
                         comment_index=find_insert_comment_position(lines,each_line,session['template'])
 
                         new_line = f"""
-send_data({variable_str}['geo_map'],'map','{comment_index}')
+send_data({variable_str}['geo_map'],'map','{comment_index}',sid='{sid}')
     
                             """
                         new_lines.append(each_line)
@@ -527,7 +540,7 @@ send_data({variable_str}['geo_map'],'map','{comment_index}')
                         comment_index = find_insert_comment_position(lines, each_line)
                         new_line = f"""
 temp_result={each_line}
-send_data(temp_result['geo_map'],'map','{comment_index}')
+send_data(temp_result['geo_map'],'map','{comment_index}',sid='{sid}')
     
                             """
                         new_lines.append(each_line)
@@ -539,7 +552,7 @@ send_data(temp_result['geo_map'],'map','{comment_index}')
                         if 'id_list_explain(' in variable_dict[new_lines[-1]]:
                             continue
                     new_line = f"""
-print_process({lines[-1]})
+print_process({lines[-1]},sid='{sid}')
                                         """
                     new_lines[-1] = new_line
 
@@ -582,7 +595,7 @@ print_process({lines[-1]})
                                  "content": send_result})
                 processed_response.append({'role': 'user', 'content': send_result})
 
-        send_data(processed_response)
+        send_data(processed_response,sid=sid)
 
         data_with_response = {
             'len': str(len(messages)),

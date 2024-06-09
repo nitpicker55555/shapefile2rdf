@@ -14,7 +14,7 @@ def unique_elements(lst, n):
 
     # 如果n小于或等于唯一元素的数量，则返回前n个元素，否则返回整个列表
     return unique_list[:min(n, len(unique_list))]
-type_list.extend(['buildings']*int(len(type_list)))
+# type_list.extend(['buildings']*int(len(type_list)))
 for i in type_list:
     if '_' in i:
         type_list.remove(i)
@@ -107,6 +107,7 @@ def first_eva():
 def second_eva():
     for i in range(100):
         entity_list=unique_elements(type_list,3)
+
         name_mo_list=random.sample(name_list,2)
         fclass_mo_list=random.sample(modify_list,1)[0]
         modify_random=name_mo_list
@@ -119,7 +120,7 @@ def second_eva():
         fclass_mo_list=random.sample(modify_list,1)[0]
         modify_random2=name_mo_list
         ob_sub=[entity_list[0],entity_list[1]]
-        random_index=random.randint(0, 1)
+        random_index3=random.randint(0, 1)
         random_index2=random.randint(0, 1)
         entity_third = entity_list[2] + ' which ' + modify_random2[random_index2]
         random_relation2=random.sample(geo_relation_list,1)[0]
@@ -127,8 +128,8 @@ def second_eva():
 
         random_expression=random.sample(expressions,1)[0]
         template_first= {
-            f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {ob_sub[random_index]}':
-                [{entity_list[0]:modify_random[random_index]},{entity_list[1]:modify_random[1-random_index]},{entity_list[2]:modify_random2[random_index2]},random_relation,random_relation2,ob_sub[random_index]]}
+            f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {ob_sub[random_index3]}':
+                [{entity_list[0]:modify_random[random_index]},{entity_list[1]:modify_random[1-random_index]},{entity_list[2]:modify_random2[random_index2]},random_relation,random_relation2,ob_sub[random_index3]]}
         eva_list_first.append(template_first)
     with open('data_eva_second.jsonl', 'w') as file:
         for item in eva_list_first:
@@ -137,39 +138,40 @@ def second_eva():
 def third_eva():
     for i in range(100):
         entity_list=random.sample(type_list,4)
-        name_mo_list=random.sample(name_list,1)[0]
-        fclass_mo_list=random.sample(modify_list,1)[0]
-        modify_random=[name_mo_list,fclass_mo_list]
+        name_mo_list=random.sample(name_list,2)
+        modify_random=name_mo_list
         random_index=random.randint(0, 1)
         entity_subject=entity_list[0]+' which '+modify_random[random_index]
         entity_object=entity_list[1]+' which '+modify_random[1-random_index]
         random_relation=random.sample(geo_relation_list,1)[0]
 
-        name_mo_list=random.sample(name_list,1)[0]
-        fclass_mo_list=random.sample(modify_list,1)[0]
-        modify_random=[name_mo_list,fclass_mo_list]
+        name_mo_list=random.sample(name_list,2)
+        modify_random2=name_mo_list
         ob_sub2=[entity_list[0],entity_list[1]]
         random_index_ob_2=random.sample(ob_sub2,1)[0]
         random_index2=random.randint(0, 1)
-        entity_third = entity_list[2] + ' which ' + modify_random[random_index2]
+        entity_third = entity_list[2] + ' which ' + modify_random2[random_index2]
         random_relation2=random.sample(geo_relation_list,1)[0]
 
-        name_mo_list=random.sample(name_list,1)[0]
-        fclass_mo_list=random.sample(modify_list,1)[0]
-        modify_random=[name_mo_list,fclass_mo_list]
+        name_mo_list=random.sample(name_list,2)
+        modify_random3=name_mo_list
         ob_sub3=[entity_list[0],entity_list[1],entity_list[2]]
         random_index_ob_3=entity_list[2]
-        random_index2=random.randint(0, 1)
-        entity_forth = entity_list[3] + ' which ' + modify_random[random_index2]
+        random_index3=random.randint(0, 1)
+        entity_forth = entity_list[3] + ' which ' + modify_random3[random_index3]
         random_relation3=random.sample(geo_relation_list,1)[0]
 
 
         random_expression=random.sample(expressions,1)[0]
-        template_first=f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {random_index_ob_2}, and {entity_forth} {random_relation3} {random_index_ob_3}'
+        template_first= {
+            f'{random_expression} {entity_subject} {random_relation} {entity_object}, and {entity_third} {random_relation2} {random_index_ob_2}, and {entity_forth} {random_relation3} {random_index_ob_3}':
+                [{entity_list[0]: modify_random[random_index]}, {entity_list[1]: modify_random[1 - random_index]},
+                 {entity_list[2]: modify_random2[random_index2]},{entity_list[3]: modify_random3[random_index3]}, random_relation, random_relation2,random_relation,random_index_ob_2,
+                 random_index_ob_3]}
         eva_list_first.append(template_first)
     with open('data_eva_third.jsonl', 'w') as file:
         for item in eva_list_first:
             json_line = json.dumps(item)
             file.write(json_line + '\n')
-second_eva()
+third_eva()
 # print(random.sample(type_list,2))

@@ -7,7 +7,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-#
 os.environ['OPENAI_API_KEY']=os.getenv("OPENAI_API_KEY")
 def message_template(role,new_info):
     new_dict={'role':role,'content':new_info}

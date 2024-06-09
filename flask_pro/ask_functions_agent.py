@@ -11,7 +11,7 @@ import spacy
 from bounding_box import find_boundbox
 
 # 加载spaCy的英语模型
-# nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_sm')
 global_paring_dict = {}
 
 new_dict_num = 0
@@ -316,8 +316,10 @@ def pick_match(query_feature_ori, table_name,verbose=False):
         raise Exception(e)
     # query_feature = query_feature_ori.replace(table_name, '')
 
-    # print(query_feature)
-    if ' and ' in query_feature:  # 复合特征
+    query_feature=query_feature.replace('which','')
+    query_feature=query_feature.replace('named','and named').replace('name is','and which name is')
+    print(query_feature)
+    if ' and ' in query_feature:
         query_list = query_feature.split(" and ")
     else:
         query_list = [query_feature]
@@ -335,6 +337,7 @@ def pick_match(query_feature_ori, table_name,verbose=False):
                     continue
 
                 given_list = ids_of_attribute(table_name, col_name)
+                print(given_list)
                 query=remove_substrings_from_text(query,['named','name','is','which','where','call','called',table_name]).strip()
                 print(query)
                 # query = query.replace('named', '').replace("name", '').replace("is ", '').replace('which','').replace('where','').strip()#去除两边空格
@@ -392,7 +395,7 @@ def pick_match(query_feature_ori, table_name,verbose=False):
                                         raise Exception(e, query, table_name, given_list)
                                     print(f'\n\nmatch_list for {query}:', match_list)
                                 else:
-                                    query_modify = general_gpt('what is name of ' + query)
+                                    query_modify = mission_gpt('what is name of ' + query)
                                     print(query_modify + '\n')
                                     match_dict = calculate_similarity(given_list, query_modify)
                                     print('\n\nmatch_dict:', match_dict)
@@ -432,7 +435,7 @@ def print_process(*args):
             print(content)
 
 def judge_geo_relation(query, messages=None):
-    sample_list=['in','contains']
+    sample_list=['in','contains','intersects']
     if query in sample_list:
         return {'type':query,'num':0}
     if 'under' in query:
@@ -610,7 +613,9 @@ def id_list_of_entity(query):
     :param query:
     :return:
     """
+    print(query)
     graph_str = judge_type(query)['database']
+    print(graph_str)
     query=extract_and_reformat_area_words(query)
     type_str = pick_match(query, graph_str)
     ids_list = ids_of_type(graph_str, type_str)
@@ -743,6 +748,10 @@ def judge_type(query, messages=None):
         return None
     if messages == None:
         messages = []
+    print(query.lower(),"query.lower()")
+    if 'area' in query.lower():
+        return {'database': 'land'}
+
     if 'building' in query.lower() and 'soil' not in query.lower():
         return {'database': 'buildings'}
 
@@ -768,6 +777,7 @@ def judge_type(query, messages=None):
     result = chat_single(messages, 'json')
     # print(result)
     json_result = json.loads(result)
+
     if 'database' in json_result:
 
         return {'database': json_result['database']}
@@ -776,7 +786,7 @@ def judge_type(query, messages=None):
         raise Exception('no relevant item found for: ' + str(query) + ' in given list.')
 
 
-def general_gpt(query, messages=None):
+def mission_gpt(query, messages=None):
     print(query)
     if isinstance(query, dict):
         query = str(query)
@@ -786,14 +796,14 @@ def general_gpt(query, messages=None):
         messages = []
 
     ask_prompt = """
-
+    
 You have following tools available to answer user queries, please only write code, do not write code comments and other words:
 I have three kinds of data:buildings, land (different kinds of area), soil.
 1.id_list_of_entity(description of entity):
 Input: Description of the entity, like adj or prepositional phrase like good for commercial,good for planting potatoes.
 Output: A list of IDs (id_list) corresponding to the described entity.
 Usage: Use this function to obtain an id_list which will be used as input in the following functions.
-Notice: Some times the description may have complex description like:"I want to know land which named see and is water", input the whole description into function.
+Notice: if entity has area, please keep it, like: 'residential area'
 Notice: Do not input geographical relation like 'in/on/under/in 200m of/close' into this function, it is not description of entity.
 
 2.geo_filter('their geo_relation',id_list_subject, id_list_object):
@@ -849,10 +859,12 @@ You are a task planner. Based on the user's query, select the next function to e
 
 explain_agent: Explain information to the user.
 chart_agent: Create charts for the user.
-query_agent: Query information for the user.
+Mission_agent: Answer spatial query for user.
 Choose the most appropriate function and provide clear instructions on what work needs to be done.
 output as json format like:
-
+{
+'agent':agent
+}
     """
     if messages == None:
         messages = []
@@ -1063,3 +1075,17 @@ def process_query(query,messages=None):
 # print_process(filtered_buildings_id_list)
 # print(id_list_of_entity('largest hospital'))
 # print(general_gpt('"Could you explain doityourself area which name is Peter Khal intersects with parking_bicycle area which is good for living, and laundry area which is good for study intersects with doityourself area"'))
+# output = id_list_of_entity("parking area which named LMU")
+# print(output)
+# output = id_list_of_entity("buildings named Peter Khal")
+
+# output2 = id_list_of_entity("parking area named John Smith")
+# output3 = id_list_of_entity("supermarket area named TUM")
+# print(output)
+# print(judge_object_subject_multi(
+#     "I'd be interested in hearing school area which is good for study intersects with service area which name is Peter Khal, and laundry area which is good for study close service area, and taxi area which is good for study in 100m of laundry area"
+# ))
+# output = id_list_of_entity('allotments area')
+# output2 = id_list_of_entity('dentist area')
+# output3 = id_list_of_entity('clothes area')
+# print(output3)

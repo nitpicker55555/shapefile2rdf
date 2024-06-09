@@ -163,6 +163,6 @@ for each_data in data_lines:
     print(result[-1])
     print(statues,'statues')
     print(feedback,'feedback')
-    with open('first_result.jsonl','a',encoding='utf-8') as file:
+    with open('second_result.jsonl','a',encoding='utf-8') as file:
             row_dict = {'query':each_data,'total_token':tokens,'time':total_time,'sql':sql,'statues':statues,'check_query':feedback}
             file.write(json.dumps(row_dict) + '\n')

@@ -18,7 +18,7 @@ global_id_geo={}
 
 # sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
-conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
+conn_params = "dbname='evaluation' user='postgres' host='localhost' password='9417941'"
 conn = psycopg2.connect(conn_params)
 cur = conn.cursor()
 """
@@ -59,8 +59,8 @@ col_name_mapping_dict={
     "osm_id": "osm_id",
     "fclass": "fclass",
     "name":"name",
-    "select_query": "SELECT landuse AS source_table, fclass,name,osm_id,geom",
-    "graph_name":"landuse"
+    "select_query": "SELECT land AS source_table, fclass,name,osm_id,geom",
+    "graph_name":"land"
 }
 
 }
@@ -125,7 +125,7 @@ def cur_action(query,mode='query'):
         start_time = time.time()
         query=auto_add_WHERE_AND(query,mode)
 
-        # print(query)
+        print(query)
 
         cur.execute(query)
         rows =cur.fetchall()
