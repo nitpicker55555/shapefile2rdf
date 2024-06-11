@@ -18,7 +18,7 @@ global_id_geo={}
 
 # sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
-conn_params = "dbname='evaluation' user='postgres' host='localhost' password='9417941'"
+conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
 conn = psycopg2.connect(conn_params)
 cur = conn.cursor()
 """
@@ -40,14 +40,14 @@ col_name_mapping_dict={
     "select_query":"SELECT leg_text,objectid,geom",
     "graph_name":"soilcomplete"
 
-}   ,
-    "soilcomplete":{
-    "osm_id":"objectid",
-    "fclass":"leg_text",
-    "select_query":"SELECT leg_text,objectid,geom",
-    "graph_name":"soilcomplete"
+}
+    # "soilcomplete":{
+    # "osm_id":"objectid",
+    # "fclass":"leg_text",
+    # "select_query":"SELECT leg_text,objectid,geom",
+    # "graph_name":"soilcomplete"
 
-}   ,
+   ,
 "buildings":{
     "osm_id": "osm_id",
     "fclass": "fclass",
@@ -59,17 +59,39 @@ col_name_mapping_dict={
     "osm_id": "osm_id",
     "fclass": "fclass",
     "name":"name",
-    "select_query": "SELECT land AS source_table, fclass,name,osm_id,geom",
-    "graph_name":"land"
+    "select_query": "SELECT landuse AS source_table, fclass,name,osm_id,geom",
+    "graph_name":"landuse"
+},
+"points":{
+    "osm_id": "osm_id",
+    "fclass": "fclass",
+    "name":"name",
+    "select_query": "SELECT points AS source_table, fclass,name,osm_id,geom",
+    "graph_name":"points"
+},
+"lines":{
+    "osm_id": "osm_id",
+    "fclass": "fclass",
+    "name":"name",
+    "select_query": "SELECT lines AS source_table, fclass,name,osm_id,geom",
+    "graph_name":"lines"
 }
 
 }
+
+revers_mapping_dict={}
+
+
 def format_sql_query(names):
     formatted_names = []
+    # print(names)
     for name in names:
+        if not isinstance(name,int):
         # Replace single quote with two single quotes for SQL escape
-        formatted_name = name.replace("'", "''")
-        # Wrap the name with single quotes
+            formatted_name = name.replace("'", "''")
+            # Wrap the name with single quotes
+        else:
+            formatted_name=name
         formatted_name = f"'{formatted_name}'"
         formatted_names.append(formatted_name)
 
@@ -119,13 +141,35 @@ def auto_add_WHERE_AND(sql_query,mode='query'):
                 modified_query[-1]+=';'
         # 将处理后的行合并回一个单一的字符串
         return '\n'.join(modified_query)
+def get_table_names():
+    """ 获取指定数据库中所有表名 """
+    # conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
+    # cur = conn.cursor()
+    cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public';")
+    table_names = cur.fetchall()
+    # cur.close()
+    # conn.close()
+    return [name[0] for name in table_names]
+def get_column_names(table_name):
+    """ 获取指定表中的所有列名 """
+    # conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
+    # cur = conn.cursor()
+    cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name='{col_name_mapping_dict[table_name]['graph_name']}' AND table_schema='public';")
+    column_names = cur.fetchall()
+    # cur.close()
+    # conn.close()
+    return [name[0] for name in column_names]
+
+# 使用示例
+# columns = get_column_names('mydatabase', 'myusername', 'mypassword', 'mytable')
+# print(columns)
 
 def cur_action(query,mode='query'):
     try:
         start_time = time.time()
         query=auto_add_WHERE_AND(query,mode)
 
-        print(query)
+        # print(query)
 
         cur.execute(query)
         rows =cur.fetchall()
@@ -256,6 +300,7 @@ ids_of_type('landuse',a)
     if type_dict['area_num']!=None:
         feed_back=area_filter(feed_back, type_dict['area_num'])['id_list'] #计算面积约束
         print(len(feed_back),'area_num',type_dict['area_num'])
+
     if "bounding_box_region_name" in globals_dict:
         geo_dict = {globals_dict["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
     else:
@@ -558,7 +603,9 @@ def id_list_explain(id_list,col='fclass'):
 
         if 'id_list' in id_list:
             id_list=id_list['id_list']
-
+    if 'attribute' in col:
+        table_name=str(next(iter(id_list))).split('_')[0]
+        return get_column_names(table_name)
     fclass_list=['fclass','type','class','name']
     result = {}
     if col  in fclass_list:
@@ -642,3 +689,10 @@ def search_attribute(dict_,key,value):
     # html=draw_geo_map(result_dict,"geo")
     print(len(result_dict))
     return result_dict
+
+
+for i in col_name_mapping_dict:
+    revers_mapping_dict[col_name_mapping_dict[i]['graph_name']]=i
+    for col_ in get_column_names(i):
+        if col_ not in col_name_mapping_dict[i]:
+            col_name_mapping_dict[i][col_]=col_

@@ -4,8 +4,8 @@ import geo_functions
 from chat_py import *
 from levenshtein import are_strings_similar
 import json, re
-# from rag_model import calculate_similarity
-# from rag_model_openai import calculate_similarity_openai
+from rag_model import calculate_similarity
+from rag_model_openai import calculate_similarity_openai
 from geo_functions import *
 import spacy
 from bounding_box import find_boundbox
@@ -16,30 +16,38 @@ global_paring_dict = {}
 
 new_dict_num = 0
 file_path = 'global_paring_dict.jsonl'
-# fclass_dict={}
-# name_dict={}
-# for key ,value in col_name_mapping_dict.items():
-#     if key not in fclass_dict:
-#         fclass_dict[key]=ids_of_attribute(key)
-#     if key not in name_dict:
-#         name_dict[key]=ids_of_attribute(key,'name')
-# if os.path.exists(file_path):
-#     with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
-#         # 逐行读取并处理每一行
-#         for line in file:
-#             current_dict = json.loads(line)
-#             key = next(iter(current_dict))  # 获取当前字典的键
-#             # 如果键不存在于全局字典中，直接添加
-#             if key not in global_paring_dict:
-#                 global_paring_dict[key] = current_dict[key]
-#             else:
-#                 # 如果键已存在，更新该键对应的字典
-#                 global_paring_dict[key].update(current_dict[key])
-#     for key, sub_dict in global_paring_dict.items():
-#         for sub_key, value in sub_dict.items():
-#             print(f'{key} -> {sub_key}')
+fclass_dict={}
+name_dict={}
+for key ,value in col_name_mapping_dict.items():
+    if key not in fclass_dict:
+        fclass_dict[key]=ids_of_attribute(key)
+    if key not in name_dict:
+        name_dict[key]=ids_of_attribute(key,'name')
+if os.path.exists(file_path):
+    with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
+        # 逐行读取并处理每一行
+        for line in file:
+            current_dict = json.loads(line)
+            key = next(iter(current_dict))  # 获取当前字典的键
+            # 如果键不存在于全局字典中，直接添加
+            if key not in global_paring_dict:
+                global_paring_dict[key] = current_dict[key]
+            else:
+                # 如果键已存在，更新该键对应的字典
+                global_paring_dict[key].update(current_dict[key])
+    for key, sub_dict in global_paring_dict.items():
+        for sub_key, value in sub_dict.items():
+            print(f'{key} -> {sub_key}')
 #
+fclass_dict_4_similarity = {}
+all_fclass_set = set()
+for i in col_name_mapping_dict:
+    if i!='soil' and i!='buildings':
+        each_set = ids_of_attribute(i)
+        fclass_dict_4_similarity[i] = each_set
+        all_fclass_set.update(each_set)
 
+# print(all_fclass_set)
 def limit_total_words(lst, max_length=10000):
     total_length = 0
     result = []
@@ -64,12 +72,12 @@ def is_string_in_list_partial(string, lst):
     item_list = set()
 
     for item in lst:
-        if string.lower() == item.lower():
+        if string.lower() == str(item).lower():
             if not has_middle_space:
                 return [item]
             else:
                 item_list.add(item)
-        if string.lower() in item.lower().split(' '):
+        if string.lower() in str(item).lower().split(' '):
             item_list.add(item)
     return item_list
 
@@ -205,13 +213,33 @@ def details_pick_chatgpt(query, given_list, table_name, messages=None):
         return new_paring_dict[query]
     raise Exception('no relevant item found for: ' + query)
 
+def judge_num_compare(type):
+        if 'higher' in str(type) or 'lower' in str(type) or 'bigger' in str(type)or 'smaller' in str(type):
+            if 'higher' in str(type) or 'bigger' in str(type):
+                return abs(extract_numbers(type))
+            else:
+                return -1*abs(extract_numbers(type))
+        else:
+            return False
+def judge_col_name(statement_split,table_name):
+    def judge_area(type):
+        if 'large' in str(type) or 'small' in str(type) or 'big' in str(type):
+            return True
+        else:
+            return False
 
-def judge_col_name(statement_split):
+
     if 'name' in statement_split or 'call' in statement_split:
         return 'name'
     elif judge_area(statement_split):
-        return None
+        return 'area_num#'
+
     else:
+        col_name_list=get_column_names(table_name)
+        for i in col_name_list:
+            if i in statement_split.split():
+                return i
+
         return 'fclass'
 
 
@@ -251,25 +279,21 @@ def details_pick(query, given_list, table_name, messages=None):
             raise Exception('no relevant item found for: ' + query)
 
 
-def judge_area(type):
-    if 'large' in str(type) or 'small' in str(type) or 'big' in str(type):
-        return True
-    else:
-        return False
+
 
 
 def extract_numbers(s):
-    # print(s)
-    # 使用正则表达式找出字符串中的所有数字
     numbers = re.findall(r'\d+', s)
-    # print(numbers)
-    # 将找到的数字字符串转换为整数
+
+
     a = 1
+
     if 'small' in s:
         a = -1
     if len(numbers) != 0:
         return int(numbers[0]) * a
     else:
+
         return 1 * a  # 如果没有显式说明最大数值，则为最大的
 def extract_and_reformat_area_words(input_string):
     # 定义要查找的大小描述词
@@ -306,6 +330,19 @@ def remove_substrings_from_text(text, substrings):
         pattern = r'\b' + re.escape(substring) + r'\b'
         text = re.sub(pattern, '', text)
     return text
+def compare_num(lst, num):
+    def dynamic_compare(a, b, sign):
+        if sign > 0:
+            return a > b
+        else:
+            return a < b
+    result_list=[]
+    for i in lst:
+        if str(i).isnumeric():
+            if dynamic_compare(int(i),abs(num),num):
+                result_list.append(i)
+
+    return result_list
 def pick_match(query_feature_ori, table_name,verbose=False):
     # for query_feature_ori['entity_text']==table_name,
     # for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
@@ -314,59 +351,48 @@ def pick_match(query_feature_ori, table_name,verbose=False):
     except Exception as e:
         print(query_feature_ori)
         raise Exception(e)
-    # query_feature = query_feature_ori.replace(table_name, '')
 
-    query_feature=query_feature.replace('which','')
-    query_feature=query_feature.replace('named','and named').replace('name is','and which name is')
-    print(query_feature)
-    if ' and ' in query_feature:
+    # print(query_feature)
+    if ' and ' in query_feature:  # 复合特征
         query_list = query_feature.split(" and ")
     else:
         query_list = [query_feature]
-    # print(query_list)
     match_list = {'non_area_col': {'fclass':set(),'name':set()}, 'area_num': None}
     for query in query_list:
-        # print(query)
         col_name_list = ['name', 'fclass']
         if query != '':
-            col_name = judge_col_name(query)
-            if col_name != None:  # fclass和name的粗选
+            col_name = judge_col_name(query,table_name)
+            if '#' not in col_name:  # fclass和name的粗选, 沒有#代表不是面积比较
+                if col_name not in match_list['non_area_col']:
+                    match_list['non_area_col'][col_name]=set()
                 if are_strings_similar(query, table_name):
-                    match_list['non_area_col'][col_name].add('all')
+                    match_list['non_area_col'][col_name].add('all') #如果query和table名相似则返回所有
                     # print(match_list)
                     continue
 
                 given_list = ids_of_attribute(table_name, col_name)
-                print(given_list)
-                query=remove_substrings_from_text(query,['named','name','is','which','where','call','called',table_name]).strip()
-                print(query)
-                # query = query.replace('named', '').replace("name", '').replace("is ", '').replace('which','').replace('where','').strip()#去除两边空格
-                # print(query,table_name)
-                partial_similar = is_string_in_list_partial(query, given_list)
-                # print(partial_similar)
+                query=remove_substrings_from_text(query,['named','is','which','where','has','call','called',table_name,col_name]).strip()
 
-                if len(partial_similar) >= 1:
-                    match_list['non_area_col'][col_name].update(set(partial_similar))
-                    # print('   as')
-                    continue
-                elif len(given_list) == 1:
-                    match_list['non_area_col'][col_name].update(set(given_list))
-                    continue
-                else:  # 在另一个col中再次查找, 为了防止没有明确写出named
-                    # col_name_list.remove(col_name)
-                    # another_col=str(col_name_list[0])
-                    # given_list = ids_of_attribute(table_name, another_col)
-                    # partial_similar = is_string_in_list_partial(query, given_list)
-                    # # print(partial_similar)
-                    #
-                    # if len(partial_similar) >= 1:
-                    #     match_list['non_area_col'][another_col].update(set(partial_similar))
-                    #     # print('   as')
-                    #     continue
-                    # elif len(given_list) == 1:
-                    #     match_list['non_area_col'][another_col].update(set(given_list))
-                    #     continue
-                    # else:# fclass和name的精选
+                num_compare=judge_num_compare(query)
+                if num_compare:
+                    compared_list=set(compare_num(given_list,num_compare))
+                    print(col_name,'Satisfying the conditions:',compared_list)
+                    match_list['non_area_col'][col_name].update(compared_list)
+                else:
+
+
+                    partial_similar = is_string_in_list_partial(query, given_list)
+                    if verbose:
+                        print(query,table_name,col_name,partial_similar)
+
+                    if len(partial_similar) >= 1:
+                        match_list['non_area_col'][col_name].update(set(partial_similar))
+                        # print('   as')
+                        continue
+                    elif len(given_list) == 1:
+                        match_list['non_area_col'][col_name].update(set(given_list))
+                        continue
+                    else:  # 详细查找
 
                         find_pre_matched = {}
                         if table_name in global_paring_dict:
@@ -395,7 +421,7 @@ def pick_match(query_feature_ori, table_name,verbose=False):
                                         raise Exception(e, query, table_name, given_list)
                                     print(f'\n\nmatch_list for {query}:', match_list)
                                 else:
-                                    query_modify = mission_gpt('what is name of ' + query)
+                                    query_modify = general_gpt('what is name of ' + query)
                                     print(query_modify + '\n')
                                     match_dict = calculate_similarity(given_list, query_modify)
                                     print('\n\nmatch_dict:', match_dict)
@@ -403,12 +429,15 @@ def pick_match(query_feature_ori, table_name,verbose=False):
                                         match_list['non_area_col'][col_name].update(set(match_dict.keys()))
 
             else:  # area relate query
-                match_list['area_num'] = extract_numbers(query)
+
+                match_list[col_name.replace('#','')] = extract_numbers(query)
+
                 continue
 
     if match_list == []:
         raise Exception('no relevant item found for: ' + query_feature + ' in given list.')
-    print(match_list, query_feature, table_name)
+
+    if verbose:print(match_list, query_feature, table_name)
     return match_list
     # messages.append(message_template('assistant',result))
 def print_process(*args):
@@ -606,7 +635,24 @@ def remove_non_spatial_modify_statements(data):
         if "non_spatial_modify_statement" in entity:
             del entity["non_spatial_modify_statement"]
     return data
-def id_list_of_entity(query):
+def id_list_of_entity(query,verbose=False):
+    def find_keys_by_values(d, elements):
+        result = {}
+        for key, values in d.items():
+            matched_elements = [element for element in elements if element in values]
+            if matched_elements:
+                result[key] = matched_elements
+        return result
+
+    def merge_dicts(dict_list):
+        result = {}
+        for d in dict_list:
+            for key, subdict in d.items():
+                if key not in result:
+                    result[key] = subdict.copy()  # 初始化键对应的字典
+                else:
+                    result[key].update(subdict)  # 使用 update 方法更新字典
+        return result
     """
     graph{num} = judge_type(multi_result['entities'][{num}])["database"]
     type{num} = pick_match(multi_result['entities'][{num}], graph{num})
@@ -614,11 +660,25 @@ def id_list_of_entity(query):
     :return:
     """
     print(query)
-    graph_str = judge_type(query)['database']
-    print(graph_str)
+    table_str = judge_table(query)
+    print(table_str)
+    if table_str==None:
+
+        match_list = set(calculate_similarity(all_fclass_set, query).keys())
+        if len(match_list)!=0:
+            table_fclass_dicts=find_keys_by_values(fclass_dict_4_similarity,match_list)
+            all_id_list=[]
+            for table_ ,fclass_list in table_fclass_dicts.items():
+                each_id_list=ids_of_type(table_,{'non_area_col': {'fclass':set(fclass_list),'name':set()}, 'area_num': None})
+                all_id_list.append(each_id_list)
+            return merge_dicts(all_id_list)
+        else:
+            table_str=judge_table_gpt(query)['database']
+    else:
+        table_str=table_str['database']
     query=extract_and_reformat_area_words(query)
-    type_str = pick_match(query, graph_str)
-    ids_list = ids_of_type(graph_str, type_str)
+    type_dict = pick_match(query, table_str,verbose)
+    ids_list = ids_of_type(table_str, type_dict)
     return ids_list
 
 
@@ -737,7 +797,7 @@ Your goal is to consistently apply this method to analyze and break down user qu
         raise Exception('no relevant item found for: ' + query + ' in given list.')
 
 
-def judge_type(query, messages=None):
+def judge_table(query, messages=None):
     if isinstance(query, dict):
         query = str(query)
     #     if query['entity_text']!=None: #没有地理关系,有non_spatial_modify_statement，是subject的形容词,object subject 被全部送入judge_type防止没有主语
@@ -748,18 +808,34 @@ def judge_type(query, messages=None):
         return None
     if messages == None:
         messages = []
-    print(query.lower(),"query.lower()")
-    if 'area' in query.lower():
-        return {'database': 'land'}
-
-    if 'building' in query.lower() and 'soil' not in query.lower():
-        return {'database': 'buildings'}
-
-    if 'land' in query.lower() and 'soil' not in query.lower():
-        return {'database': 'land'}
-    if 'soil' in query.lower():
+    # print(query.lower(),"query.lower()")
+    for i in col_name_mapping_dict:
+        if i in query.lower().split():
+            return {'database':i}
+    if 'planting' in query.lower():
         return {'database': 'soil'}
 
+    # if 'area' in query.lower():
+    #     return {'database': 'land'}
+    #
+    # if 'building' in query.lower() and 'soil' not in query.lower():
+    #     return {'database': 'buildings'}
+    #
+    # if 'land' in query.lower() and 'soil' not in query.lower():
+    #     return {'database': 'land'}
+    # if 'soil' in query.lower():
+    #     return {'database': 'soil'}
+    return None
+
+
+
+def judge_table_gpt(query, messages=None):
+    if isinstance(query, dict):
+        query = str(query)
+    if query == None:
+        return None
+    if messages == None:
+        messages = []
     ask_prompt = """
     There are two database: [soil,land], 
     'soil' database stores various soil types, such as swamps, wetlands, for agriculture or planting or construction.
@@ -784,6 +860,7 @@ def judge_type(query, messages=None):
 
     else:
         raise Exception('no relevant item found for: ' + str(query) + ' in given list.')
+
 
 
 def mission_gpt(query, messages=None):
@@ -814,6 +891,27 @@ Notice: id_list_subject should be the subject of the geo_relation, in example: s
 
 Please notice to add ['object'] or ['subject'] in corresponding result of geo_filter
 Please always set an output variable for each function you called. Variable in history is available to call.
+    """
+    if messages == None:
+        messages = []
+
+    messages.append(message_template('system', ask_prompt))
+    messages.append(message_template('user', str(query)))
+    # result = chat_single(messages, '','gpt-4o-2024-05-13')
+    result = chat_single(messages, '')
+    return result
+
+def general_gpt(query, messages=None):
+    print(query)
+    if isinstance(query, dict):
+        query = str(query)
+    if query == None:
+        return None
+    if messages == None:
+        messages = []
+
+    ask_prompt = """
+    
     """
     if messages == None:
         messages = []
@@ -1089,3 +1187,11 @@ def process_query(query,messages=None):
 # output2 = id_list_of_entity('dentist area')
 # output3 = id_list_of_entity('clothes area')
 # print(output3)
+# id2=id_list_of_entity('land which is drinking_water')
+# print(id2)
+# print(ids_of_type('points', {'non_area_col': {'fclass': {'drinking_water'}, 'name': set()}, 'area_num': None}))
+# print(revers_mapping_dict)
+# print(ids_of_attribute('soil'))
+# print(get_column_names('points'))
+# print(ids_of_attribute('points','population'))
+# print(id_list_of_entity('lines which maxspeed is higher 30',True))

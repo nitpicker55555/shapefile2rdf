@@ -1,0 +1,79 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Autocomplete</title>
+    <style>
+        /* 样式仅用于美化 */
+        .autocomplete-suggestions {
+            border: 1px solid #ccc;
+            max-height: 150px;
+            overflow-y: auto;
+            position: absolute;
+            background-color: white;
+            z-index: 1000;
+        }
+        .autocomplete-suggestion {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestion:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Flask Autocomplete Example</h1>
+    <input type="text" id="autocomplete-input" autocomplete="off">
+    <div id="suggestions" class="autocomplete-suggestions"></div>
+
+    <script>
+        const input = document.getElementById('autocomplete-input');
+        const suggestionsBox = document.getElementById('suggestions');
+
+        input.addEventListener('input', async () => {
+            const query = input.value;
+            if (query) {
+                const response = await fetch(`/autocomplete?q=${query}`);
+                const suggestions = await response.json();
+                displaySuggestions(suggestions);
+            } else {
+                clearSuggestions();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const firstSuggestion = suggestionsBox.firstChild;
+                if (firstSuggestion) {
+                    input.value = firstSuggestion.textContent;
+                    clearSuggestions();
+                }
+            }
+        });
+
+        function displaySuggestions(suggestions) {
+            clearSuggestions();
+            suggestions.forEach(suggestion => {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.textContent = suggestion;
+                suggestionDiv.classList.add('autocomplete-suggestion');
+                suggestionDiv.addEventListener('click', () => {
+                    input.value = suggestion;
+                    clearSuggestions();
+                });
+                suggestionsBox.appendChild(suggestionDiv);
+            });
+        }
+
+        function clearSuggestions() {
+            while (suggestionsBox.firstChild) {
+                suggestionsBox.removeChild(suggestionsBox.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

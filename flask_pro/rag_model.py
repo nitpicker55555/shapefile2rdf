@@ -10,7 +10,10 @@ model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniL
 
 
 def calculate_similarity(words, key_word,mode=None):
+
     words=list(words)
+    if key_word in words:
+        return {key_word:1}
     # Check if a GPU is available and select the appropriate device
 
     # Include the key_word in the list of words to encode
@@ -36,10 +39,10 @@ def calculate_similarity(words, key_word,mode=None):
     similarity_dict_all = {}
     for word, similarity in zip(words, similarity_scores):
         similarity_dict_all[word] = float(similarity)
-        if similarity > 0.95:
+        if similarity > 0.91:
             similarity_dict = {word: float(similarity)}
             break
-        elif similarity > 0.6:
+        elif similarity > 0.65:
             similarity_dict[word] = float(similarity)
     if mode=='print':
         sorted_items_all = sorted(similarity_dict_all.items(), key=lambda x: x[1], reverse=True)
@@ -48,14 +51,14 @@ def calculate_similarity(words, key_word,mode=None):
     # sorted_items = sorted(similarity_dict.items(), key=lambda x: x[1],reverse=True)
     # sorted_dict_by_values = {k: v for k, v in sorted_items}
 
-    filtered_items = {k: v for k, v in similarity_dict.items() if v > 0.8}
+    filtered_items = {k: v for k, v in similarity_dict.items() if v > 0.6}
     sorted_items = sorted(filtered_items.items(), key=lambda x: x[1], reverse=True)
     sorted_dict_by_values = {k: v for k, v in sorted_items}
     return sorted_dict_by_values
 
-#
-# # Example usage
-# words = ['water','riverbank']
-# key_word = "lake"
+# #
+# # # Example usage
+# words = ['technische universität','technische universität münchen','TUM','Technische Universität München']
+# key_word = "technical university munich"
 # similarity_scores = calculate_similarity(words, key_word,'print')
-# print(similarity_scores)
+# print((similarity_scores))

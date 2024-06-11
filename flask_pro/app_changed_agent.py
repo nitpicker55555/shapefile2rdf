@@ -55,7 +55,6 @@ socketio = SocketIO(app, manage_session=True,async_mode='threading')
 #     pool.waitall()
 @socketio.on('join')
 def on_join(data):
-    print(data)
     session['sid'] =  request.sid
     send_data(session['sid'],'sid',sid=session['sid'])
 
@@ -344,9 +343,7 @@ def send_data(data, mode="data",index="",sid=''):
     if mode == "map":
         if not isinstance(data,str) and len(data)!=0:
             data = polygons_to_geojson(data)
-    print('map data length: ',len(data))
     if sid !='':
-        print(sid,"session['sid']")
         socketio.emit('text', {mode: data,'index':index},room=sid)
     else:
         print('no sid')
@@ -425,7 +422,7 @@ def submit():
                 else:
                     suggest_info=''
                 messages.append(message_template('user', data+suggest_info))
-                print(messages)
+                # print(messages)
 
                 chat_response = (chat_single(messages, "stream", 'gpt-4o-2024-05-13'))
                 content_str = ''
@@ -552,7 +549,7 @@ send_data(temp_result['geo_map'],'map','{comment_index}',sid='{sid}')
                         if 'id_list_explain(' in variable_dict[new_lines[-1]]:
                             continue
                     new_line = f"""
-print_process({lines[-1]},sid='{sid}')
+print_process({lines[-1]})
                                         """
                     new_lines[-1] = new_line
 
@@ -606,8 +603,8 @@ print_process({lines[-1]},sid='{sid}')
             'os': str(session['os']),
             'browser': str(session['browser']),
             'device': str(session['device_type']),
-            'answer': str(processed_response)
-            # 'answer': response_str
+            'sid': str(sid),
+            'answer': processed_response
         }
 
         formatted_data = json.dumps(data_with_response, indent=2, ensure_ascii=False)
