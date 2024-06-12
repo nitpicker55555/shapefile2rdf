@@ -54,6 +54,16 @@
             backdrop-filter: blur(5px);
             cursor: pointer;
         }
+        .fullscreen {
+            width: 100% !important;
+            height: 100vh !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 999;
+            margin: 0 !important;    /* No margin */
+            padding: 0 !important;   /* No padding */
+        }
     </style>
 </head>
 <body>
@@ -184,7 +194,7 @@
     var toggleControl = L.control({position: 'topleft'});
     toggleControl.onAdd = function(map) {
         var button = L.DomUtil.create('button', 'leaflet-control-toggle');
-        button.innerHTML = 'Toggle';
+        button.innerHTML = 'Show';
         button.onclick = function() {
             var controlsDiv = document.querySelector('.leaflet-control-custom');
             if (controlsDiv.style.top === '50px') {
