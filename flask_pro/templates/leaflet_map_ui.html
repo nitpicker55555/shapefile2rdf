@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet GeoJSON Toggle with UI Effects</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <style>
+        body, html {
+            height: 100%; /* Make sure the body and html fill the height */
+            margin: 0;    /* Remove default margin */
+            padding: 0;   /* Remove default padding */
+            overflow: hidden; /* Prevent scrollbars from appearing */
+        }
+        #map {
+            position: absolute; /* 或者使用 position: fixed; 根据需要 */
+            bottom: 100px; /* 距离窗口底部100px */
+            /*left: 20px; !* 距离窗口左边缘50px *!*/
+            right: 20px; /* 距离窗口右边缘50px */
+            width: 600px;
+            height: 500px; /* 高度为600px */
+            background-color: #f0f0f0; /* 背景色，仅作为示例 */
+        }
+        .leaflet-control-custom {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            backdrop-filter: blur(10px);
+            width: 200px;
+            overflow: hidden;
+            transition: top 0.3s ease-in-out;
+            position: absolute;
+            top: 50px; /* Initial top position below toggle */
+        }
+        .leaflet-control-toggle {
+            padding: 5px;
+            border: none;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            width: 200px; /* Same width as controls */
+            text-align: center;
+            position: absolute;
+            top: 10px; /* Position of toggle button */
+        }
+        .toggle-btn {
+            margin: 5px 0;
+            padding: 5px;
+            width: calc(100% - 10px);
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="controls">
+    <button id="toggle">&#x2190;</button>
+</div>
+<!--<button id="expandBtn">Expand</button>-->
+<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map', {
+        zoomControl: false // Disable the zoom control
+    }).setView([48.145, 11.550], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // GeoJSON data setup as earlier
+    var geojson =
+        {
+            "lines_cycleway_None_67757625": {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": [
+                        [
+                            [11.5408626, 48.1443631],
+                            [11.5414947, 48.1449895]
+                        ]
+                    ]
+                }
+            },
+            "lines_footway_None_67757626": {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": [
+                        [
+                            [11.549647, 48.145859],
+                            [11.5500317, 48.1457918],
+                            [11.5501892, 48.1457369],
+                            [11.5508678, 48.1455507],
+                            [11.5509901, 48.145535],
+                            [11.551073, 48.1455149],
+                            [11.5530287, 48.1448805],
+                            [11.5531205, 48.1448485],
+                            [11.5531418, 48.1448438],
+                            [11.5535729, 48.1447064],
+                            [11.5545947, 48.1443807],
+                            [11.5548602, 48.1442961],
+                            [11.5548915, 48.1442861],
+                            [11.5549605, 48.1442641]
+                        ]
+                    ]
+                }
+            },
+            "lines_path_None_69910138": {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": [
+                        [
+                            [11.5732098, 48.1461906],
+                            [11.5732315, 48.1461292],
+                            [11.5731487, 48.1460976],
+                            [11.5731145, 48.1460355]
+                        ]
+                    ]
+                }
+            },
+            "lines_secondary_link_Türkenstraße_69910139": {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": [
+                        [
+                            [11.5732098, 48.1461906],
+                            [11.5732245, 48.1461916],
+                            [11.5732363, 48.1461931],
+                            [11.5732518, 48.1461965],
+                            [11.5732672, 48.146201],
+                            [11.5732801, 48.1462067],
+                            [11.5732961, 48.1462167],
+                            [11.5733146, 48.1462308],
+                            [11.5733359, 48.1462501]
+                        ]
+                    ]
+                }
+            }
+        };
+
+    var colors = ['red', 'blue', 'green', 'purple']; // Colors for buttons
+    var index = 0;
+    var layerControl = document.getElementById('controls');
+    var toggle = document.getElementById('toggle');
+
+    var controls = L.control({position: 'topleft'});
+    controls.onAdd = function(map) {
+        var div = L.DomUtil.create('div', 'leaflet-control-custom');
+        for (var key in geojson) {
+            (function(key) {
+                var layer = L.geoJSON(geojson[key]).addTo(map);
+                var button = L.DomUtil.create('button', 'toggle-btn', div);
+                button.style.backgroundColor = colors[index % colors.length];
+                button.textContent = key;
+                button.onclick = function() {
+                    if (map.hasLayer(layer)) {
+                        map.removeLayer(layer);
+                        button.textContent = 'Show ' + key;
+                    } else {
+                        map.addLayer(layer);
+                        button.textContent = 'Hide ' + key;
+                    }
+                };
+                index++;
+            })(key);
+        }
+        return div;
+    };
+    controls.addTo(map);
+
+    // Create custom control for the toggle button
+    var toggleControl = L.control({position: 'topleft'});
+    toggleControl.onAdd = function(map) {
+        var button = L.DomUtil.create('button', 'leaflet-control-toggle');
+        button.innerHTML = 'Toggle';
+        button.onclick = function() {
+            var controlsDiv = document.querySelector('.leaflet-control-custom');
+            if (controlsDiv.style.top === '50px') {
+                controlsDiv.style.top = '-200px'; // Adjust based on your actual controls height
+                button.innerHTML = 'Show';
+            } else {
+                controlsDiv.style.top = '50px';
+                button.innerHTML = 'Hide';
+            }
+        };
+        return button;
+    };
+    toggleControl.addTo(map);
+    // var controlInstance = control.addTo(map);
+
+    // Toggle button for collapsing control panel
+    // var toggle = document.getElementById('toggle');
+
+
+    var expandControl = L.control({position: 'bottomleft'});
+
+    expandControl.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'leaflet-control-expand');
+        div.innerHTML = '<button id="expandBtn" style="background: #fff; border: none; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,0.3); padding: 8px 15px; cursor: pointer;">Expand</button>';
+        return div;
+    };
+
+    expandControl.addTo(map);
+
+    var mapElement = document.getElementById('map');
+    var expandBtn = document.getElementById('expandBtn');
+
+    expandBtn.onclick = function() {
+        if (mapElement.classList.contains('fullscreen')) {
+            mapElement.classList.remove('fullscreen');
+            expandBtn.textContent = 'Expand';
+        } else {
+            mapElement.classList.add('fullscreen');
+            expandBtn.textContent = 'Shrink';
+        }
+        map.invalidateSize(); // Leaflet needs to adjust to new container size
+    };
+
+    // Listen for escape key to shrink map if in fullscreen
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape" && mapElement.classList.contains('fullscreen')) {
+            mapElement.classList.remove('fullscreen');
+            expandBtn.textContent = 'Expand';
+            map.invalidateSize(); // Adjust map after resizing
+        }
+    });
+</script>
+</body>
+</html>
