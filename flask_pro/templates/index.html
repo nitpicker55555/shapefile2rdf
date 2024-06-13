@@ -154,17 +154,17 @@
             width: 30%; /* 按钮占据剩余空间 */
         }
 
-         #map-container {
-             position: absolute; /* 或者使用 position: fixed; 根据需要 */
-             bottom: 100px; /* 距离窗口底部100px */
-             /*left: 20px; !* 距离窗口左边缘50px *!*/
-             right: 20px; /* 距离窗口右边缘50px */
-             width: 600px;
-             height: 500px; /* 高度为600px */
-             background-color: #f0f0f0; /* 背景色，仅作为示例 */
-             visibility : hidden;
+        #map-container {
+            position: absolute; /* 或者使用 position: fixed; 根据需要 */
+            bottom: 100px; /* 距离窗口底部100px */
+            /*left: 20px; !* 距离窗口左边缘50px *!*/
+            right: 20px; /* 距离窗口右边缘50px */
+            width: 600px;
+            height: 500px; /* 高度为600px */
+            background-color: #f0f0f0; /* 背景色，仅作为示例 */
+            visibility : hidden;
 
-         }
+        }
 
 
     </style>
@@ -188,8 +188,8 @@
     <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;"> </a>
     <button id="nightModeToggle">🌙</button>
     <br>
-<!--    <input type="text" id="subscribe" placeholder="输入邮箱订阅更新:)...">-->
-<!--    <button id="submit_email">提交</button>-->
+    <!--    <input type="text" id="subscribe" placeholder="输入邮箱订阅更新:)...">-->
+    <!--    <button id="submit_email">提交</button>-->
 </p>
 
 <input type="file" id="file-input" style="display: none;" />
@@ -210,10 +210,10 @@
     <br>
     <br>
     <button class="rectangle-btn"  onclick="showNumber('Where are the rivers in Munich')">Where are the rivers</button>
-<!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>-->
+    <!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>-->
 </div>
 <div class="input-button-container">
-<!--    <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />-->
+    <!--    <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />-->
 
 
     <textarea type="text" id="inputField" class="your-button-class" placeholder="Input question..."></textarea>
@@ -480,11 +480,11 @@
 
         // 自动调整地图缩放级别和中心位置以适应所有多边形
 
-            try {
-                map.fitBounds(window.geoJsonLayer.getBounds());
-            } catch (error) {
-                console.log('Error fitting bounds:', window.geoJsonLayer.getBounds());
-            }
+        try {
+            map.fitBounds(window.geoJsonLayer.getBounds());
+        } catch (error) {
+            console.log('Error fitting bounds:', window.geoJsonLayer.getBounds());
+        }
 
     }
 
@@ -537,19 +537,19 @@ Please always set an output variable for each function you called and write corr
 Variable in history is available to call.
 If user ask you to draw a diagram, please always use the true variable in previous code to draw but not assume fake value. If you asked to draw multi graph at the same time, you need to use subplots to draw them on a single figure.
  `
-//         `
-//
-// Example:
-// Query:I want to know largest 4 commerical buildings in 200 m of land which is forest
-//
-// Response:
-// ${String.fromCharCode(96)}python
-// id_list_buildings=id_list_of_entity('commerical buildings')
-// id_list_forest=id_list_of_entity('land which is forest')
-// id_list_buildings,id_list_forest=geo_filter(id_list_buildings,id_list_forest,'in 200 m of')
-// id_list_area_filtered_buildings=area_filter(id_list_buildings, 4)
-// ${String.fromCharCode(96)}
-// `
+    //         `
+    //
+    // Example:
+    // Query:I want to know largest 4 commerical buildings in 200 m of land which is forest
+    //
+    // Response:
+    // ${String.fromCharCode(96)}python
+    // id_list_buildings=id_list_of_entity('commerical buildings')
+    // id_list_forest=id_list_of_entity('land which is forest')
+    // id_list_buildings,id_list_forest=geo_filter(id_list_buildings,id_list_forest,'in 200 m of')
+    // id_list_area_filtered_buildings=area_filter(id_list_buildings, 4)
+    // ${String.fromCharCode(96)}
+    // `
 
     messages.push({"role": "system",
         "content": normal_prompt
@@ -578,41 +578,41 @@ If user ask you to draw a diagram, please always use the true variable in previo
 
 
 
-                const divClone = rect.cloneNode(true);
+                    const divClone = rect.cloneNode(true);
 
-                // 移除克隆元素中的 <span> 元素
-                const span = divClone.querySelector('.plan-label');
-                if (span) {
-                    span.remove();
-                }
-                const span_map = divClone.querySelector('.plan-label-map');
-                if (span_map) {
-                    span_map.remove();
-                }
+                    // 移除克隆元素中的 <span> 元素
+                    const span = divClone.querySelector('.plan-label');
+                    if (span) {
+                        span.remove();
+                    }
+                    const span_map = divClone.querySelector('.plan-label-map');
+                    if (span_map) {
+                        span_map.remove();
+                    }
 
-                // 获取剩余文本内容，并去除前后的空格
-                const desiredText = divClone.textContent.trim();
-                // console.log(desiredText)
+                    // 获取剩余文本内容，并去除前后的空格
+                    const desiredText = divClone.textContent.trim();
+                    // console.log(desiredText)
 
-                if (desiredText in map_button_dict) {
+                    if (desiredText in map_button_dict) {
 
-                    console.log(desiredText,'button set',rect)
-                    // rect.classList.remove('custom-rect');
-                    rect.className='map-button';
-                    // console.log(desiredText,'className set')
-                    const planLabel = document.createElement('span');
-                    // console.log(desiredText,'planLabel createElement')
-                    planLabel.className='plan-label-map'
-                    // console.log(desiredText,'planLabel plan-label-map')
-                    planLabel.textContent = 'Map';
-                    rect.appendChild(planLabel);
-                    // console.log(desiredText,'planLabel appendChild')
-                    rect.addEventListener('click', function () {
-                        console.log(desiredText)
-                        // console.log(map_button_dict[desiredText])
-                        updateMapDataAndFitBounds(map, map_button_dict[desiredText]);
-                    });
-                }
+                        console.log(desiredText,'button set',rect)
+                        // rect.classList.remove('custom-rect');
+                        rect.className='map-button';
+                        // console.log(desiredText,'className set')
+                        const planLabel = document.createElement('span');
+                        // console.log(desiredText,'planLabel createElement')
+                        planLabel.className='plan-label-map'
+                        // console.log(desiredText,'planLabel plan-label-map')
+                        planLabel.textContent = 'Map';
+                        rect.appendChild(planLabel);
+                        // console.log(desiredText,'planLabel appendChild')
+                        rect.addEventListener('click', function () {
+                            console.log(desiredText)
+                            // console.log(map_button_dict[desiredText])
+                            updateMapDataAndFitBounds(map, map_button_dict[desiredText]);
+                        });
+                    }
                 }
 
             });
@@ -620,16 +620,16 @@ If user ask you to draw a diagram, please always use the true variable in previo
             // console.log(messages)
         }
         else if("map" in data) {
-        //
+            //
             updateMapDataAndFitBounds( map,data.map);
             add_map_button(data.map,data['index'])
-        //     document.getElementById('map-container').innerHTML=data.map
+            //     document.getElementById('map-container').innerHTML=data.map
         }
 
         else if("sid" in data) {
-        //
+            //
             sid=data['sid']
-        //     document.getElementById('map-container').innerHTML=data.map
+            //     document.getElementById('map-container').innerHTML=data.map
         }
 
 
@@ -645,77 +645,77 @@ If user ask you to draw a diagram, please always use the true variable in previo
 
     $(document).ready(function() {
 
-        var chatInput=$('#inputField')
-        var submitButton = $('#confirmButton')
-        var submit_email=$('#submit_email')
+            var chatInput=$('#inputField')
+            var submitButton = $('#confirmButton')
+            var submit_email=$('#submit_email')
 
-        $('#file-input').on('change', function() {
-            var fileInput = document.getElementById('file-input');
-            var file = fileInput.files[0];
-            var formData = new FormData();
-            formData.append('file', file);
+            $('#file-input').on('change', function() {
+                var fileInput = document.getElementById('file-input');
+                var file = fileInput.files[0];
+                var formData = new FormData();
+                formData.append('file', file);
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData,
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if(data.filename) {
-                        var filenameShort = data.filename.slice(-10);
-                        document.getElementById('upload-btn').value = ".."+filenameShort;
-                        process_input("User upload a file in: .\\uploads\\"+data.filename)
-
-                    } else {
-                        alert('Upload failed');
-                    }
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Upload error');
-                });
-        })
-        function handleEnter(e){
-            if (e.keyCode===13){
-                console.log("enter")
-                submitButton.click();
-                e.preventDefault();  //避免回车换行
+                    .then(response => response.json())
+                    .then(data => {
+                        if(data.filename) {
+                            var filenameShort = data.filename.slice(-10);
+                            document.getElementById('upload-btn').value = ".."+filenameShort;
+                            process_input("User upload a file in: .\\uploads\\"+data.filename)
+
+                        } else {
+                            alert('Upload failed');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Upload error');
+                    });
+            })
+            function handleEnter(e){
+                if (e.keyCode===13){
+                    console.log("enter")
+                    submitButton.click();
+                    e.preventDefault();  //避免回车换行
+                }
             }
-        }
 
-        // 绑定Enter键盘事件
-        chatInput.on("keydown",handleEnter);
+            // 绑定Enter键盘事件
+            chatInput.on("keydown",handleEnter);
 
-        var chatWindow = $('#chatWindow');
-        function adjustContainerHeight() {
-            var windowHeight = $(window).height(); // 获取窗口的高度
-            var containerHeight = windowHeight - 100; // 窗口高度减去100px
-            // chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
-        }
+            var chatWindow = $('#chatWindow');
+            function adjustContainerHeight() {
+                var windowHeight = $(window).height(); // 获取窗口的高度
+                var containerHeight = windowHeight - 100; // 窗口高度减去100px
+                // chatWindow.css('height', containerHeight + 'px'); // 设置容器的高度
+            }
 
-        // 首次加载时调整容器高度
-        adjustContainerHeight();
+            // 首次加载时调整容器高度
+            adjustContainerHeight();
 
-        // 监听窗口大小变化事件，并调整容器高度
-        $(window).resize(adjustContainerHeight);
-        // const chatWindow = document.getElementById('markdownContainer');
-        function escapeHtml(html) {
-            let text = document.createTextNode(html);
-            let div = document.createElement('div');
-            div.appendChild(text);
-            return div.innerHTML;
-        }
+            // 监听窗口大小变化事件，并调整容器高度
+            $(window).resize(adjustContainerHeight);
+            // const chatWindow = document.getElementById('markdownContainer');
+            function escapeHtml(html) {
+                let text = document.createTextNode(html);
+                let div = document.createElement('div');
+                div.appendChild(text);
+                return div.innerHTML;
+            }
 
-        function addRequestMessage(message) {
-            // $(".answer .tips").css({"display":"none"});    // 打赏卡隐藏
-            // chatInput.val('');
-            let escapedMessage = escapeHtml(message);  // 对请求message进行转义，防止输入的是html而被浏览器渲染
-            let requestMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/avatar.png"><div class="message-text request">' +  escapedMessage + '</div></div>');
-            chatWindow.append(requestMessageElement);
-            let responseMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/chatgpt.png"><div class="message-text response"><span class="loading-icon"><i class="fa fa-spinner fa-pulse fa-2x"></i></span></div></div>');
-            chatWindow.append(responseMessageElement);
-            chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
-        }
+            function addRequestMessage(message) {
+                // $(".answer .tips").css({"display":"none"});    // 打赏卡隐藏
+                // chatInput.val('');
+                let escapedMessage = escapeHtml(message);  // 对请求message进行转义，防止输入的是html而被浏览器渲染
+                let requestMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/avatar.png"><div class="message-text request">' +  escapedMessage + '</div></div>');
+                chatWindow.append(requestMessageElement);
+                let responseMessageElement = $('<div class="row message-bubble"><img class="chat-icon" src="./static/images/chatgpt.png"><div class="message-text response"><span class="loading-icon"><i class="fa fa-spinner fa-pulse fa-2x"></i></span></div></div>');
+                chatWindow.append(responseMessageElement);
+                chatWindow.scrollTop(chatWindow.prop('scrollHeight'));
+            }
             function addResponseMessage(message) {
                 let lastResponseElement = $(".message-bubble .response").last();
                 lastResponseElement.empty();
@@ -727,12 +727,12 @@ If user ask you to draw a diagram, please always use the true variable in previo
                         if ((line.includes('englischer garten')||line.includes('Englischer Garten'))&&line.includes('ID')) {
                             console.log(first_time_englischer_garten_error)
                             // if (first_time_englischer_garten_error){
-                                // first_time_englischer_garten_error=false
-                                // return `<!--<div class="custom-rect map-button"><span class="plan-label">Step</span><span class="plan-label-map">Map</span>${escapeHtml(line.substring(4))}</div>-->`;
+                            // first_time_englischer_garten_error=false
+                            // return `<!--<div class="custom-rect map-button"><span class="plan-label">Step</span><span class="plan-label-map">Map</span>${escapeHtml(line.substring(4))}</div>-->`;
 
                             // }
                             // else {
-                                return `<div class="custom-rect"><span class="plan-label">Step</span>${escapeHtml(line.substring(4))}</div>`
+                            return `<div class="custom-rect"><span class="plan-label">Step</span>${escapeHtml(line.substring(4))}</div>`
 
                         }else {
                             return `<div class="custom-rect"><span class="plan-label">Step</span>${escapeHtml(line.substring(4))}</div>`
@@ -772,23 +772,23 @@ If user ask you to draw a diagram, please always use the true variable in previo
                 };
                 return text.replace(/[&<>"']/g, function(m) { return map[m]; });
             }
-        function cut_messages(originalArray){
-            if (originalArray.length > 5) {
-                // 提取第一个元素
-                const firstElement = originalArray.slice(0, 1);
-                // 提取最后四个元素
-                const lastFourElements = originalArray.slice(-4);
-                // 结合这两部分
-                const newArray = firstElement.concat(lastFourElements);
-                console.log(newArray); // 输出: [1, 7, 8, 9, 10]
-                return newArray
-            } else {
-                // 如果数组长度不超过5，直接使用原数组
-                console.log(originalArray);
-                return originalArray
-            }
+            function cut_messages(originalArray){
+                if (originalArray.length > 5) {
+                    // 提取第一个元素
+                    const firstElement = originalArray.slice(0, 1);
+                    // 提取最后四个元素
+                    const lastFourElements = originalArray.slice(-4);
+                    // 结合这两部分
+                    const newArray = firstElement.concat(lastFourElements);
+                    console.log(newArray); // 输出: [1, 7, 8, 9, 10]
+                    return newArray
+                } else {
+                    // 如果数组长度不超过5，直接使用原数组
+                    console.log(originalArray);
+                    return originalArray
+                }
 
-        }
+            }
             document.getElementById('debug_mode').addEventListener('click', function() {
                 // 发送 AJAX 请求到后台
                 var button = this;
@@ -818,93 +818,93 @@ If user ask you to draw a diagram, please always use the true variable in previo
                     });
 
             });
-        function process_input(userInput){
-            if (userInput!==""){
-                addRequestMessage(userInput)
-                messages=cut_messages(messages)
-                // messages.push({"role":"user","content":userInput})
-                document.getElementById('inputField').value=''
-                // 使用 fetch 发送数据
-                fetch('/submit', {
-                    method: 'POST', // 指定请求方法为POST
-                    headers: {
-                        'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
-                    },
-                    body: JSON.stringify({ text: userInput ,'messages':messages,'new_message':userInput,'sid':sid}) // 将用户输入转换为JSON字符串
-                })
-                    .then(response => {
-                        // response.json()
-
-
-
-                        const reader = response.body.getReader();
-                        var sum_chunk=""
-                        function read() {
-                            reader.read().then(({done, value}) => {
-                                if (done) {
-                                    // messages.push({"role":"assistant","content":sum_chunk})
-                                    // console.log('length',messages.length);
-                                    return;
-                                }
-                                const chunk = new TextDecoder().decode(value); // 将流字节转换为字符串
-                                sum_chunk+=chunk
-                                // const tempDiv = document.createElement('div'); // 创建一个临时 div 用于解析 HTML
-                                // chatWindow.innerHTML += chunk; // 将 HTML 字符串设置为 div 的内容
-
-                                addResponseMessage(sum_chunk)
-
-                                read(); // 继续读取下一个数据块
-                            });
-                        }
-                        read();
-
-
-                    }) // 解析JSON格式的响应
-                    .then(data => {
-                        console.log('Success:', data); // 在控制台打印成功的响应
+            function process_input(userInput){
+                if (userInput!==""){
+                    addRequestMessage(userInput)
+                    messages=cut_messages(messages)
+                    // messages.push({"role":"user","content":userInput})
+                    document.getElementById('inputField').value=''
+                    // 使用 fetch 发送数据
+                    fetch('/submit', {
+                        method: 'POST', // 指定请求方法为POST
+                        headers: {
+                            'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
+                        },
+                        body: JSON.stringify({ text: userInput ,'messages':messages,'new_message':userInput,'sid':sid}) // 将用户输入转换为JSON字符串
                     })
-                    .catch((error) => {
-                        console.error('Error:', error); // 在控制台打印出现的错误
-                    });
+                        .then(response => {
+                            // response.json()
+
+
+
+                            const reader = response.body.getReader();
+                            var sum_chunk=""
+                            function read() {
+                                reader.read().then(({done, value}) => {
+                                    if (done) {
+                                        // messages.push({"role":"assistant","content":sum_chunk})
+                                        // console.log('length',messages.length);
+                                        return;
+                                    }
+                                    const chunk = new TextDecoder().decode(value); // 将流字节转换为字符串
+                                    sum_chunk+=chunk
+                                    // const tempDiv = document.createElement('div'); // 创建一个临时 div 用于解析 HTML
+                                    // chatWindow.innerHTML += chunk; // 将 HTML 字符串设置为 div 的内容
+
+                                    addResponseMessage(sum_chunk)
+
+                                    read(); // 继续读取下一个数据块
+                                });
+                            }
+                            read();
+
+
+                        }) // 解析JSON格式的响应
+                        .then(data => {
+                            console.log('Success:', data); // 在控制台打印成功的响应
+                        })
+                        .catch((error) => {
+                            console.error('Error:', error); // 在控制台打印出现的错误
+                        });
+                }
             }
+            document.getElementById('confirmButton').addEventListener('click', function() {
+                document.getElementById('title').style.display="none"
+                document.getElementById('chatWindow').style.display='block'
+                // document.getElementById('subscribe').style.display='none'
+                // document.getElementById('submit_email').style.display='none'
+                document.getElementById('map-container').style.visibility='visible'
+                var userInput = document.getElementById('inputField').value; // 获取文本框的值/
+                process_input(userInput)
+
+            });
+            // document.getElementById('submit_email').addEventListener('click', function() {
+            //
+            //     const text=document.getElementById('subscribe').value
+            //     document.getElementById('subscribe').value=''
+            //     alert("邮箱提交成功！谢谢啦:)")
+            //     fetch('/submit_email', {
+            //         method: 'POST', // 指定请求方法为POST
+            //         headers: {
+            //             'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
+            //         },
+            //         body: JSON.stringify({ text: text }) // 将用户输入转换为JSON字符串
+            //     })
+            //         .then(response => {
+            //
+            //
+            //         }) // 解析JSON格式的响应
+            //         .then(data => {
+            //         })
+            //         .catch((error) => {
+            //             console.error('Error:', error); // 在控制台打印出现的错误
+            //         });
+            //     // var userInput = document.getElementById('inputField').value; // 获取文本框的值
+            //     // process_input(userInput)
+            //
+            // });
+
         }
-        document.getElementById('confirmButton').addEventListener('click', function() {
-            document.getElementById('title').style.display="none"
-            document.getElementById('chatWindow').style.display='block'
-            // document.getElementById('subscribe').style.display='none'
-            // document.getElementById('submit_email').style.display='none'
-            document.getElementById('map-container').style.visibility='visible'
-            var userInput = document.getElementById('inputField').value; // 获取文本框的值/
-            process_input(userInput)
-
-        });
-        // document.getElementById('submit_email').addEventListener('click', function() {
-        //
-        //     const text=document.getElementById('subscribe').value
-        //     document.getElementById('subscribe').value=''
-        //     alert("邮箱提交成功！谢谢啦:)")
-        //     fetch('/submit_email', {
-        //         method: 'POST', // 指定请求方法为POST
-        //         headers: {
-        //             'Content-Type': 'application/json', // 指定发送的数据类型为 JSON
-        //         },
-        //         body: JSON.stringify({ text: text }) // 将用户输入转换为JSON字符串
-        //     })
-        //         .then(response => {
-        //
-        //
-        //         }) // 解析JSON格式的响应
-        //         .then(data => {
-        //         })
-        //         .catch((error) => {
-        //             console.error('Error:', error); // 在控制台打印出现的错误
-        //         });
-        //     // var userInput = document.getElementById('inputField').value; // 获取文本框的值
-        //     // process_input(userInput)
-        //
-        // });
-
-    }
     )
 
     // 添加响应消息到窗口,流式响应此方法会执行多次

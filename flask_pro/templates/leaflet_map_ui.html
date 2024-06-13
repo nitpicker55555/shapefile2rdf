@@ -168,22 +168,41 @@
     var controls = L.control({position: 'topleft'});
     controls.onAdd = function(map) {
         var div = L.DomUtil.create('div', 'leaflet-control-custom');
+        var labels = {}; // to keep track of unique labels
+
         for (var key in geojson) {
             (function(key) {
+                var parts = key.split('_');
+                var label = parts[1] || key; // use the second element as label or key if not present
                 var layer = L.geoJSON(geojson[key]).addTo(map);
-                var button = L.DomUtil.create('button', 'toggle-btn', div);
-                button.style.backgroundColor = colors[index % colors.length];
-                button.textContent = key;
-                button.onclick = function() {
-                    if (map.hasLayer(layer)) {
-                        map.removeLayer(layer);
-                        button.textContent = 'Show ' + key;
-                    } else {
-                        map.addLayer(layer);
-                        button.textContent = 'Hide ' + key;
-                    }
-                };
-                index++;
+
+                if (!labels[label]) {
+                    labels[label] = {
+                        button: L.DomUtil.create('button', 'toggle-btn', div),
+                        layers: []
+                    };
+                    labels[label].button.style.backgroundColor = colors[index % colors.length];
+                    labels[label].button.textContent = 'Hide ' + label;
+                    labels[label].button.onclick = function() {
+                        var btn = labels[label].button;
+                        var layers = labels[label].layers;
+                        if (map.hasLayer(layers[0])) {
+                            layers.forEach(function(layer) {
+                                map.removeLayer(layer);
+                            });
+                            btn.style.backgroundColor = 'white';
+                            btn.style.color = 'black';
+                        } else {
+                            layers.forEach(function(layer) {
+                                map.addLayer(layer);
+                            });
+                            btn.style.backgroundColor = colors[index % colors.length];
+                            btn.style.color = 'white';
+                        }
+                    };
+                    index++;
+                }
+                labels[label].layers.push(layer);
             })(key);
         }
         return div;
@@ -194,7 +213,7 @@
     var toggleControl = L.control({position: 'topleft'});
     toggleControl.onAdd = function(map) {
         var button = L.DomUtil.create('button', 'leaflet-control-toggle');
-        button.innerHTML = 'Show';
+        button.innerHTML = 'Hide';
         button.onclick = function() {
             var controlsDiv = document.querySelector('.leaflet-control-custom');
             if (controlsDiv.style.top === '50px') {

@@ -1,3 +1,4 @@
+import json
 import os
 
 from openai import OpenAI
@@ -5,7 +6,7 @@ from openai import OpenAI
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-# from geo_functions import *
+from geo_functions import *
 from dotenv import load_dotenv
 import ast
 load_dotenv()
@@ -30,17 +31,22 @@ def cosine_similarity(a, b):
 def build_vector_store(words_origin,label):
    words = [element for element in words_origin if element]
    vectors=[]
-   for i in tqdm(words):
-         vectors.append(get_embedding(i))
-
-   data = {
-       'label': words,
-       'vector': [list(vector) for vector in vectors]
-   }
-   df = pd.DataFrame(data)
-
-   # 保存为 CSV 文件
-   df.to_csv(f'{label}_vectors.csv', index=False)
+   with open(f'{label}_vectors.jsonl', 'a') as jsonl_file:
+      for word in tqdm(words):
+         vector = get_embedding(word)
+         data = {'label': word, 'vector': list(vector)}
+         jsonl_file.write(json.dumps(data) + '\n')
+   # for i in tqdm(words):
+   #       vectors.append(get_embedding(i))
+   #
+   # data = {
+   #     'label': words,
+   #     'vector': [list(vector) for vector in vectors]
+   # }
+   # df = pd.DataFrame(data)
+   #
+   # # 保存为 CSV 文件
+   # df.to_csv(f'{label}_vectors.csv', index=False)
 def calculate_similarity_openai(label,key_vector_template):
    key_vector = get_embedding(key_vector_template)
    df = pd.read_csv(f'{label}_vectors.csv')
@@ -54,7 +60,10 @@ def calculate_similarity_openai(label,key_vector_template):
    sorted_df = filtered_df.sort_values(by='cosine_similarity', ascending=False)
    labels_list = sorted_df['label'].tolist()
    return labels_list
-# build_vector_store(ids_of_attribute('landuse','name'),'landuse_name')
+# build_vector_store(ids_of_attribute('points','name'),'points_name')
+# build_vector_store(ids_of_attribute('lines','name'),'lines_name')
+# build_vector_store(ids_of_attribute('land','name'),'land_name')
+# build_vector_store(ids_of_attribute('buildings','name'),'buildings_name')
 # template="""Hauptsächlich Braunerde aus sandigem Lehm (Oberschicht) über Kalkstein, ideal für Erdbeeranbau mit ausreichender Feuchtigkeit und reich an Kalium."""
 #
 # template='greenary'

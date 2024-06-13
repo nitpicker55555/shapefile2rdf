@@ -1,56 +1,31 @@
-import torch
-from transformers import AutoTokenizer, AutoModel
-from sklearn.metrics.pairwise import cosine_similarity
-
-# Load tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained('facebook/contriever')
-model = AutoModel.from_pretrained('facebook/contriever')
-
-# Move model to the device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
+import chromadb,time,os
+# Example setup of the client to connect to your chroma server
+from dotenv import load_dotenv
+load_dotenv()
+from rag_model_openai import get_embedding
 
 
-def mean_pooling(token_embeddings, mask):
-    token_embeddings = token_embeddings.masked_fill(~mask[..., None].bool(), 0.)
-    sentence_embeddings = token_embeddings.sum(dim=1) / mask.sum(dim=1)[..., None]
-    return sentence_embeddings
+os.environ['OPENAI_API_KEY']=os.getenv("OPENAI_API_KEY")
 
+client = chromadb.HttpClient(host="localhost", port=8000)
 
-def find_similar_sentences(sentences, keyword, threshold=0.6):
-    # Tokenize and encode the sentences and keyword
-    inputs = tokenizer(sentences, padding=True, truncation=True, return_tensors='pt')
-    keyword_inputs = tokenizer([keyword], padding=True, truncation=True, return_tensors='pt')
+collection = client.get_or_create_collection("buildings_name_vec")
+import chromadb.utils.embedding_functions as embedding_functions
+openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+                api_key=os.environ['OPENAI_API_KEY'],
+                model_name="text-embedding-3-small"
+            )
+while True:
 
-    # Move inputs to the device
-    inputs = {key: value.to(device) for key, value in inputs.items()}
-    keyword_inputs = {key: value.to(device) for key, value in keyword_inputs.items()}
+    text_str=input(":")
+    start_time=time.time()
+    results = collection.query(
+        query_embeddings=list(get_embedding(text_str)),
+        n_results=30,
 
-    # Compute token embeddings
-    outputs = model(**inputs)
-    keyword_outputs = model(**keyword_inputs)
-
-    # Perform mean pooling to get sentence embeddings
-    sentence_embeddings = mean_pooling(outputs[0], inputs['attention_mask'])
-    keyword_embedding = mean_pooling(keyword_outputs[0], keyword_inputs['attention_mask'])
-
-    # Compute similarity scores
-    similarity_scores = cosine_similarity(keyword_embedding.detach().cpu().numpy(),
-                                          sentence_embeddings.detach().cpu().numpy())
-    print(similarity_scores)
-    # Filter and return sentences with similarity score greater than threshold
-    similar_sentences = [sentences[i] for i, score in enumerate(similarity_scores[0]) if score > threshold]
-
-    return similar_sentences
-
-# Example usage
-sentences = [
-    "water",
-    "riverbank",
-    "reservoir"
-]
-
-keyword = "lake"
-
-similar_sentences = find_similar_sentences(sentences, keyword)
-print(similar_sentences)
+        # where={"metadata_field": "is_equal_to_this"}, # optional filter
+        # where_document={"$contains":text_str}  # optional filter
+    )
+    total_time=time.time()-start_time
+    print(total_time)
+    print(results)

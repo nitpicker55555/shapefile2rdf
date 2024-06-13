@@ -4,40 +4,40 @@ import geo_functions
 from chat_py import *
 from levenshtein import are_strings_similar
 import json, re
-from rag_model import calculate_similarity
-from rag_model_openai import calculate_similarity_openai
+# from rag_model import calculate_similarity
+# from rag_model_openai import calculate_similarity_openai
 from geo_functions import *
 import spacy
 from bounding_box import find_boundbox
 
 # 加载spaCy的英语模型
-nlp = spacy.load('en_core_web_sm')
+# nlp = spacy.load('en_core_web_sm')
 global_paring_dict = {}
 
 new_dict_num = 0
 file_path = 'global_paring_dict.jsonl'
 fclass_dict={}
 name_dict={}
-for key ,value in col_name_mapping_dict.items():
-    if key not in fclass_dict:
-        fclass_dict[key]=ids_of_attribute(key)
-    if key not in name_dict:
-        name_dict[key]=ids_of_attribute(key,'name')
-if os.path.exists(file_path):
-    with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
-        # 逐行读取并处理每一行
-        for line in file:
-            current_dict = json.loads(line)
-            key = next(iter(current_dict))  # 获取当前字典的键
-            # 如果键不存在于全局字典中，直接添加
-            if key not in global_paring_dict:
-                global_paring_dict[key] = current_dict[key]
-            else:
-                # 如果键已存在，更新该键对应的字典
-                global_paring_dict[key].update(current_dict[key])
-    for key, sub_dict in global_paring_dict.items():
-        for sub_key, value in sub_dict.items():
-            print(f'{key} -> {sub_key}')
+# for key ,value in col_name_mapping_dict.items():
+#     if key not in fclass_dict:
+#         fclass_dict[key]=ids_of_attribute(key)
+#     if key not in name_dict:
+#         name_dict[key]=ids_of_attribute(key,'name')
+# if os.path.exists(file_path):
+#     with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
+#         # 逐行读取并处理每一行
+#         for line in file:
+#             current_dict = json.loads(line)
+#             key = next(iter(current_dict))  # 获取当前字典的键
+#             # 如果键不存在于全局字典中，直接添加
+#             if key not in global_paring_dict:
+#                 global_paring_dict[key] = current_dict[key]
+#             else:
+#                 # 如果键已存在，更新该键对应的字典
+#                 global_paring_dict[key].update(current_dict[key])
+#     for key, sub_dict in global_paring_dict.items():
+#         for sub_key, value in sub_dict.items():
+#             print(f'{key} -> {sub_key}')
 #
 fclass_dict_4_similarity = {}
 all_fclass_set = set()
@@ -1195,3 +1195,20 @@ def process_query(query,messages=None):
 # print(get_column_names('points'))
 # print(ids_of_attribute('points','population'))
 # print(id_list_of_entity('lines which maxspeed is higher 30',True))
+
+# from shapely.geometry import Polygon, mapping
+# def polygons_to_geojson(polygons_dict):
+#     """
+#     将键值都为Polygon对象的字典转换为键值都为GeoJSON的字典。
+#
+#     :param polygons_dict: 一个键值都为Polygon对象的字典。
+#     :return: 一个键值都为GeoJSON格式的字典。
+#     """
+#     geojson_dict = {}
+#     for key, polygon in polygons_dict.items():
+#         # 将每个Polygon对象转换为GeoJSON格式的字典
+#         geojson_dict[key] = mapping(polygon)
+#     return geojson_dict
+# set_bounding_box('Munich Maxvorstadt')
+# print(polygons_to_geojson(id_list_of_entity('lines', True)['geo_map']))
+# print(ids_of_attribute('points','name'))
