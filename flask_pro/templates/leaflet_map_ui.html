@@ -110,7 +110,7 @@
     }).addTo(map);
 
     // GeoJSON data setup as earlier
-    var geojson={
+    var geojsons={
         "Munich Maxvorstadt": {
             "type": "Polygon",
             "coordinates": [
@@ -2785,312 +2785,351 @@
         '#9ecae1',
         '#b3b3b3']
     var color_dict = {}; // 存储标签与颜色的映射
-    function customSort(arr) {
-        if (arr.length === 0) {
-            return [];
-        }
+    let target_labels=[
+        'land_university',
 
-        // 取出最后一个元素
-        const lastElement = arr.pop();
-
-        // 对剩下的元素进行字母排序
-        arr.sort();
-
-        // 将最后一个元素放在第一个位置
-        arr.unshift(lastElement);
-
-        return arr;
-    }
-
+    ]
     // 示例列表
 
-    function getRandomColor(label) {
-        const label_belong =label.split("_").slice(0, 2).join("_");
-        // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
-        // const label_belong = label.substring(0, lastIndex);
-        if (label_belong in color_dict){
-            return color_dict[label_belong]
+    function create_map(geojson,target_labels){
+        function getRandomColor(label) {
+            const label_belong =label.split("_").slice(0, 2).join("_");
+            // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
+            // const label_belong = label.substring(0, lastIndex);
+            if (label_belong in color_dict){
+                return color_dict[label_belong]
+            }
+            else
+            {
+                const color =picker.getNextElement()
+                console.log(color,label_belong)
+                color_dict[label_belong]=color
+                return color;
+            }
+
+
         }
-        else
-        {
-            const color =picker.getNextElement()
-            console.log(color,label_belong)
-            color_dict[label_belong]=color
-            return color;
+        function createSequentialPicker(array) {
+            if (!Array.isArray(array) || array.length === 0) {
+                throw new Error("Array must be a non-empty array.");
+            }
+            function getNextElement() {
+                // 获取当前索引的元素
+                const element = array[currentIndex];
+
+                // 更新索引，如果到达数组末尾则重置为0
+                currentIndex = (currentIndex + 1) % array.length;
+
+                // 记录已经抽取过的元素
+                usedElements.push(element);
+
+                return element;
+            }
+
+            function getUsedElements() {
+                return usedElements;
+            }
+
+            return {
+                getNextElement,
+                getUsedElements
+            };
         }
+        const picker = createSequentialPicker(color_list);
+        function create_container_list(labels_ori,div){
+            var blocks = {};
+            let labels=[]
+            let colors_btn={}
 
+            const keys = Object.keys(labels_ori);
 
-    }
-    function createSequentialPicker(array) {
-        if (!Array.isArray(array) || array.length === 0) {
-            throw new Error("Array must be a non-empty array.");
-        }
-        function getNextElement() {
-            // 获取当前索引的元素
-            const element = array[currentIndex];
+            // 获取第一个元素的键和值
+            const firstKey = keys[0];
+            const firstValue = labels_ori[firstKey];
 
-            // 更新索引，如果到达数组末尾则重置为0
-            currentIndex = (currentIndex + 1) % array.length;
+            // 创建一个新的对象，并将第一个元素添加进去
+            const sortedObj = { [firstKey]: firstValue };
 
-            // 记录已经抽取过的元素
-            usedElements.push(element);
+            // 移除第一个元素的键
+            keys.shift();
 
-            return element;
-        }
+            // 对剩余的键进行排序
+            keys.sort();
 
-        function getUsedElements() {
-            return usedElements;
-        }
+            // 将排序后的元素依次加入新对象
+            keys.forEach(key => {
+                sortedObj[key] = labels_ori[key];
+            });
+            // console.log(labels_ori)
 
-        return {
-            getNextElement,
-            getUsedElements
-        };
-    }
-    const picker = createSequentialPicker(color_list);
-    function create_container_list(labels_ori,div){
-        var blocks = {};
-        let labels=[]
-        let colors_btn={}
+            // console.log(sortedObj)
+            for (var label in sortedObj) {
+                (function(label) {
+                    let color=labels_ori[label]['color']
+                    colors_btn[label]=color
+                    let layer=labels_ori[label]['layer']
+                    if (!labels[label]) {
 
-        const keys = Object.keys(labels_ori);
+                        // 获取第一个下划线前面的内容作为block的key
+                        var blockKey = label.split('_')[0];
 
-        // 获取第一个元素的键和值
-        const firstKey = keys[0];
-        const firstValue = labels_ori[firstKey];
+                        if (!blocks[blockKey]) {
+                            // 如果blockKey不存在，创建一个新的block
+                            blocks[blockKey] = {
+                                button: L.DomUtil.create('button', 'toggle-block-btn', div),
+                                labels: {}
+                            };
+                            blocks[blockKey].button.style.backgroundColor = 'grey';
+                            blocks[blockKey].button.textContent = blockKey;
+                            blocks[blockKey].button.classList.add('block-button');
+                            blocks[blockKey].button.onclick = function() {
+                                var blockBtn = blocks[blockKey].button;
+                                var labelsInBlock = blocks[blockKey].labels;
+                                var allActive = true;
 
-        // 创建一个新的对象，并将第一个元素添加进去
-        const sortedObj = { [firstKey]: firstValue };
+                                for (var lbl in labelsInBlock) {
+                                    if (!map.hasLayer(labelsInBlock[lbl].layers[0])) {
+                                        allActive = false;
+                                        break;
+                                    }
+                                }
 
-        // 移除第一个元素的键
-        keys.shift();
-
-        // 对剩余的键进行排序
-        keys.sort();
-
-        // 将排序后的元素依次加入新对象
-        keys.forEach(key => {
-            sortedObj[key] = labels_ori[key];
-        });
-        // console.log(labels_ori)
-
-        // console.log(sortedObj)
-        for (var label in sortedObj) {
-            (function(label) {
-            let color=labels_ori[label]['color']
-                colors_btn[label]=color
-            let layer=labels_ori[label]['layer']
-            if (!labels[label]) {
-
-                // 获取第一个下划线前面的内容作为block的key
-                var blockKey = label.split('_')[0];
-
-                if (!blocks[blockKey]) {
-                    // 如果blockKey不存在，创建一个新的block
-                    blocks[blockKey] = {
-                        button: L.DomUtil.create('button', 'toggle-block-btn', div),
-                        labels: {}
-                    };
-                    blocks[blockKey].button.style.backgroundColor = 'grey';
-                    blocks[blockKey].button.textContent = blockKey;
-                    blocks[blockKey].button.classList.add('block-button');
-                    blocks[blockKey].button.onclick = function() {
-                        var blockBtn = blocks[blockKey].button;
-                        var labelsInBlock = blocks[blockKey].labels;
-                        var allActive = true;
-
-                        for (var lbl in labelsInBlock) {
-                            if (!map.hasLayer(labelsInBlock[lbl].layers[0])) {
-                                allActive = false;
-                                break;
-                            }
+                                if (allActive) {
+                                    for ( lbl in labelsInBlock) {
+                                        labelsInBlock[lbl].layers.forEach(function(layer) {
+                                            map.removeLayer(layer);
+                                        });
+                                        labelsInBlock[lbl].button.style.backgroundColor = 'black';
+                                    }
+                                } else {
+                                    for ( lbl in labelsInBlock) {
+                                        labelsInBlock[lbl].layers.forEach(function(layer) {
+                                            map.addLayer(layer);
+                                        });
+                                        // console.log(lbl)
+                                        // console.log(labelsInBlock[lbl])
+                                        // console.log(colors[lbl])
+                                        labelsInBlock[lbl].button.style.backgroundColor = colors_btn[lbl];
+                                    }
+                                }
+                            };
                         }
 
-                        if (allActive) {
-                            for ( lbl in labelsInBlock) {
-                                labelsInBlock[lbl].layers.forEach(function(layer) {
+                        // 创建一个新的label按钮
+                        labels[label] = {
+                            button: L.DomUtil.create('button', 'toggle-btn', div),
+                            layers: []
+                        };
+
+                        labels[label].button.style.backgroundColor = color;
+                        labels[label].button.textContent = label;
+                        labels[label].button.onclick = function() {
+                            var btn = labels[label].button;
+                            var layers = labels[label].layers;
+                            if (map.hasLayer(layers[0])) {
+                                layers.forEach(function(layer) {
                                     map.removeLayer(layer);
                                 });
-                                labelsInBlock[lbl].button.style.backgroundColor = 'black';
-                            }
-                        } else {
-                            for ( lbl in labelsInBlock) {
-                                labelsInBlock[lbl].layers.forEach(function(layer) {
+                                btn.style.backgroundColor = 'black';
+                            } else {
+                                layers.forEach(function(layer) {
                                     map.addLayer(layer);
                                 });
-                                // console.log(lbl)
-                                // console.log(labelsInBlock[lbl])
-                                // console.log(colors[lbl])
-                                labelsInBlock[lbl].button.style.backgroundColor = colors_btn[lbl];
+
+                                btn.style.backgroundColor = color;
                             }
-                        }
-                    };
-                }
+                        };
 
-                // 创建一个新的label按钮
-                labels[label] = {
-                    button: L.DomUtil.create('button', 'toggle-btn', div),
-                    layers: []
-                };
-
-                labels[label].button.style.backgroundColor = color;
-                labels[label].button.textContent = label;
-                labels[label].button.onclick = function() {
-                    var btn = labels[label].button;
-                    var layers = labels[label].layers;
-                    if (map.hasLayer(layers[0])) {
-                        layers.forEach(function(layer) {
-                            map.removeLayer(layer);
-                        });
-                        btn.style.backgroundColor = 'black';
-                    } else {
-                        layers.forEach(function(layer) {
-                            map.addLayer(layer);
-                        });
-
-                        btn.style.backgroundColor = color;
+                        // 将当前label添加到对应的block中
+                        blocks[blockKey].labels[label] = labels[label];
+                        index++;
                     }
-                };
-
-                // 将当前label添加到对应的block中
-                blocks[blockKey].labels[label] = labels[label];
-                index++;
-            }
-            labels[label].layers=layer;
-            })(label);
+                    labels[label].layers=layer;
+                })(label);
             }
 
-    }
-    var controls = L.control({position: 'topleft'});
-    controls.onAdd = function(map) {
-        var div = L.DomUtil.create('div', 'leaflet-control-custom');
-        var labels = {}; // to keep track of unique labels
-
-
-        for (var key in geojson) {
-            (function(key) {
-                var parts = key.split('_');
-                const lastIndex = key.lastIndexOf("_"); // 找到最后一个下划线的索引
-
-                var label = parts.length > 2 ? parts.slice(0, 2).join('_') : key;// use the second element as label or key if not present
-                var label_belong = key.substring(0, lastIndex); // use the second element as label or key if not present
-
-                var color = getRandomColor(key);
-                var feature = geojson[key];
-                var layerOptions = {};
-
-                if (feature.type === "Point") {
-                    layerOptions = {
-                        onEachFeature: function(feature, layer) {
-                            layer.bindPopup(label_belong);
-                        },
-                        pointToLayer: function (feature, latlng) {
-                            return L.circleMarker(latlng, {
-                                radius: 5, // 调整半径大小以改变点的大小
-                                fillColor: color, // 红色
-                                color:color, // 红色
-                                weight: 1,
-                                opacity: 1,
-                                fillOpacity: 0.8
-                            });
-                        }
-                    };
-                }else {
-                    layerOptions={
-                        onEachFeature: function(feature, layer) {
-                            layer.bindPopup(label_belong);
-                        },
-                        style: function(feature) {
-                            return {color: color, weight: 2};
-                        }
-                    }
-                }
-
-                var layer = L.geoJSON(feature, layerOptions).addTo(map);
-                if     ( !labels[label])  {
-                    labels[label]={
-                        color: color,
-                        layer: [layer]
-                    }
-
-                }else {
-                    labels[label]['layer'].push(layer)
-                };
-
-
-
-
-
-
-
-            })(key);
         }
-        // console.log(labels)
-        create_container_list(labels,div)
-        return div;
-    };
-    controls.addTo(map);
+        var controls = L.control({position: 'topleft'});
+        function push_obj(obj1, obj2) {
+            Object.assign(obj1, obj2);
+        }
 
-    // Create custom control for the toggle button
-    var toggleControl = L.control({position: 'topleft'});
-    toggleControl.onAdd = function(map) {
-        var button = L.DomUtil.create('button', 'leaflet-control-toggle');
-        button.innerHTML = 'Hide';
+        controls.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'leaflet-control-custom');
+            var labels = {}; // to keep track of unique labels
 
-        button.onclick = function() {
-            var controlsDiv = document.querySelector('.leaflet-control-custom');
-            const windowHeight = window.innerHeight;
-            const controlsHeight = controlsDiv.offsetHeight;
-            if (controlsDiv.style.top === '50px'||controlsDiv.style.top === '') {
-                controlsDiv.style.top = -controlsHeight+'px';// Adjust based on your actual controls height
-                button.innerHTML = 'Show';
-                // console.log(controlsHeight)
-            } else {
-                controlsDiv.style.top = '50px';
-                button.innerHTML = 'Hide';
+
+            for (var key in geojson) {
+                (function(key) {
+                    var parts = key.split('_');
+                    const lastIndex = key.lastIndexOf("_"); // 找到最后一个下划线的索引
+
+                    var label = parts.length > 2 ? parts.slice(0, 2).join('_') : key;// use the second element as label or key if not present
+                    var label_belong = key.substring(0, lastIndex); // use the second element as label or key if not present
+
+                    var color = getRandomColor(key);
+                    var feature = geojson[key];
+                    var layerGroup = L.featureGroup();
+                    var layerOptions = {
+                        onEachFeature: function(feature, layer) {
+                            layer.bindPopup(label_belong);
+                            if (target_labels.includes(label)){
+                                if (feature.type === 'Point') {
+                                    latlng = L.latLng(feature.coordinates[1], feature.coordinates[0]);
+                                } else {
+                                    latlng = L.latLngBounds(layer.getBounds()).getCenter();
+                                }
+
+                                const layer_target=L.marker(latlng, {
+                                    icon: L.divIcon({
+                                        className: 'custom-div-icon',
+                                        html:  `
+            <div style="
+                position: relative;
+                width: 20px;
+                height: 30px;
+                background-color: transparent;">
+                <div style="
+                    width: 20px;
+                    height: 20px;
+                    background-color: ${color};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    position: absolute;
+                    top: 0;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    box-shadow: 0 0 0 2px ${color};">
+                </div>
+
+            </div>
+        `,
+                                        iconSize: [20, 20]
+                                    })
+                                })
+                                layerGroup.addLayer(layer_target)
+                                layer_target.bindPopup(label_belong);
+
+                            }
+
+                        }
+                    };
+
+
+
+
+                    if (feature.type === "Point") {
+                        push_obj(layerOptions, {
+
+                            pointToLayer: function (feature, latlng) {
+                                return L.circleMarker(latlng, {
+                                    radius: 5, // 调整半径大小以改变点的大小
+                                    fillColor: color, //
+                                    color:color, //
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.8
+                                });
+                            },
+
+                        });
+                    }else {
+                        push_obj(layerOptions, {
+
+                            style: function(feature) {
+                                return {color: color, weight: 2};
+                            }
+                        })
+                    }
+                    var layer = L.geoJSON(feature, layerOptions)
+                    layerGroup.addLayer(layer)
+                    layerGroup.addTo(map);
+                    if     ( !labels[label])  {
+                        labels[label]={
+                            color: color,
+                            layer: [layerGroup]
+                        }
+
+                    }else {
+                        labels[label]['layer'].push(layerGroup)
+                    };
+
+
+
+
+
+
+
+                })(key);
             }
+            // console.log(labels)
+            create_container_list(labels,div)
+            return div;
         };
-        return button;
-    };
-    toggleControl.addTo(map);
-    // var controlInstance = control.addTo(map);
+        controls.addTo(map);
 
-    // Toggle button for collapsing control panel
-    // var toggle = document.getElementById('toggle');
+        // Create custom control for the toggle button
+        var toggleControl = L.control({position: 'topleft'});
+        toggleControl.onAdd = function(map) {
+            var button = L.DomUtil.create('button', 'leaflet-control-toggle');
+            button.innerHTML = 'Hide';
+
+            button.onclick = function() {
+                var controlsDiv = document.querySelector('.leaflet-control-custom');
+                const windowHeight = window.innerHeight;
+                const controlsHeight = controlsDiv.offsetHeight;
+                if (controlsDiv.style.top === '50px'||controlsDiv.style.top === '') {
+                    controlsDiv.style.top = -controlsHeight+'px';// Adjust based on your actual controls height
+                    button.innerHTML = 'Show';
+                    // console.log(controlsHeight)
+                } else {
+                    controlsDiv.style.top = '50px';
+                    button.innerHTML = 'Hide';
+                }
+            };
+            return button;
+        };
+        toggleControl.addTo(map);
+        // var controlInstance = control.addTo(map);
+
+        // Toggle button for collapsing control panel
+        // var toggle = document.getElementById('toggle');
 
 
-    var expandControl = L.control({position: 'bottomleft'});
+        var expandControl = L.control({position: 'bottomleft'});
 
-    expandControl.onAdd = function (map) {
-        var div = L.DomUtil.create('div', 'leaflet-control-expand');
-        div.innerHTML = '<button id="expandBtn" style="background: #fff; border: none; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,0.3); padding: 8px 15px; cursor: pointer;">Expand</button>';
-        return div;
-    };
+        expandControl.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'leaflet-control-expand');
+            div.innerHTML = '<button id="expandBtn" style="background: #fff; border: none; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,0.3); padding: 8px 15px; cursor: pointer;">Expand</button>';
+            return div;
+        };
 
-    expandControl.addTo(map);
+        expandControl.addTo(map);
 
-    var mapElement = document.getElementById('map');
-    var expandBtn = document.getElementById('expandBtn');
+        var mapElement = document.getElementById('map');
+        var expandBtn = document.getElementById('expandBtn');
 
-    expandBtn.onclick = function() {
-        if (mapElement.classList.contains('fullscreen')) {
-            mapElement.classList.remove('fullscreen');
-            expandBtn.textContent = 'Expand';
-        } else {
-            mapElement.classList.add('fullscreen');
-            expandBtn.textContent = 'Shrink';
-        }
-        map.invalidateSize(); // Leaflet needs to adjust to new container size
-    };
+        expandBtn.onclick = function() {
+            if (mapElement.classList.contains('fullscreen')) {
+                mapElement.classList.remove('fullscreen');
+                expandBtn.textContent = 'Expand';
+            } else {
+                mapElement.classList.add('fullscreen');
+                expandBtn.textContent = 'Shrink';
+            }
+            map.invalidateSize(); // Leaflet needs to adjust to new container size
+        };
 
-    // Listen for escape key to shrink map if in fullscreen
-    document.addEventListener('keydown', function(event) {
-        if (event.key === "Escape" && mapElement.classList.contains('fullscreen')) {
-            mapElement.classList.remove('fullscreen');
-            expandBtn.textContent = 'Expand';
-            map.invalidateSize(); // Adjust map after resizing
-        }
-    });
+        // Listen for escape key to shrink map if in fullscreen
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape" && mapElement.classList.contains('fullscreen')) {
+                mapElement.classList.remove('fullscreen');
+                expandBtn.textContent = 'Expand';
+                map.invalidateSize(); // Adjust map after resizing
+            }
+        });
+    }
+    create_map(geojsons,target_labels)
 </script>
 </body>
 </html>
