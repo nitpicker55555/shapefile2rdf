@@ -100,6 +100,7 @@
 <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
 <script>
     var map = L.map('map', {
+        doubleClickZoom: false,
         zoomControl: false // Disable the zoom control
     }).setView([48.145, 11.550], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -108,7 +109,7 @@
     }).addTo(map);
 
     // GeoJSON data setup as earlier
-    var geojson ={
+    var geojson={
         "Munich Maxvorstadt": {
             "type": "Polygon",
             "coordinates": [
@@ -2849,6 +2850,7 @@
     function create_container_list(labels_ori,div){
         var blocks = {};
         let labels=[]
+        let colors_btn={}
 
         const keys = Object.keys(labels_ori);
 
@@ -2875,6 +2877,7 @@
         for (var label in sortedObj) {
             (function(label) {
             let color=labels_ori[label]['color']
+                colors_btn[label]=color
             let layer=labels_ori[label]['layer']
             if (!labels[label]) {
 
@@ -2914,7 +2917,10 @@
                                 labelsInBlock[lbl].layers.forEach(function(layer) {
                                     map.addLayer(layer);
                                 });
-                                labelsInBlock[lbl].button.style.backgroundColor = color;
+                                // console.log(lbl)
+                                // console.log(labelsInBlock[lbl])
+                                // console.log(colors[lbl])
+                                labelsInBlock[lbl].button.style.backgroundColor = colors_btn[lbl];
                             }
                         }
                     };
@@ -2940,6 +2946,7 @@
                         layers.forEach(function(layer) {
                             map.addLayer(layer);
                         });
+
                         btn.style.backgroundColor = color;
                     }
                 };
@@ -3017,7 +3024,7 @@
 
             })(key);
         }
-        console.log(labels)
+        // console.log(labels)
         create_container_list(labels,div)
         return div;
     };
