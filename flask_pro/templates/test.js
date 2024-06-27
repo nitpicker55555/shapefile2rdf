@@ -1,40 +1,28 @@
-function createSequentialPicker(array) {
-    if (!Array.isArray(array) || array.length === 0) {
-        throw new Error("Array must be a non-empty array.");
+function reorderDictionary(dict) {
+    // 获取字典的键并排序
+    let keys = Object.keys(dict).sort();
+
+    // 将最后一个键移动到第0个位置
+    if (keys.length > 1) {
+        keys.unshift(keys.pop());
     }
 
-    let currentIndex = 0;
-    const usedElements = [];
-
-    function getNextElement() {
-        // 获取当前索引的元素
-        const element = array[currentIndex];
-
-        // 更新索引，如果到达数组末尾则重置为0
-        currentIndex = (currentIndex + 1) % array.length;
-
-        // 记录已经抽取过的元素
-        usedElements.push(element);
-
-        return element;
+    // 创建一个新的字典并按照新的顺序赋值
+    let newDict = {};
+    for (let key of keys) {
+        newDict[key] = dict[key];
     }
 
-    function getUsedElements() {
-        return usedElements;
-    }
-
-    return {
-        getNextElement,
-        getUsedElements
-    };
+    return newDict;
 }
 
-// 示例用法
-const elements = ["A", "B", "C", "D", "E"];
-const picker = createSequentialPicker(elements);
+// 示例字典
+let dict = {
+    "banana": 1,
+    "apple": 2,
+    "cherry": 3,
+    "date": 4
+};
 
-for (let i = 0; i < 15; i++) {
-    console.log(`抽取到的元素: ${picker.getNextElement()}`);
-}
-
-console.log('已抽取过的元素:', picker.getUsedElements());
+let sortedDict = reorderDictionary(dict);
+console.log(sortedDict);

@@ -1,30 +1,32 @@
-from rag_model import calculate_similarity
-from geo_functions import *
+def judge_table(query, messages=None):
+    if isinstance(query, dict):
+        query = str(query)
+    #     if query['entity_text']!=None: #没有地理关系,有non_spatial_modify_statement，是subject的形容词,object subject 被全部送入judge_type防止没有主语
+    #         query= query['entity_text']
+    #     else:
+    #         query=query['non_spatial_modify_statement']
+    if query == None:
+        return None
+    if messages == None:
+        messages = []
 
-fclass_dict_4_similarity = {}
-all_fclass_set = set()
-for i in col_name_mapping_dict:
-    if i != 'soil' and i != 'buildings':
-        each_set = ids_of_attribute(i, 'name')
-        fclass_dict_4_similarity[i] = each_set
-        all_fclass_set.update(each_set)
+    if 'building' in query.lower().split():
+        return {'database':'buildings'}
+
+    if 'planting' in query.lower():
+        return {'database': 'soil'}
+
+    # if 'area' in query.lower():
+    #     return {'database': 'land'}
+    #
+    # if 'building' in query.lower() and 'soil' not in query.lower():
+    #     return {'database': 'buildings'}
+    #
+    # if 'land' in query.lower() and 'soil' not in query.lower():
+    #     return {'database': 'land'}
+    # if 'soil' in query.lower():
+    #     return {'database': 'soil'}
+    return None
 
 
-def find_similar(query):
-    def find_keys_by_values(d, elements):
-        result = {}
-        for key, values in d.items():
-            matched_elements = [element for element in elements if element in values]
-            if matched_elements:
-                result[key] = matched_elements
-        return result
-
-    match_list = set(calculate_similarity(all_fclass_set, query).keys())
-    if len(match_list) != 0:
-        table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
-        all_id_list = []
-        for table_, fclass_list in table_fclass_dicts.items():
-            print(table_, fclass_list)
-    print('nothing')
-while True:
-    find_similar(input(":"))
+print(judge_table('good for building'))

@@ -52,7 +52,7 @@ def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
 
         )
 
-    print(response.usage.completion_tokens)
+    print(response)
 
     # print(response.choices[0].message.content)
 
