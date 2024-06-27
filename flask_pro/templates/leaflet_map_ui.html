@@ -116,7 +116,9 @@
             justify-content: center;
             border: 2px solid white;
             font-size: 14px;
-        }
+        }        .leaflet-control-attribution {
+                     display: none !important;
+                 }
     </style>
 </head>
 <body>
@@ -2983,8 +2985,10 @@
                         };
 
                         labels[label].button.style.backgroundColor = color;
+                        // console.log(labels[label])
 
-                        labels[label].button.textContent = target_labels.includes(label) ? label + " (target)" : label;
+                        labels[label].button.textContent =
+                        labels[label].button.textContent = target_labels.includes(label) ? label + " (target)" : label+" ("+labels_ori[label]['layer'].length+")"
                         labels[label].button.onclick = function() {
                             var btn = labels[label].button;
                             var layers = labels[label].layers;
@@ -3126,6 +3130,7 @@
 
                 })(key);
             }
+            // console.log(labels)
             // console.log(labels)
             create_container_list(labels,div)
             return div;
