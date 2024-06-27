@@ -40,12 +40,19 @@ name_dict={}
 #             print(f'{key} -> {sub_key}')
 #
 fclass_dict_4_similarity = {}
+name_dict_4_similarity = {}
 all_fclass_set = set()
+all_name_set = set()
 for i in col_name_mapping_dict:
+    # i is table name
     if i!='soil' and i!='buildings':
         each_set = ids_of_attribute(i)
         fclass_dict_4_similarity[i] = each_set
         all_fclass_set.update(each_set)
+    if i!='soil' :
+        each_set = ids_of_attribute(i,'name')
+        name_dict_4_similarity[i] = each_set
+        all_name_set.update(each_set)
 
 # print(all_fclass_set)
 def limit_total_words(lst, max_length=10000):
@@ -635,6 +642,8 @@ def remove_non_spatial_modify_statements(data):
         if "non_spatial_modify_statement" in entity:
             del entity["non_spatial_modify_statement"]
     return data
+
+
 def id_list_of_entity(query,verbose=False):
     def find_keys_by_values(d, elements):
         result = {}
@@ -672,8 +681,24 @@ def id_list_of_entity(query,verbose=False):
                 each_id_list=ids_of_type(table_,{'non_area_col': {'fclass':set(fclass_list),'name':set()}, 'area_num': None})
                 all_id_list.append(each_id_list)
             return merge_dicts(all_id_list)
-        else:
-            table_str=judge_table_gpt(query)['database']
+
+
+        match_list = set(calculate_similarity(all_name_set, query).keys())
+        if len(match_list)!=0:
+            table_name_dicts=find_keys_by_values(name_dict_4_similarity,match_list)
+            all_id_list=[]
+            for table_ ,name_list in table_name_dicts.items():
+                each_id_list=ids_of_type(table_,{'non_area_col': {'fclass':set(),'name':set(name_list)}, 'area_num': None})
+                all_id_list.append(each_id_list)
+            return merge_dicts(all_id_list)
+
+
+
+
+
+
+
+        table_str=judge_table_gpt(query)['database']
     else:
         table_str=table_str['database']
     query=extract_and_reformat_area_words(query)
@@ -710,7 +735,8 @@ def judge_bounding_box(query,filter=False, messages=None):
     return final_address, new_query
 
     # return final_address
-
+def get_label_from_id(id_list):
+    return {key[:list(key).index('_', list(key).index('_') + 1)] for key in id_list.keys() if key.count('_') >= 2}
 
 def geo_filter(query,id_list_subject, id_list_object):
     """
@@ -729,9 +755,12 @@ def geo_filter(query,id_list_subject, id_list_object):
     if versa_sign:
         query = query.replace(negation_word, '')
     geo_relation = judge_geo_relation(query)
-    print( geo_relation['type'])
+    # print( geo_relation['type'])
     # print(id_list_subject)
     geo_result = geo_calculate(id_list_subject, id_list_object, geo_relation['type'], geo_relation['num'], versa_sign=versa_sign)
+    target_label=list(get_label_from_id(geo_result['subject']['id_list']))
+    geo_result['geo_map']['target_label']=target_label
+    # print(target_label,'target_label')
     return geo_result
 
 
@@ -804,6 +833,11 @@ def judge_table(query, messages=None):
     #         query= query['entity_text']
     #     else:
     #         query=query['non_spatial_modify_statement']
+    soil_list=[
+        'planting','potatoes',
+        'tomatoes','strawberr','agriculture'
+    ]
+
     if query == None:
         return None
     if messages == None:
@@ -812,8 +846,14 @@ def judge_table(query, messages=None):
     for i in col_name_mapping_dict:
         if i in query.lower().split():
             return {'database':i}
-    if 'planting' in query.lower():
-        return {'database': 'soil'}
+    if 'building' in query.lower().split():
+        return {'database':'buildings'}
+    for pp in soil_list:
+        if pp in query.lower():
+            return {'database': 'soil'}
+
+    if 'greenery' in query.lower():
+        return {'database': 'land'}
 
     # if 'area' in query.lower():
     #     return {'database': 'land'}

@@ -4,7 +4,14 @@
     <title>Leaflet GeoJSON Toggle with UI Effects</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- 引入 Leaflet.markercluster CSS 和 JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <!--<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />-->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <style>
         body, html {
             height: 100%; /* Make sure the body and html fill the height */
@@ -12,7 +19,7 @@
             padding: 0;   /* Remove default padding */
             overflow: hidden; /* Prevent scrollbars from appearing */
         }
-        #map {
+        #map-container {
             position: absolute; /* 或者使用 position: fixed; 根据需要 */
             bottom: 100px; /* 距离窗口底部100px */
             /*left: 20px; !* 距离窗口左边缘50px *!*/
@@ -20,6 +27,8 @@
             width: 600px;
             height: 500px; /* 高度为600px */
             background-color: #f0f0f0; /* 背景色，仅作为示例 */
+            font-size: small;
+
         }
         .block-button {
             display: inline-block;
@@ -48,13 +57,19 @@
             width: 200px;
             overflow: hidden;
             transition: top 0.3s ease-in-out;
-            position: absolute;
+            position: absolute ;
             top: 50px; /* Initial top position below toggle */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow */
             max-height: 500px;
+            left: 10px;
+
             overflow-y: auto;
+
         }
         .leaflet-control-toggle {
+            top:10px;
+            left: 10px;
+
             padding: 5px;
             border: none;
             background: rgba(255, 255, 255, 0.3);
@@ -62,10 +77,11 @@
             backdrop-filter: blur(10px);
             cursor: pointer;
             width: 200px; /* Same width as controls */
-            text-align: center;
+            /*text-align: center;*/
             position: absolute;
-            top: 10px; /* Position of toggle button */
+
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow */
+            z-index: 999;
 
         }
         .toggle-btn {
@@ -78,7 +94,7 @@
             backdrop-filter: blur(5px);
             cursor: pointer;
             color: white;
-
+            font-size: medium;
         }
         .fullscreen {
             width: 100% !important;
@@ -93,20 +109,21 @@
     </style>
 </head>
 <body>
-<div id="map"></div>
+<div id="map-container"></div>
 <div id="controls">
-    <button id="toggle">&#x2190;</button>
+<!--    <button id="toggle">&#x2190;</button>-->
 </div>
 <!--<button id="expandBtn">Expand</button>-->
-<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+
 <script>
-    var map = L.map('map', {
+    var map = L.map('map-container', {
         doubleClickZoom: false,
         zoomControl: false // Disable the zoom control
     }).setView([48.145, 11.550], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
-        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        opacity: 0.3  // 设置透明度为50%
+        // attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     // GeoJSON data setup as earlier
@@ -2758,10 +2775,10 @@
         }
     }
 
-    var colors = ['red', 'blue', 'green', 'purple']; // Colors for buttons
-    var index = 0;
-    var layerControl = document.getElementById('controls');
-    var toggle = document.getElementById('toggle');
+    // var colors = ['red', 'blue', 'green', 'purple']; // Colors for buttons
+    // var index = 0;
+    // var layerControl = document.getElementById('controls');
+    // var toggle = document.getElementById('toggle');
     var currentIndex = 0;
     const usedElements = [];
 
@@ -2789,9 +2806,27 @@
         'land_university',
 
     ]
+    var allControls = [];
     // 示例列表
+    var markers = L.markerClusterGroup();
 
-    function create_map(geojson,target_labels){
+
+    function updateMapDataAndFitBounds(map,geojson,target_labels=[]){
+        console.log(target_labels)
+        if (window.geoJsonLayer) {
+            window.geoJsonLayer.clearLayers(); // 移除之前的图层数据
+        } else {
+            window.geoJsonLayer = L.geoJSON().addTo(map); // 初始化geoJsonLayer
+
+        }
+        removeAllControls()
+        function removeAllControls() {
+            allControls.forEach(function(control) {
+                map.removeControl(control);
+            });
+            allControls = []; // 清空数组
+        }
+
         function getRandomColor(label) {
             const label_belong =label.split("_").slice(0, 2).join("_");
             // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
@@ -2871,7 +2906,8 @@
                     if (!labels[label]) {
 
                         // 获取第一个下划线前面的内容作为block的key
-                        var blockKey = label.split('_')[0];
+                        var blockKey = label.includes('_') ? "💾 "+label.split('_')[0] : '🗺️ Region';
+
 
                         if (!blocks[blockKey]) {
                             // 如果blockKey不存在，创建一个新的block
@@ -2922,7 +2958,7 @@
                         };
 
                         labels[label].button.style.backgroundColor = color;
-                        labels[label].button.textContent = label;
+                        labels[label].button.textContent = target_labels.includes(label) ? label + " (target)" : label;
                         labels[label].button.onclick = function() {
                             var btn = labels[label].button;
                             var layers = labels[label].layers;
@@ -2942,7 +2978,7 @@
 
                         // 将当前label添加到对应的block中
                         blocks[blockKey].labels[label] = labels[label];
-                        index++;
+                        // index++;
                     }
                     labels[label].layers=layer;
                 })(label);
@@ -3043,7 +3079,7 @@
                     }
                     var layer = L.geoJSON(feature, layerOptions)
                     layerGroup.addLayer(layer)
-                    layerGroup.addTo(map);
+                    layerGroup.addTo(window.geoJsonLayer);
                     if     ( !labels[label])  {
                         labels[label]={
                             color: color,
@@ -3067,12 +3103,16 @@
             return div;
         };
         controls.addTo(map);
+        allControls.push(controls)
 
         // Create custom control for the toggle button
         var toggleControl = L.control({position: 'topleft'});
         toggleControl.onAdd = function(map) {
             var button = L.DomUtil.create('button', 'leaflet-control-toggle');
-            button.innerHTML = 'Hide';
+            // var rect = button.getBoundingClientRect();
+            // console.log('控件的位置:', rect);
+            // console.log(button.style.top)
+            button.innerHTML = '⬆️';
 
             button.onclick = function() {
                 var controlsDiv = document.querySelector('.leaflet-control-custom');
@@ -3080,16 +3120,18 @@
                 const controlsHeight = controlsDiv.offsetHeight;
                 if (controlsDiv.style.top === '50px'||controlsDiv.style.top === '') {
                     controlsDiv.style.top = -controlsHeight+'px';// Adjust based on your actual controls height
-                    button.innerHTML = 'Show';
+                    button.innerHTML = '⬇️';
                     // console.log(controlsHeight)
                 } else {
                     controlsDiv.style.top = '50px';
-                    button.innerHTML = 'Hide';
+                    button.innerHTML = '⬆️';
                 }
             };
             return button;
         };
         toggleControl.addTo(map);
+        allControls.push(toggleControl)
+
         // var controlInstance = control.addTo(map);
 
         // Toggle button for collapsing control panel
@@ -3104,9 +3146,10 @@
             return div;
         };
 
-        expandControl.addTo(map);
 
-        var mapElement = document.getElementById('map');
+        expandControl.addTo(map);
+        allControls.push(expandControl)
+        var mapElement = document.getElementById('map-container');
         var expandBtn = document.getElementById('expandBtn');
 
         expandBtn.onclick = function() {
@@ -3128,8 +3171,16 @@
                 map.invalidateSize(); // Adjust map after resizing
             }
         });
+        try {
+            map.fitBounds(window.geoJsonLayer.getBounds());
+        } catch (error) {
+            console.log('Error fitting bounds:', window.geoJsonLayer.getBounds());
+        }
+
     }
-    create_map(geojsons,target_labels)
+
+    // updateMapDataAndFitBounds(map,geojsons,target_labels)
+    updateMapDataAndFitBounds(map,geojsons,target_labels)
 </script>
 </body>
 </html>

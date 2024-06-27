@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UEQ Questionnaire</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      width: 80%;
+      height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    .question {
+      margin: 20px 0;
+    }
+    .title {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    button {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="title">Questions</div>
+  <form action="{{ url_for('submit_qu') }}" method="post">
+    <input type="hidden" name="start_time" id="start_time">
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Questionnaire</title>
+    </head>
+    <body>
+
+    <div class="question">
+      <label>1. annoying</label>
+      <input type="radio" name="annoying_enjoyable" value="1" required> 1
+      <input type="radio" name="annoying_enjoyable" value="2"> 2
+      <input type="radio" name="annoying_enjoyable" value="3"> 3
+      <input type="radio" name="annoying_enjoyable" value="4"> 4
+      <input type="radio" name="annoying_enjoyable" value="5"> 5
+      <input type="radio" name="annoying_enjoyable" value="6"> 6
+      <input type="radio" name="annoying_enjoyable" value="7"> 7 enjoyable
+    </div>
+
+    <div class="question">
+      <label>2. not understandable</label>
+      <input type="radio" name="not_understandable_understandable" value="1" required> 1
+      <input type="radio" name="not_understandable_understandable" value="2"> 2
+      <input type="radio" name="not_understandable_understandable" value="3"> 3
+      <input type="radio" name="not_understandable_understandable" value="4"> 4
+      <input type="radio" name="not_understandable_understandable" value="5"> 5
+      <input type="radio" name="not_understandable_understandable" value="6"> 6
+      <input type="radio" name="not_understandable_understandable" value="7"> 7 understandable
+    </div>
+
+    <div class="question">
+      <label>3. creative</label>
+      <input type="radio" name="creative_dull" value="1" required> 1
+      <input type="radio" name="creative_dull" value="2"> 2
+      <input type="radio" name="creative_dull" value="3"> 3
+      <input type="radio" name="creative_dull" value="4"> 4
+      <input type="radio" name="creative_dull" value="5"> 5
+      <input type="radio" name="creative_dull" value="6"> 6
+      <input type="radio" name="creative_dull" value="7"> 7 dull
+    </div>
+
+    <div class="question">
+      <label>4. easy to learn</label>
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="1" required> 1
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="2"> 2
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="3"> 3
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="4"> 4
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="5"> 5
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="6"> 6
+      <input type="radio" name="easy_to_learn_difficult_to_learn" value="7"> 7 difficult to learn
+    </div>
+
+    <div class="question">
+      <label>5. valuable</label>
+      <input type="radio" name="valuable_inferior" value="1" required> 1
+      <input type="radio" name="valuable_inferior" value="2"> 2
+      <input type="radio" name="valuable_inferior" value="3"> 3
+      <input type="radio" name="valuable_inferior" value="4"> 4
+      <input type="radio" name="valuable_inferior" value="5"> 5
+      <input type="radio" name="valuable_inferior" value="6"> 6
+      <input type="radio" name="valuable_inferior" value="7"> 7 inferior
+    </div>
+
+    <div class="question">
+      <label>6. boring</label>
+      <input type="radio" name="boring_exciting" value="1" required> 1
+      <input type="radio" name="boring_exciting" value="2"> 2
+      <input type="radio" name="boring_exciting" value="3"> 3
+      <input type="radio" name="boring_exciting" value="4"> 4
+      <input type="radio" name="boring_exciting" value="5"> 5
+      <input type="radio" name="boring_exciting" value="6"> 6
+      <input type="radio" name="boring_exciting" value="7"> 7 exciting
+    </div>
+
+    <div class="question">
+      <label>7. not interesting</label>
+      <input type="radio" name="not_interesting_interesting" value="1" required> 1
+      <input type="radio" name="not_interesting_interesting" value="2"> 2
+      <input type="radio" name="not_interesting_interesting" value="3"> 3
+      <input type="radio" name="not_interesting_interesting" value="4"> 4
+      <input type="radio" name="not_interesting_interesting" value="5"> 5
+      <input type="radio" name="not_interesting_interesting" value="6"> 6
+      <input type="radio" name="not_interesting_interesting" value="7"> 7 interesting
+    </div>
+
+    <div class="question">
+      <label>8. unpredictable</label>
+      <input type="radio" name="unpredictable_predictable" value="1" required> 1
+      <input type="radio" name="unpredictable_predictable" value="2"> 2
+      <input type="radio" name="unpredictable_predictable" value="3"> 3
+      <input type="radio" name="unpredictable_predictable" value="4"> 4
+      <input type="radio" name="unpredictable_predictable" value="5"> 5
+      <input type="radio" name="unpredictable_predictable" value="6"> 6
+      <input type="radio" name="unpredictable_predictable" value="7"> 7 predictable
+    </div>
+
+    <div class="question">
+      <label>9. fast</label>
+      <input type="radio" name="fast_slow" value="1" required> 1
+      <input type="radio" name="fast_slow" value="2"> 2
+      <input type="radio" name="fast_slow" value="3"> 3
+      <input type="radio" name="fast_slow" value="4"> 4
+      <input type="radio" name="fast_slow" value="5"> 5
+      <input type="radio" name="fast_slow" value="6"> 6
+      <input type="radio" name="fast_slow" value="7"> 7 slow
+    </div>
+
+    <div class="question">
+      <label>10. inventive</label>
+      <input type="radio" name="inventive_conventional" value="1" required> 1
+      <input type="radio" name="inventive_conventional" value="2"> 2
+      <input type="radio" name="inventive_conventional" value="3"> 3
+      <input type="radio" name="inventive_conventional" value="4"> 4
+      <input type="radio" name="inventive_conventional" value="5"> 5
+      <input type="radio" name="inventive_conventional" value="6"> 6
+      <input type="radio" name="inventive_conventional" value="7"> 7 conventional
+    </div>
+
+    <div class="question">
+      <label>11. obstructive</label>
+      <input type="radio" name="obstructive_supportive" value="1" required> 1
+      <input type="radio" name="obstructive_supportive" value="2"> 2
+      <input type="radio" name="obstructive_supportive" value="3"> 3
+      <input type="radio" name="obstructive_supportive" value="4"> 4
+      <input type="radio" name="obstructive_supportive" value="5"> 5
+      <input type="radio" name="obstructive_supportive" value="6"> 6
+      <input type="radio" name="obstructive_supportive" value="7"> 7 supportive
+    </div>
+
+    <div class="question">
+      <label>12. good</label>
+      <input type="radio" name="good_bad" value="1" required> 1
+      <input type="radio" name="good_bad" value="2"> 2
+      <input type="radio" name="good_bad" value="3"> 3
+      <input type="radio" name="good_bad" value="4"> 4
+      <input type="radio" name="good_bad" value="5"> 5
+      <input type="radio" name="good_bad" value="6"> 6
+      <input type="radio" name="good_bad" value="7"> 7 bad
+    </div>
+
+    <div class="question">
+      <label>13. complicated</label>
+      <input type="radio" name="complicated_easy" value="1" required> 1
+      <input type="radio" name="complicated_easy" value="2"> 2
+      <input type="radio" name="complicated_easy" value="3"> 3
+      <input type="radio" name="complicated_easy" value="4"> 4
+      <input type="radio" name="complicated_easy" value="5"> 5
+      <input type="radio" name="complicated_easy" value="6"> 6
+      <input type="radio" name="complicated_easy" value="7"> 7 easy
+    </div>
+
+    <div class="question">
+      <label>14. unlikable</label>
+      <input type="radio" name="unlikable_pleasing" value="1" required> 1
+      <input type="radio" name="unlikable_pleasing" value="2"> 2
+      <input type="radio" name="unlikable_pleasing" value="3"> 3
+      <input type="radio" name="unlikable_pleasing" value="4"> 4
+      <input type="radio" name="unlikable_pleasing" value="5"> 5
+      <input type="radio" name="unlikable_pleasing" value="6"> 6
+      <input type="radio" name="unlikable_pleasing" value="7"> 7 pleasing
+    </div>
+
+    <div class="question">
+      <label>15. usual</label>
+      <input type="radio" name="usual_leading_edge" value="1" required> 1
+      <input type="radio" name="usual_leading_edge" value="2"> 2
+      <input type="radio" name="usual_leading_edge" value="3"> 3
+      <input type="radio" name="usual_leading_edge" value="4"> 4
+      <input type="radio" name="usual_leading_edge" value="5"> 5
+      <input type="radio" name="usual_leading_edge" value="6"> 6
+      <input type="radio" name="usual_leading_edge" value="7"> 7 leading edge
+    </div>
+
+    <div class="question">
+      <label>16. unpleasant</label>
+      <input type="radio" name="unpleasant_pleasant" value="1" required> 1
+      <input type="radio" name="unpleasant_pleasant" value="2"> 2
+      <input type="radio" name="unpleasant_pleasant" value="3"> 3
+      <input type="radio" name="unpleasant_pleasant" value="4"> 4
+      <input type="radio" name="unpleasant_pleasant" value="5"> 5
+      <input type="radio" name="unpleasant_pleasant" value="6"> 6
+      <input type="radio" name="unpleasant_pleasant" value="7"> 7 pleasant
+    </div>
+
+    <div class="question">
+      <label>17. secure</label>
+      <input type="radio" name="secure_not_secure" value="1" required> 1
+      <input type="radio" name="secure_not_secure" value="2"> 2
+      <input type="radio" name="secure_not_secure" value="3"> 3
+      <input type="radio" name="secure_not_secure" value="4"> 4
+      <input type="radio" name="secure_not_secure" value="5"> 5
+      <input type="radio" name="secure_not_secure" value="6"> 6
+      <input type="radio" name="secure_not_secure" value="7"> 7 not secure
+    </div>
+
+    <div class="question">
+      <label>18. motivating</label>
+      <input type="radio" name="motivating_demotivating" value="1" required> 1
+      <input type="radio" name="motivating_demotivating" value="2"> 2
+      <input type="radio" name="motivating_demotivating" value="3"> 3
+      <input type="radio" name="motivating_demotivating" value="4"> 4
+      <input type="radio" name="motivating_demotivating" value="5"> 5
+      <input type="radio" name="motivating_demotivating" value="6"> 6
+      <input type="radio" name="motivating_demotivating" value="7"> 7 demotivating
+    </div>
+
+    <div class="question">
+      <label>19. meets expectations</label>
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="1" required> 1
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="2"> 2
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="3"> 3
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="4"> 4
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="5"> 5
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="6"> 6
+      <input type="radio" name="meets_expectations_does_not_meet_expectations" value="7"> 7 does not meet expectations
+    </div>
+
+    <div class="question">
+      <label>20. inefficient</label>
+      <input type="radio" name="inefficient_efficient" value="1" required> 1
+      <input type="radio" name="inefficient_efficient" value="2"> 2
+      <input type="radio" name="inefficient_efficient" value="3"> 3
+      <input type="radio" name="inefficient_efficient" value="4"> 4
+      <input type="radio" name="inefficient_efficient" value="5"> 5
+      <input type="radio" name="inefficient_efficient" value="6"> 6
+      <input type="radio" name="inefficient_efficient" value="7"> 7 efficient
+    </div>
+
+    <div class="question">
+      <label>21. clear</label>
+      <input type="radio" name="clear_confusing" value="1" required> 1
+      <input type="radio" name="clear_confusing" value="2"> 2
+      <input type="radio" name="clear_confusing" value="3"> 3
+      <input type="radio" name="clear_confusing" value="4"> 4
+      <input type="radio" name="clear_confusing" value="5"> 5
+      <input type="radio" name="clear_confusing" value="6"> 6
+      <input type="radio" name="clear_confusing" value="7"> 7 confusing
+    </div>
+
+    <div class="question">
+      <label>22. impractical</label>
+      <input type="radio" name="impractical_practical" value="1" required> 1
+      <input type="radio" name="impractical_practical" value="2"> 2
+      <input type="radio" name="impractical_practical" value="3"> 3
+      <input type="radio" name="impractical_practical" value="4"> 4
+      <input type="radio" name="impractical_practical" value="5"> 5
+      <input type="radio" name="impractical_practical" value="6"> 6
+      <input type="radio" name="impractical_practical" value="7"> 7 practical
+    </div>
+
+    <div class="question">
+      <label>23. organized</label>
+      <input type="radio" name="organized_cluttered" value="1" required> 1
+      <input type="radio" name="organized_cluttered" value="2"> 2
+      <input type="radio" name="organized_cluttered" value="3"> 3
+      <input type="radio" name="organized_cluttered" value="4"> 4
+      <input type="radio" name="organized_cluttered" value="5"> 5
+      <input type="radio" name="organized_cluttered" value="6"> 6
+      <input type="radio" name="organized_cluttered" value="7"> 7 cluttered
+    </div>
+
+    <div class="question">
+      <label>24. attractive</label>
+      <input type="radio" name="attractive_unattractive" value="1" required> 1
+      <input type="radio" name="attractive_unattractive" value="2"> 2
+      <input type="radio" name="attractive_unattractive" value="3"> 3
+      <input type="radio" name="attractive_unattractive" value="4"> 4
+      <input type="radio" name="attractive_unattractive" value="5"> 5
+      <input type="radio" name="attractive_unattractive" value="6"> 6
+      <input type="radio" name="attractive_unattractive" value="7"> 7 unattractive
+    </div>
+
+    <div class="question">
+      <label>25. friendly</label>
+      <input type="radio" name="friendly_unfriendly" value="1" required> 1
+      <input type="radio" name="friendly_unfriendly" value="2"> 2
+      <input type="radio" name="friendly_unfriendly" value="3"> 3
+      <input type="radio" name="friendly_unfriendly" value="4"> 4
+      <input type="radio" name="friendly_unfriendly" value="5"> 5
+      <input type="radio" name="friendly_unfriendly" value="6"> 6
+      <input type="radio" name="friendly_unfriendly" value="7"> 7 unfriendly
+    </div>
+
+    <div class="question">
+      <label>26. conservative</label>
+      <input type="radio" name="conservative_innovative" value="1" required> 1
+      <input type="radio" name="conservative_innovative" value="2"> 2
+      <input type="radio" name="conservative_innovative" value="3"> 3
+      <input type="radio" name="conservative_innovative" value="4"> 4
+      <input type="radio" name="conservative_innovative" value="5"> 5
+      <input type="radio" name="conservative_innovative" value="6"> 6
+      <input type="radio" name="conservative_innovative" value="7"> 7 innovative
+    </div>
+
+    </body>
+    </html>
+
+    <!-- Add the rest of the questions similarly, each with required attribute -->
+    <button type="submit">Submit</button>
+  </form>
+</div>
+<script>
+  document.getElementById('start_time').value = Date.now();
+  console.log(document.getElementById('start_time').value)
+</script>
+</body>
+</html>

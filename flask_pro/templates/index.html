@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Interpreter</title>
+    <script src="../static/js/jquery-2.1.1.js"></script>
+    <script src="../static/js/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="../static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../static/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/css/github-dark-dimmed.min.css">
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- 引入 wellknown 库来解析 WKT -->
+    <script src="https://unpkg.com/wellknown/wellknown.js"></script>
     <style>
         .container {
             text-align: center;
@@ -18,7 +29,89 @@
             font-weight: bold;
             font-size: 50px;
         }
+        #map-container {
+            position: absolute; /* 或者使用 position: fixed; 根据需要 */
+            bottom: 100px; /* 距离窗口底部100px */
+            /*left: 20px; !* 距离窗口左边缘50px *!*/
+            right: 20px; /* 距离窗口右边缘50px */
+            width: 600px;
+            height: 500px; /* 高度为600px */
+            background-color: #f0f0f0; /* 背景色，仅作为示例 */
+            visibility : hidden;
+            font-size: medium;
 
+        }
+        .block-button {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: grey;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            opacity: 0.7;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 1s;
+        }
+
+        .block-button:hover {
+            background-color: black;
+            opacity: 1.0;
+        }
+
+        .leaflet-control-custom {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            left: 10px;
+
+            /*border: 1px solid #fff;*/
+            backdrop-filter: blur(10px);
+            width: 200px;
+            overflow: hidden;
+            transition: top 0.3s ease-in-out;
+            position: absolute;
+            top: 50px; /* Initial top position below toggle */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow */
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .leaflet-control-toggle {
+            top: 10px; /* 距离窗口顶部的距离 */
+            left: 10px;
+            padding: 5px;
+            border: none;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            width: 200px; /* Same width as controls */
+            text-align: center;
+            position: absolute;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow */
+
+        }
+        .toggle_top{
+            top: 10px; /* Position of toggle button */
+            left: 10px;
+            width: 200px; /* Same width as controls */
+            position: fixed;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow */
+
+        }
+        .toggle-btn {
+            margin: 5px 0;
+            padding: 5px;
+            width: calc(100% - 10px);
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+            color: white;
+            font-size: small;
+
+        }
         .description {
             font-size: 14px;
             letter-spacing: 6px; /* 增加字间距 */
@@ -81,16 +174,6 @@
             margin-bottom: 10px; /* 调整间距 */
         }
 
-        /*.map-button .plan-label {*/
-        /*    background-color: green;*/
-        /*    color: white;*/
-        /*    padding: 2px 5px;*/
-        /*    border-radius: 3px;*/
-        /*    font-size: 12px;*/
-        /*    position: absolute;*/
-        /*    top: -10px;*/
-        /*    left: -10px;*/
-        /*}*/
         #chatWindow {
 
             border: 1px solid #ccc;
@@ -154,37 +237,26 @@
             width: 30%; /* 按钮占据剩余空间 */
         }
 
-        #map-container {
-            position: absolute; /* 或者使用 position: fixed; 根据需要 */
-            bottom: 100px; /* 距离窗口底部100px */
-            /*left: 20px; !* 距离窗口左边缘50px *!*/
-            right: 20px; /* 距离窗口右边缘50px */
-            width: 600px;
-            height: 500px; /* 高度为600px */
-            background-color: #f0f0f0; /* 背景色，仅作为示例 */
-            visibility : hidden;
 
+        .fullscreen {
+            width: 100% !important;
+            height: 100vh !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 999;
+            margin: 0 !important;    /* No margin */
+            padding: 0 !important;   /* No padding */
         }
-
 
     </style>
 
-    <script src="../static/js/jquery-2.1.1.js"></script>
-    <script src="../static/js/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <link rel="stylesheet" href="../static/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../static/font-awesome/css/font-awesome.min.css">
-    <link rel="stylesheet" href="../static/css/github-dark-dimmed.min.css">
-    <link rel="stylesheet" href="../static/css/style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- 引入 wellknown 库来解析 WKT -->
-    <script src="https://unpkg.com/wellknown/wellknown.js"></script>
+
 </head>
 <body>
 <!--    <div id="markdownContainer"></div>-->
 <p class="lead text-center">
-    <a  style="display: inline-block;" class="lead text-center" onclick="window.location.href='./static/images/reward.png'" style="color:red;">      ⬅    |       </a>
+    <a  style="display: inline-block;" class="lead text-center" onclick="location.href='question'" style="color:red;">      Questions    |       </a>
     <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;"> </a>
     <button id="nightModeToggle">🌙</button>
     <br>
@@ -212,6 +284,7 @@
     <button class="rectangle-btn"  onclick="showNumber('Where are the rivers in Munich')">Where are the rivers</button>
     <!--    <button class="rectangle-btn"  onclick="showNumber('分析我上传的文件')">Upload your ttl file</button>-->
 </div>
+<!--<button onclick="location.href='/question'">Go to Questions</button>-->
 <div class="input-button-container">
     <!--    <input type="button" id="upload-btn" class="your-button-class" value="Upload" onclick="document.getElementById('file-input').click();" />-->
 
@@ -227,6 +300,7 @@
     //
     var sid=''
     const usedElements = [];
+    var allControls = [];
     var currentIndex = 0;
     const color_list=['#756bb1',
         '#3182bd',
@@ -279,6 +353,7 @@
 
 
     }
+
     function observeDOMChanges() {
         const observer = new MutationObserver(mutations => {
             mutations.forEach(mutation => {
@@ -331,19 +406,39 @@
         }
     }
     observeDOMChanges();
-    function updateMapDataAndFitBounds(map, newPolygons) {
-        // console.log(newPolygons)
-        // 检查是否已经添加了geoJsonLayer图层，如果有，则移除
+    function updateMapDataAndFitBounds(map,geojson,target_labels=[]){
+        console.log(target_labels)
         if (window.geoJsonLayer) {
             window.geoJsonLayer.clearLayers(); // 移除之前的图层数据
         } else {
             window.geoJsonLayer = L.geoJSON().addTo(map); // 初始化geoJsonLayer
 
         }
+        removeAllControls()
+        function removeAllControls() {
+            allControls.forEach(function(control) {
+                map.removeControl(control);
+            });
+            allControls = []; // 清空数组
+        }
 
-        var layers = {};
+        function getRandomColor(label) {
+            const label_belong =label.split("_").slice(0, 2).join("_");
+            // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
+            // const label_belong = label.substring(0, lastIndex);
+            if (label_belong in color_dict){
+                return color_dict[label_belong]
+            }
+            else
+            {
+                const color =picker.getNextElement()
+                console.log(color,label_belong)
+                color_dict[label_belong]=color
+                return color;
+            }
 
 
+        }
         function createSequentialPicker(array) {
             if (!Array.isArray(array) || array.length === 0) {
                 throw new Error("Array must be a non-empty array.");
@@ -370,66 +465,307 @@
                 getUsedElements
             };
         }
-
-
-
-
-// 更新字典并检查当前DOM中的元素
-
-        function getRandomColor(label) {
-            const label_belong =label.split("_").slice(0, 2).join("_");
-            // const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
-            // const label_belong = label.substring(0, lastIndex);
-            if (label_belong in color_dict){
-                return color_dict[label_belong]
-            }
-            else
-            {
-                const color =picker.getNextElement()
-                console.log(color,label_belong)
-                color_dict[label_belong]=color
-                return color;
-            }
-
-
-        }
         const picker = createSequentialPicker(color_list);
-        // 遍历并添加新多边形到地图和GeoJSON图层
-        // console.log(newPolygons)
-        Object.keys(newPolygons).forEach(label => {
+        function create_container_list(labels_ori,div){
+            var blocks = {};
+            let labels=[]
+            let colors_btn={}
 
-            const lastIndex = label.lastIndexOf("_"); // 找到最后一个下划线的索引
-            const label_belong = label.substring(0, lastIndex);
-            var color = getRandomColor(label);
-            var wkt = newPolygons[label];
-            var geojson = (wkt); // 假设使用 wellknown 库来解析WKT
-            // console.log(geojson)
+            const keys = Object.keys(labels_ori);
 
-            L.geoJson(geojson, {
-                onEachFeature: function(feature, layer) {
-                    layer.bindPopup(label_belong);
-                },
-                style: function(feature) {
-                    return {color: color, weight: 2};
-                }
-            }).addTo(window.geoJsonLayer);
+            // 获取第一个元素的键和值
+            const firstKey = keys[0];
+            const firstValue = labels_ori[firstKey];
 
-            // 将图层添加到图层对象中，以便可以通过图层控制器管理
-            layers[label_belong] = window.geoJsonLayer;
-        });
+            // 创建一个新的对象，并将第一个元素添加进去
+            const sortedObj = { [firstKey]: firstValue };
 
-        // 如果已经添加了图层控制器，则先移除
-        if (window.layerControl) {
-            map.removeControl(window.layerControl);
+            // 移除第一个元素的键
+            keys.shift();
+
+            // 对剩余的键进行排序
+            keys.sort();
+
+            // 将排序后的元素依次加入新对象
+            keys.forEach(key => {
+                sortedObj[key] = labels_ori[key];
+            });
+            // console.log(labels_ori)
+
+            // console.log(sortedObj)
+            for (var label in sortedObj) {
+                (function(label) {
+                    let color=labels_ori[label]['color']
+                    colors_btn[label]=color
+                    let layer=labels_ori[label]['layer']
+                    if (!labels[label]) {
+
+                        // 获取第一个下划线前面的内容作为block的key
+                        var blockKey = label.includes('_') ? "💾 "+label.split('_')[0] : '🗺️ Region';
+
+
+                        if (!blocks[blockKey]) {
+                            // 如果blockKey不存在，创建一个新的block
+                            blocks[blockKey] = {
+                                button: L.DomUtil.create('button', 'toggle-block-btn', div),
+                                labels: {}
+                            };
+                            blocks[blockKey].button.style.backgroundColor = 'grey';
+                            blocks[blockKey].button.textContent = blockKey;
+                            blocks[blockKey].button.classList.add('block-button');
+                            blocks[blockKey].button.onclick = function() {
+                                var blockBtn = blocks[blockKey].button;
+                                var labelsInBlock = blocks[blockKey].labels;
+                                var allActive = true;
+
+                                for (var lbl in labelsInBlock) {
+                                    if (!map.hasLayer(labelsInBlock[lbl].layers[0])) {
+                                        allActive = false;
+                                        break;
+                                    }
+                                }
+
+                                if (allActive) {
+                                    for ( lbl in labelsInBlock) {
+                                        labelsInBlock[lbl].layers.forEach(function(layer) {
+                                            map.removeLayer(layer);
+                                        });
+                                        labelsInBlock[lbl].button.style.backgroundColor = 'black';
+                                    }
+                                } else {
+                                    for ( lbl in labelsInBlock) {
+                                        labelsInBlock[lbl].layers.forEach(function(layer) {
+                                            map.addLayer(layer);
+                                        });
+                                        // console.log(lbl)
+                                        // console.log(labelsInBlock[lbl])
+                                        // console.log(colors[lbl])
+                                        labelsInBlock[lbl].button.style.backgroundColor = colors_btn[lbl];
+                                    }
+                                }
+                            };
+                        }
+
+                        // 创建一个新的label按钮
+                        labels[label] = {
+                            button: L.DomUtil.create('button', 'toggle-btn', div),
+                            layers: []
+                        };
+
+                        labels[label].button.style.backgroundColor = color;
+                        labels[label].button.textContent = target_labels.includes(label) ? label + " (target)" : label;
+                        labels[label].button.onclick = function() {
+                            var btn = labels[label].button;
+                            var layers = labels[label].layers;
+                            if (map.hasLayer(layers[0])) {
+                                layers.forEach(function(layer) {
+                                    map.removeLayer(layer);
+                                });
+                                btn.style.backgroundColor = 'black';
+                            } else {
+                                layers.forEach(function(layer) {
+                                    map.addLayer(layer);
+                                });
+
+                                btn.style.backgroundColor = color;
+                            }
+                        };
+
+                        // 将当前label添加到对应的block中
+                        blocks[blockKey].labels[label] = labels[label];
+                        // index++;
+                    }
+                    labels[label].layers=layer;
+                })(label);
+            }
+
+        }
+        var controls = L.control({position: 'topleft'});
+        function push_obj(obj1, obj2) {
+            Object.assign(obj1, obj2);
         }
 
-        // 添加新的图层控制器
-        window.layerControl = L.control.layers(null, layers, {
-            collapsed: false
-        }).addTo(map);
+        controls.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'leaflet-control-custom');
+            var labels = {}; // to keep track of unique labels
 
-        // 自动调整地图缩放级别和中心位置以适应所有多边形
 
+            for (var key in geojson) {
+                (function(key) {
+                    var parts = key.split('_');
+                    const lastIndex = key.lastIndexOf("_"); // 找到最后一个下划线的索引
+
+                    var label = parts.length > 2 ? parts.slice(0, 2).join('_') : key;// use the second element as label or key if not present
+                    var label_belong = key.substring(0, lastIndex); // use the second element as label or key if not present
+
+                    var color = getRandomColor(key);
+                    var feature = geojson[key];
+                    var layerGroup = L.featureGroup();
+                    var layerOptions = {
+                        onEachFeature: function(feature, layer) {
+                            layer.bindPopup(label_belong);
+                            if (target_labels.includes(label)){
+                                if (feature.type === 'Point') {
+                                    latlng = L.latLng(feature.coordinates[1], feature.coordinates[0]);
+                                } else {
+                                    latlng = L.latLngBounds(layer.getBounds()).getCenter();
+                                }
+
+                                const layer_target=L.marker(latlng, {
+                                    icon: L.divIcon({
+                                        className: 'custom-div-icon',
+                                        html:  `
+            <div style="
+                position: relative;
+                width: 20px;
+                height: 30px;
+                background-color: transparent;">
+                <div style="
+                    width: 20px;
+                    height: 20px;
+                    background-color: ${color};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    position: absolute;
+                    top: 0;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    box-shadow: 0 0 0 2px ${color};">
+                </div>
+
+            </div>
+        `,
+                                        iconSize: [20, 20]
+                                    })
+                                })
+                                layerGroup.addLayer(layer_target)
+                                layer_target.bindPopup(label_belong);
+
+                            }
+
+                        }
+                    };
+
+
+
+
+                    if (feature.type === "Point") {
+                        push_obj(layerOptions, {
+
+                            pointToLayer: function (feature, latlng) {
+                                return L.circleMarker(latlng, {
+                                    radius: 5, // 调整半径大小以改变点的大小
+                                    fillColor: color, //
+                                    color:color, //
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.8
+                                });
+                            },
+
+                        });
+                    }else {
+                        push_obj(layerOptions, {
+
+                            style: function(feature) {
+                                return {color: color, weight: 2};
+                            }
+                        })
+                    }
+                    var layer = L.geoJSON(feature, layerOptions)
+                    layerGroup.addLayer(layer)
+                    layerGroup.addTo(window.geoJsonLayer);
+                    if     ( !labels[label])  {
+                        labels[label]={
+                            color: color,
+                            layer: [layerGroup]
+                        }
+
+                    }else {
+                        labels[label]['layer'].push(layerGroup)
+                    };
+
+
+
+
+
+
+
+                })(key);
+            }
+            // console.log(labels)
+            create_container_list(labels,div)
+            return div;
+        };
+        controls.addTo(map);
+        allControls.push(controls)
+
+        // Create custom control for the toggle button
+        var toggleControl = L.control({position: 'topleft'});
+        toggleControl.onAdd = function(map) {
+            var button = L.DomUtil.create('button', 'leaflet-control-toggle');
+            // var rect = button.getBoundingClientRect();
+            // console.log('控件的位置:', rect);
+            // console.log(button.style.top)
+            button.innerHTML = '⬆️';
+
+            button.onclick = function() {
+                var controlsDiv = document.querySelector('.leaflet-control-custom');
+                const windowHeight = window.innerHeight;
+                const controlsHeight = controlsDiv.offsetHeight;
+                if (controlsDiv.style.top === '50px'||controlsDiv.style.top === '') {
+                    controlsDiv.style.top = -controlsHeight+'px';// Adjust based on your actual controls height
+                    button.innerHTML = '⬇️';
+                    // console.log(controlsHeight)
+                } else {
+                    controlsDiv.style.top = '50px';
+                    button.innerHTML = '⬆️';
+                }
+            };
+            return button;
+        };
+        toggleControl.addTo(map);
+        allControls.push(toggleControl)
+
+        // var controlInstance = control.addTo(map);
+
+        // Toggle button for collapsing control panel
+        // var toggle = document.getElementById('toggle');
+
+
+        var expandControl = L.control({position: 'bottomleft'});
+
+        expandControl.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'leaflet-control-expand');
+            div.innerHTML = '<button id="expandBtn" style="background: #fff; border: none; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,0.3); padding: 8px 15px; cursor: pointer;">Expand</button>';
+            return div;
+        };
+
+
+        expandControl.addTo(map);
+        allControls.push(expandControl)
+        var mapElement = document.getElementById('map-container');
+        var expandBtn = document.getElementById('expandBtn');
+
+        expandBtn.onclick = function() {
+            if (mapElement.classList.contains('fullscreen')) {
+                mapElement.classList.remove('fullscreen');
+                expandBtn.textContent = 'Expand';
+            } else {
+                mapElement.classList.add('fullscreen');
+                expandBtn.textContent = 'Shrink';
+            }
+            map.invalidateSize(); // Leaflet needs to adjust to new container size
+        };
+
+        // Listen for escape key to shrink map if in fullscreen
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape" && mapElement.classList.contains('fullscreen')) {
+                mapElement.classList.remove('fullscreen');
+                expandBtn.textContent = 'Expand';
+                map.invalidateSize(); // Adjust map after resizing
+            }
+        });
         try {
             map.fitBounds(window.geoJsonLayer.getBounds());
         } catch (error) {
@@ -438,13 +774,17 @@
 
     }
 
-    var map = L.map('map-container').setView([0, 0], 2);
+    var map = L.map('map-container', {
+        doubleClickZoom: false,
+        zoomControl: false // Disable the zoom control
+    }).setView([48.145, 11.550], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
         opacity: 0.3  // 设置透明度为50%
     }).addTo(map);
     // 更新地图数据并自动缩放以适应所有元素
     // updateMapDataAndFitBounds(map, newPolygons);
 
+    // updateMapDataAndFitBounds(map,geojsons)
 
 
     var messages=[]
@@ -514,7 +854,7 @@ If user ask you to draw a diagram, please always use the true variable in previo
         // console.log('Received message:', data);
         if ("data" in data){
 
-            console.log(map_button_dict)
+            // console.log(map_button_dict)
             messages.push(...data.data)
             const elements = document.querySelectorAll('.message-text.response');
 
@@ -571,7 +911,8 @@ If user ask you to draw a diagram, please always use the true variable in previo
         }
         else if("map" in data) {
             //
-            updateMapDataAndFitBounds( map,data.map);
+            updateMapDataAndFitBounds( map,data.map,data['target_label']);
+            console.log(data['target_label'])
             add_map_button(data.map,data['index'])
             //     document.getElementById('map-container').innerHTML=data.map
         }
