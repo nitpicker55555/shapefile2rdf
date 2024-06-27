@@ -106,6 +106,17 @@
             margin: 0 !important;    /* No margin */
             padding: 0 !important;   /* No padding */
         }
+        .custom-cluster-icon {
+            border-radius: 50%;
+            color: white;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -2807,8 +2818,20 @@
 
     ]
     var allControls = [];
+    function createCustomClusterIcon(cluster) {
+        var childMarkers = cluster.getAllChildMarkers();
+        var color = childMarkers[0].options.color; // 读取自定义颜色属性
+        return L.divIcon({
+            html: '<div class="custom-cluster-icon" style="background-color:' + color + ';">' + cluster.getChildCount() + '</div>',
+            className: 'custom-cluster',
+            iconSize: [40, 40]
+        });
+    }
     // 示例列表
-    var markers = L.markerClusterGroup();
+    var markers = L.markerClusterGroup({
+        iconCreateFunction: createCustomClusterIcon
+    });
+
 
 
     function updateMapDataAndFitBounds(map,geojson,target_labels=[]){
@@ -2958,6 +2981,7 @@
                         };
 
                         labels[label].button.style.backgroundColor = color;
+
                         labels[label].button.textContent = target_labels.includes(label) ? label + " (target)" : label;
                         labels[label].button.onclick = function() {
                             var btn = labels[label].button;
@@ -3041,9 +3065,11 @@
             </div>
         `,
                                         iconSize: [20, 20]
-                                    })
+                                    }),
+                                    color: color // 将颜色作为自定义属性附加到标记上
                                 })
-                                layerGroup.addLayer(layer_target)
+                                markers.addLayer(layer_target)
+                                layerGroup.addLayer(markers)
                                 layer_target.bindPopup(label_belong);
 
                             }
