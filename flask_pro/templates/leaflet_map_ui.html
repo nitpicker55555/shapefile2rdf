@@ -2818,23 +2818,25 @@
 
     ]
     var allControls = [];
-    function createCustomClusterIcon(cluster) {
-        var childMarkers = cluster.getAllChildMarkers();
-        var color = childMarkers[0].options.color; // 读取自定义颜色属性
-        return L.divIcon({
-            html: '<div class="custom-cluster-icon" style="background-color:' + color + ';">' + cluster.getChildCount() + '</div>',
-            className: 'custom-cluster',
-            iconSize: [40, 40]
-        });
-    }
-    // 示例列表
-    var markers = L.markerClusterGroup({
-        iconCreateFunction: createCustomClusterIcon
-    });
+
 
 
 
     function updateMapDataAndFitBounds(map,geojson,target_labels=[]){
+        function createCustomClusterIcon(cluster) {
+            var childMarkers = cluster.getAllChildMarkers();
+            var color = childMarkers[0].options.color; // 读取自定义颜色属性
+            return L.divIcon({
+                html: '<div class="custom-cluster-icon" style="background-color:' + color + ';">' + cluster.getChildCount() + '</div>',
+                className: 'custom-cluster',
+                iconSize: [40, 40]
+            });
+        }
+        // 示例列表
+        var markers = L.markerClusterGroup({
+            iconCreateFunction: createCustomClusterIcon
+        });
+
         console.log(target_labels)
         if (window.geoJsonLayer) {
             window.geoJsonLayer.clearLayers(); // 移除之前的图层数据
@@ -3206,6 +3208,7 @@
     }
 
     // updateMapDataAndFitBounds(map,geojsons,target_labels)
+    updateMapDataAndFitBounds(map,geojsons,target_labels)
     updateMapDataAndFitBounds(map,geojsons,target_labels)
 </script>
 </body>
