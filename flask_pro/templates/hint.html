@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoQA User Experiment Introduction</title>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    .container {
+      height: 300vh; /* Ensure container covers the total height of all sections */
+      position: relative;
+      transition: transform 0.8s ease;
+    }
+    .section {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      position: relative;
+      background-color: #cccccc;
+
+    }
+    .section:nth-child(1) {
+      background-color: #f2f2f2;
+    }
+    .section:nth-child(2) {
+      background-color: #e6e6e6;
+    }
+    .section:nth-child(3) {
+      background-color: #cccccc;
+    }
+    h1 {
+      color: #333;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+    }
+    .scroll-hint {
+      position: absolute;
+      font-size: 18px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(255, 255, 255, 0) 100%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: scrollHintAnimation 2s linear infinite;
+    }
+    .scroll-hint.top {
+      top: 20px;
+    }
+    .scroll-hint.bottom {
+      bottom: 20px;
+    }
+    @keyframes scrollHintAnimation {
+      from { background-position: 0% 0%; }
+      to { background-position: 200% 0%; }
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="section" id="section1">
+    <h1>GeoQA User Experiment Introduction</h1>
+    <p>Interact with geographical information databases stored in multiple formats using natural language!</p>
+    <div class="scroll-hint bottom">Scroll down</div>
+  </div>
+  <div class="section" id="section2">
+    <div class="scroll-hint top">Scroll up</div>
+    <h1>Our Databases</h1>
+    <p>points: Contains point data such as restaurant points</p>
+    <p>lines: Contains various road data such as Theresienstrasse</p>
+    <p>land: Contains various land type data such as University</p>
+    <p>soil: Contains various soil composition data such as saline-alkali soil</p>
+    <p>buildings: Contains various building data such as monuments</p>
+    <div class="scroll-hint bottom">Scroll down</div>
+  </div>
+  <div class="section" id="section3">
+    <div class="scroll-hint top">Scroll up</div>
+    <h1>Explore More</h1>
+    <p>Discover the power of interacting with geographical data using GeoQA.</p>
+    <div class="scroll-hint bottom">Scroll down</div>
+
+  </div>
+  <div class="section" id="section4">
+    <p>Discover the power of interacting with geographical data using GeoQA.</p>
+    <div class="scroll-hint top">Scroll up</div>
+    <h1>Explore More</h1>
+  </div>
+  <div class="section" id="section5">
+    <p>Discover the power of interacting with geographical data using GeoQA.</p>
+    <div class="scroll-hint top">Scroll up</div>
+    <h1>Explore More</h1>
+  </div>
+</div>
+
+<script>
+  let currentSection = 0;
+  const sections = document.querySelectorAll('.section');
+  const totalSections = sections.length;
+  const container = document.getElementById('container');
+
+  window.addEventListener('wheel', (event) => {
+    if (event.deltaY > 0) {
+      // Scrolling down
+      if (currentSection < totalSections - 1) {
+        currentSection++;
+        scrollToSection();
+      }
+    } else {
+      // Scrolling up
+      if (currentSection > 0) {
+        currentSection--;
+        scrollToSection();
+      }
+    }
+  });
+
+  function scrollToSection() {
+    container.style.transform = `translateY(-${currentSection * 100}vh)`;
+  }
+
+  scrollToSection(); // Initial call to set the first section
+</script>
+</body>
+</html>
