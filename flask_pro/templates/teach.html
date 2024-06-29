@@ -5,7 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Guide</title>
   <style>
+    .input-button-container {
+      /*position: fixed; !* 使用固定定位 *!*/
+      bottom: 20px; /* 距离窗口底部20px */
+      left: 20px; /* 距离窗口左边50px */
+      right: 20px; /* 距离窗口右边50px */
 
+      display: flex; /* 使用flex布局 */
+      justify-content: space-between; /* 使输入框和按钮分布在两端 */
+      align-items: center; /* 垂直居中对齐 */
+    }
   </style>
   <link rel="stylesheet" href="teach.css">
   <script src="teach.js"></script>
@@ -16,8 +25,13 @@
 <!-- Example elements -->
 <button id="element1" style="margin-top: 100px;">Element 1</button>
 <button id="element2" style="margin-top: 50px;">Element 2</button>
-<textarea type="text" id="inputField" class="your-button-class" placeholder="Input question..."></textarea>
+<div class="input-button-container">
 
+
+  <textarea type="text" id="inputField" class="your-button-class" placeholder="Input question..."></textarea>
+<!--  <button id="confirmButton" class="your-button-class">submit</button>-->
+<!--  <button id="debug_mode" class="your-button-class">debug</button>-->
+</div>
 <!-- Overlay -->
 <div id="overlay" class="overlay"></div>
 
@@ -40,7 +54,7 @@
       text: "Here is the second element",
       xpath: "//button[@id='element2']",
       command: function() { console.log("Command 2 executed"); },
-      goal: function() { return new Promise(resolve => setTimeout(() => resolve(true), 2000)); },
+      // goal: function() { return new Promise(resolve => setTimeout(() => resolve(true), 2000)); },
       button_name: "Continue"
     },
     {

@@ -17,7 +17,7 @@ function teach_assistent(tips){
             // Add highlight class to element
             element.classList.add('highlight');
 
-            tooltipText.textContent = tip.text;
+            tooltipText.innerHTML = tip.text;
             tooltipButton.textContent = tip.button_name || "Got it";
 
             // Temporarily show the tooltip to get the correct height
@@ -27,8 +27,20 @@ function teach_assistent(tips){
 
             // Get the correct position after rendering
             const rect = element.getBoundingClientRect();
-            tooltip.style.top = `${rect.top + window.scrollY - tooltip.offsetHeight - 20}px`; // Adjusted to show above the element
+            let tooltipTop = rect.top + window.scrollY - tooltip.offsetHeight - 20;
+            if (tooltipTop < 0) {
+                tooltip.style.top = '0px';
+            } else {
+                tooltip.style.top = `${tooltipTop}px`;
+            }
             tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
+
+// 获取元素的z-index
+
+
+            // console.log('The z-index of the element is: ' + window.getComputedStyle(element).zIndex);
+            // console.log('The z-index of the tool is: ' + window.getComputedStyle(tooltip).zIndex);
+            // console.log('The z-index of the overlay is: ' + window.getComputedStyle(overlay).zIndex);
         }
 
 
