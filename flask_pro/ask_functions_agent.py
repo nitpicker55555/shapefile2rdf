@@ -4,55 +4,56 @@ import geo_functions
 from chat_py import *
 from levenshtein import are_strings_similar
 import json, re
-# from rag_model import calculate_similarity
-# from rag_model_openai import calculate_similarity_openai
+from rag_model import calculate_similarity
+from rag_model_openai import calculate_similarity_openai
 from geo_functions import *
 import spacy
 from bounding_box import find_boundbox
-
+from rag_chroma import calculate_similarity_chroma
 # 加载spaCy的英语模型
-# nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_sm')
 global_paring_dict = {}
 
 new_dict_num = 0
 file_path = 'global_paring_dict.jsonl'
-fclass_dict={}
-name_dict={}
-# for key ,value in col_name_mapping_dict.items():
-#     if key not in fclass_dict:
-#         fclass_dict[key]=ids_of_attribute(key)
-#     if key not in name_dict:
-#         name_dict[key]=ids_of_attribute(key,'name')
-# if os.path.exists(file_path):
-#     with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
-#         # 逐行读取并处理每一行
-#         for line in file:
-#             current_dict = json.loads(line)
-#             key = next(iter(current_dict))  # 获取当前字典的键
-#             # 如果键不存在于全局字典中，直接添加
-#             if key not in global_paring_dict:
-#                 global_paring_dict[key] = current_dict[key]
-#             else:
-#                 # 如果键已存在，更新该键对应的字典
-#                 global_paring_dict[key].update(current_dict[key])
-#     for key, sub_dict in global_paring_dict.items():
-#         for sub_key, value in sub_dict.items():
-#             print(f'{key} -> {sub_key}')
+fclass_dict = {}
+name_dict = {}
+for key ,value in col_name_mapping_dict.items():
+    if key not in fclass_dict:
+        fclass_dict[key]=ids_of_attribute(key)
+    if key not in name_dict:
+        name_dict[key]=ids_of_attribute(key,'name')
+if os.path.exists(file_path):
+    with open('global_paring_dict.jsonl', 'r', encoding='utf-8') as file:
+        # 逐行读取并处理每一行
+        for line in file:
+            current_dict = json.loads(line)
+            key = next(iter(current_dict))  # 获取当前字典的键
+            # 如果键不存在于全局字典中，直接添加
+            if key not in global_paring_dict:
+                global_paring_dict[key] = current_dict[key]
+            else:
+                # 如果键已存在，更新该键对应的字典
+                global_paring_dict[key].update(current_dict[key])
+    for key, sub_dict in global_paring_dict.items():
+        for sub_key, value in sub_dict.items():
+            print(f'{key} -> {sub_key}')
 #
 fclass_dict_4_similarity = {}
 name_dict_4_similarity = {}
 all_fclass_set = set()
-all_name_set = set()
+# all_name_set = set()
 for i in col_name_mapping_dict:
     # i is table name
-    if i!='soil' and i!='buildings':
+    if i != 'soil' and i != 'buildings':
         each_set = ids_of_attribute(i)
         fclass_dict_4_similarity[i] = each_set
         all_fclass_set.update(each_set)
-    if i!='soil' :
-        each_set = ids_of_attribute(i,'name')
+    if i != 'soil':
+        each_set = ids_of_attribute(i, 'name')
         name_dict_4_similarity[i] = each_set
-        all_name_set.update(each_set)
+        # all_name_set.update(each_set)
+
 
 # print(all_fclass_set)
 def limit_total_words(lst, max_length=10000):
@@ -75,7 +76,6 @@ def error_test():
 
 
 def is_string_in_list_partial(string, lst):
-
     item_list = set()
 
     for item in lst:
@@ -98,7 +98,7 @@ def describe_label(query, given_list, table_name, messages=None):
     {
     'result':statement
     }
-    
+
     """ % given_list
     if messages == None:
         messages = []
@@ -155,6 +155,8 @@ def string_process(s):
     if processed.startswith(':'):
         processed = processed[1:]
     return processed
+
+
 def has_middle_space(s: str) -> bool:
     # 去掉字符串两端的空格
     stripped_s = s.strip()
@@ -163,6 +165,7 @@ def has_middle_space(s: str) -> bool:
         return False
     # 检查字符串中间部分是否有空格
     return ' ' in stripped_s[1:-1]
+
 
 def details_pick_chatgpt(query, given_list, table_name, messages=None):
     # given_list = limit_total_words(given_list)
@@ -176,15 +179,15 @@ def details_pick_chatgpt(query, given_list, table_name, messages=None):
     {
     "judgment":False
     }
-    
+
     Example1: 
     "is "Fast ausschließlich (flacher) Gley über Niedermoor aus (flachen) mineralischen Ablagerungen" "good for agriculture"?"
-    
+
     Your response:
     {
     "judgment":True
     }
-    
+
     """
 
     reversed_query = vice_versa(query)
@@ -220,21 +223,23 @@ def details_pick_chatgpt(query, given_list, table_name, messages=None):
         return new_paring_dict[query]
     raise Exception('no relevant item found for: ' + query)
 
+
 def judge_num_compare(type):
-        if 'higher' in str(type) or 'lower' in str(type) or 'bigger' in str(type)or 'smaller' in str(type):
-            if 'higher' in str(type) or 'bigger' in str(type):
-                return abs(extract_numbers(type))
-            else:
-                return -1*abs(extract_numbers(type))
+    if 'higher' in str(type) or 'lower' in str(type) or 'bigger' in str(type) or 'smaller' in str(type):
+        if 'higher' in str(type) or 'bigger' in str(type):
+            return abs(extract_numbers(type))
         else:
-            return False
-def judge_col_name(statement_split,table_name):
+            return -1 * abs(extract_numbers(type))
+    else:
+        return False
+
+
+def judge_col_name(statement_split, table_name):
     def judge_area(type):
         if 'large' in str(type) or 'small' in str(type) or 'big' in str(type):
             return True
         else:
             return False
-
 
     if 'name' in statement_split or 'call' in statement_split:
         return 'name'
@@ -242,7 +247,7 @@ def judge_col_name(statement_split,table_name):
         return 'area_num#'
 
     else:
-        col_name_list=get_column_names(table_name)
+        col_name_list = get_column_names(table_name)
         for i in col_name_list:
             if i in statement_split.split():
                 return i
@@ -286,12 +291,8 @@ def details_pick(query, given_list, table_name, messages=None):
             raise Exception('no relevant item found for: ' + query)
 
 
-
-
-
 def extract_numbers(s):
     numbers = re.findall(r'\d+', s)
-
 
     a = 1
 
@@ -302,6 +303,8 @@ def extract_numbers(s):
     else:
 
         return 1 * a  # 如果没有显式说明最大数值，则为最大的
+
+
 def extract_and_reformat_area_words(input_string):
     # 定义要查找的大小描述词
     size_words = ['large', 'small', 'little', 'largest', 'smallest', 'biggest', 'littlest']
@@ -331,30 +334,36 @@ def extract_and_reformat_area_words(input_string):
     else:
         return input_string
 
+
 def remove_substrings_from_text(text, substrings):
     for substring in substrings:
         # 使用正则表达式匹配确切的子字符串，并替换为空字符串
         pattern = r'\b' + re.escape(substring) + r'\b'
         text = re.sub(pattern, '', text)
     return text
+
+
 def compare_num(lst, num):
     def dynamic_compare(a, b, sign):
         if sign > 0:
             return a > b
         else:
             return a < b
-    result_list=[]
+
+    result_list = []
     for i in lst:
         if str(i).isnumeric():
-            if dynamic_compare(int(i),abs(num),num):
+            if dynamic_compare(int(i), abs(num), num):
                 result_list.append(i)
 
     return result_list
-def pick_match(query_feature_ori, table_name,verbose=False):
+
+
+def pick_match(query_feature_ori, table_name, verbose=False):
     # for query_feature_ori['entity_text']==table_name,
     # for query_feature_ori['entity_text']!=table_name, add query_feature_ori['entity_text'] to query_feature_ori['non_spatial_modify_statement']
     try:
-        query_feature=query_feature_ori.strip()
+        query_feature = query_feature_ori.strip()
     except Exception as e:
         print(query_feature_ori)
         raise Exception(e)
@@ -364,33 +373,33 @@ def pick_match(query_feature_ori, table_name,verbose=False):
         query_list = query_feature.split(" and ")
     else:
         query_list = [query_feature]
-    match_list = {'non_area_col': {'fclass':set(),'name':set()}, 'area_num': None}
+    match_list = {'non_area_col': {'fclass': set(), 'name': set()}, 'area_num': None}
     for query in query_list:
         col_name_list = ['name', 'fclass']
         if query != '':
-            col_name = judge_col_name(query,table_name)
+            col_name = judge_col_name(query, table_name)
             if '#' not in col_name:  # fclass和name的粗选, 沒有#代表不是面积比较
                 if col_name not in match_list['non_area_col']:
-                    match_list['non_area_col'][col_name]=set()
+                    match_list['non_area_col'][col_name] = set()
                 if are_strings_similar(query, table_name):
-                    match_list['non_area_col'][col_name].add('all') #如果query和table名相似则返回所有
+                    match_list['non_area_col'][col_name].add('all')  # 如果query和table名相似则返回所有
                     # print(match_list)
                     continue
 
                 given_list = ids_of_attribute(table_name, col_name)
-                query=remove_substrings_from_text(query,['named','is','which','where','has','call','called',table_name,col_name]).strip()
+                query = remove_substrings_from_text(query, ['named', 'is', 'which', 'where', 'has', 'call', 'called',
+                                                            table_name, col_name]).strip()
 
-                num_compare=judge_num_compare(query)
+                num_compare = judge_num_compare(query)
                 if num_compare:
-                    compared_list=set(compare_num(given_list,num_compare))
-                    print(col_name,'Satisfying the conditions:',compared_list)
+                    compared_list = set(compare_num(given_list, num_compare))
+                    print(col_name, 'Satisfying the conditions:', compared_list)
                     match_list['non_area_col'][col_name].update(compared_list)
                 else:
 
-
                     partial_similar = is_string_in_list_partial(query, given_list)
                     if verbose:
-                        print(query,table_name,col_name,partial_similar)
+                        print(query, table_name, col_name, partial_similar)
 
                     if len(partial_similar) >= 1:
                         match_list['non_area_col'][col_name].update(set(partial_similar))
@@ -404,12 +413,14 @@ def pick_match(query_feature_ori, table_name,verbose=False):
                         find_pre_matched = {}
                         if table_name in global_paring_dict:
                             if list(global_paring_dict[table_name].keys()) != []:
-                                find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()), query)
+                                find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()),
+                                                                        query)
 
                         if find_pre_matched != {}:
                             print(f'find_pre_matched for {query}:', find_pre_matched)
                             match_list_key = list(find_pre_matched.keys())[0]
-                            match_list['non_area_col'][col_name].update(set(global_paring_dict[table_name][match_list_key]))
+                            match_list['non_area_col'][col_name].update(
+                                set(global_paring_dict[table_name][match_list_key]))
                             # return match_list
                         else:
                             match_dict = calculate_similarity(given_list, query)
@@ -437,27 +448,29 @@ def pick_match(query_feature_ori, table_name,verbose=False):
 
             else:  # area relate query
 
-                match_list[col_name.replace('#','')] = extract_numbers(query)
+                match_list[col_name.replace('#', '')] = extract_numbers(query)
 
                 continue
 
     if match_list == []:
         raise Exception('no relevant item found for: ' + query_feature + ' in given list.')
 
-    if verbose:print(match_list, query_feature, table_name)
+    if verbose: print(match_list, query_feature, table_name)
     return match_list
     # messages.append(message_template('assistant',result))
+
+
 def print_process(*args):
     for content in args:
         # print(type(content))
-        if isinstance(content,dict):
+        if isinstance(content, dict):
             if 'id_list' in content:
-                if len(content['id_list'])!=0:
+                if len(content['id_list']) != 0:
                     print_content = 'id_list length '
-                    print_content+=str(len(content['id_list']))
-                    print_content+=',id_list print samples:'
-                    if len(content['id_list'])>=3:
-                        print_content+=str(random.sample(list(content['id_list'].items()), 2))
+                    print_content += str(len(content['id_list']))
+                    print_content += ',id_list print samples:'
+                    if len(content['id_list']) >= 3:
+                        print_content += str(random.sample(list(content['id_list'].items()), 2))
                     else:
                         print_content += str(random.sample(list(content['id_list'].items()), len(content['id_list'])))
                     print(print_content)
@@ -470,15 +483,15 @@ def print_process(*args):
             # pass
             print(content)
 
-def judge_geo_relation(query, messages=None):
-    sample_list=['in','contains','intersects']
-    if query in sample_list:
-        return {'type':query,'num':0}
-    if 'under' in query:
-        return {'type':'contains','num':0}
-    if 'on' in query:
-        return {'type':'in','num':0}
 
+def judge_geo_relation(query, messages=None):
+    sample_list = ['in', 'contains', 'intersects']
+    if query in sample_list:
+        return {'type': query, 'num': 0}
+    if 'under' in query:
+        return {'type': 'contains', 'num': 0}
+    if 'on' in query:
+        return {'type': 'in', 'num': 0}
 
     if messages == None:
         messages = []
@@ -637,6 +650,7 @@ like: residential area which has buildings.
     json_result = json.loads(result)
     return json_result
 
+
 def remove_non_spatial_modify_statements(data):
     for entity in data.get("entities", []):
         if "non_spatial_modify_statement" in entity:
@@ -644,7 +658,7 @@ def remove_non_spatial_modify_statements(data):
     return data
 
 
-def id_list_of_entity(query,verbose=False):
+def id_list_of_entity(query, verbose=False):
     def find_keys_by_values(d, elements):
         result = {}
         for key, values in d.items():
@@ -662,47 +676,49 @@ def id_list_of_entity(query,verbose=False):
                 else:
                     result[key].update(subdict)  # 使用 update 方法更新字典
         return result
+
     """
     graph{num} = judge_type(multi_result['entities'][{num}])["database"]
     type{num} = pick_match(multi_result['entities'][{num}], graph{num})
     :param query:
     :return:
     """
-    print(query)
+    # print(query)
+    for word in query.split():
+        if word in similar_table_name_dict:
+            query=query.replace(word, similar_table_name_dict[word])
     table_str = judge_table(query)
-    print(table_str)
-    if table_str==None:
+    print("table: ",table_str)
+    if table_str == None:
 
         match_list = set(calculate_similarity(all_fclass_set, query).keys())
-        if len(match_list)!=0:
-            table_fclass_dicts=find_keys_by_values(fclass_dict_4_similarity,match_list)
-            all_id_list=[]
-            for table_ ,fclass_list in table_fclass_dicts.items():
-                each_id_list=ids_of_type(table_,{'non_area_col': {'fclass':set(fclass_list),'name':set()}, 'area_num': None})
+        if len(match_list) != 0:
+            print('fclass match')
+            table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
+            all_id_list = []
+            for table_, fclass_list in table_fclass_dicts.items():
+                each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
+                                                    'area_num': None})
                 all_id_list.append(each_id_list)
             return merge_dicts(all_id_list)
 
+        match_list = calculate_similarity_chroma(query)
+        if len(match_list) != 0:
+            print('name match')
 
-        match_list = set(calculate_similarity(all_name_set, query).keys())
-        if len(match_list)!=0:
-            table_name_dicts=find_keys_by_values(name_dict_4_similarity,match_list)
-            all_id_list=[]
-            for table_ ,name_list in table_name_dicts.items():
-                each_id_list=ids_of_type(table_,{'non_area_col': {'fclass':set(),'name':set(name_list)}, 'area_num': None})
+            table_name_dicts = find_keys_by_values(name_dict_4_similarity, match_list)
+            all_id_list = []
+            for table_, name_list in table_name_dicts.items():
+                each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
+                                                    'area_num': None})
                 all_id_list.append(each_id_list)
             return merge_dicts(all_id_list)
 
-
-
-
-
-
-
-        table_str=judge_table_gpt(query)['database']
+        table_str = judge_table_gpt(query)['database']
     else:
-        table_str=table_str['database']
-    query=extract_and_reformat_area_words(query)
-    type_dict = pick_match(query, table_str,verbose)
+        table_str = table_str['database']
+    query = extract_and_reformat_area_words(query)
+    type_dict = pick_match(query, table_str, verbose)
     ids_list = ids_of_type(table_str, type_dict)
     return ids_list
 
@@ -718,23 +734,24 @@ def find_negation(text):
     return False, None
 
 
-def judge_bounding_box(query,filter=False, messages=None):
+def judge_bounding_box(query, filter=False, messages=None):
     if messages == None:
         messages = []
-    new_query=None
+    new_query = None
     # if 'munich ismaning' in query.lower():
     #     return 'munich ismaning'
-    locations=['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
-         'Oberschleissheim','Hadern']
-    final_address=[]
+    locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
+                 'Oberschleissheim', 'Hadern']
+    final_address = []
     for address in locations:
         if address.lower() in query.lower():
             final_address.append(address)
     if filter:
-        new_query=process_query(str({'location name':final_address,'query':query}))
+        new_query = process_query(str({'location name': final_address, 'query': query}))
     return final_address, new_query
 
     # return final_address
+
 def get_label_from_id(id_list):
     return {key[:list(key).index('_', list(key).index('_') + 1)] for key in id_list.keys() if key.count('_') >= 2}
 
@@ -764,21 +781,22 @@ def geo_filter(query,id_list_subject, id_list_object):
     return geo_result
 
 
+
 def judge_object_subject(query, geo_relation_dict, messages=None):
     print('query for judge_object_subject:', query)
 
     if messages == None:
         messages = []
     ask_prompt_geo_relation = """
-    
+
     Please response in json format: {'entity_text':entity_text, 
     'non_spatial_modify_statement':non_spatial_modify_statement}. 
-    
+
     For example, when I ask, 'I want to know the 
     residential area near the swamp,' you should respond with: {'entity_text':'residential area', 
     'non_spatial_modify_statement':'swamp'}. Similarly, for 'I want to know the buildings around 100m of forests, 
     ' the response should be:  {'entity_text':'buildings', 'non_spatial_modify_statement':'forests'}, 
-    
+
     If there is no non_spatial_modify_statement, non_spatial_modify_statement should be set as None, example: 
     for 'the largest 5 forest', non_spatial_modify_statement is None. """
     ask_prompt_adj = """
@@ -843,11 +861,10 @@ def judge_table(query, messages=None):
     if messages == None:
         messages = []
     # print(query.lower(),"query.lower()")
-    for i in col_name_mapping_dict:
+    for i in similar_table_name_dict:
         if i in query.lower().split():
-            return {'database':i}
-    if 'building' in query.lower().split():
-        return {'database':'buildings'}
+            return {'database':similar_table_name_dict[i]}
+
     for pp in soil_list:
         if pp in query.lower():
             return {'database': 'soil'}
@@ -866,7 +883,6 @@ def judge_table(query, messages=None):
     # if 'soil' in query.lower():
     #     return {'database': 'soil'}
     return None
-
 
 
 def judge_table_gpt(query, messages=None):
@@ -902,7 +918,6 @@ def judge_table_gpt(query, messages=None):
         raise Exception('no relevant item found for: ' + str(query) + ' in given list.')
 
 
-
 def mission_gpt(query, messages=None):
     print(query)
     if isinstance(query, dict):
@@ -913,7 +928,7 @@ def mission_gpt(query, messages=None):
         messages = []
 
     ask_prompt = """
-    
+
 You have following tools available to answer user queries, please only write code, do not write code comments and other words:
 I have three kinds of data:buildings, land (different kinds of area), soil.
 1.id_list_of_entity(description of entity):
@@ -941,6 +956,7 @@ Please always set an output variable for each function you called. Variable in h
     result = chat_single(messages, '')
     return result
 
+
 def general_gpt(query, messages=None):
     print(query)
     if isinstance(query, dict):
@@ -951,7 +967,7 @@ def general_gpt(query, messages=None):
         messages = []
 
     ask_prompt = """
-    
+
     """
     if messages == None:
         messages = []
@@ -975,7 +991,7 @@ def chart_agent(query, messages=None):
     If the variable has string 'explain'， it means this variable is a occur frequency dict, its key name is string name,
     key value is number.
     otherwise, the variable is a dict with geo wkt as its key value, still string in its key name.
-    
+
     Please notice, always use the variable itself to draw diagram but not assume fake values.
     """
     if messages == None:
@@ -983,8 +999,9 @@ def chart_agent(query, messages=None):
 
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', str(query)))
-    result = chat_single(messages,'','gpt-4o-2024-05-13')
+    result = chat_single(messages, '', 'gpt-4o-2024-05-13')
     return result
+
 
 def routing_agent(query, messages=None):
     if query == None:
@@ -1009,50 +1026,53 @@ output as json format like:
 
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', str(query)))
-    result = chat_single(messages,'json')
+    result = chat_single(messages, 'json')
 
     return json.loads(result)['function']
 
 
 def set_bounding_box(region_name, query=None):
-    if region_name=='':
-        geo_functions.globals_dict={}
+    if region_name == '':
+        geo_functions.globals_dict = {}
         return {'geo_map': ''}
     locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
-                 'Oberschleissheim','Hadern']
+                 'Oberschleissheim', 'Hadern']
     if region_name != None:
 
-        location_name=''
+        location_name = ''
         for i in locations:
             if i.lower() in region_name.lower():
+                location_name = i
 
-                location_name=i
-
-        if len(region_name.lower().replace(location_name.lower(),'').strip())!=0: #除了地名外还有额外修饰
-                query=region_name
-                region_name=location_name
+        if len(region_name.lower().replace(location_name.lower(), '').strip()) != 0:  # 除了地名外还有额外修饰
+            query = region_name
+            region_name = location_name
         if region_name not in locations:
-            region_name="Munich Maxvorstadt"
+            region_name = "Munich Maxvorstadt"
         geo_functions.globals_dict["bounding_box_region_name"] = region_name
-        geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict['bounding_wkb'], response_str = find_boundbox(region_name)
+        geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict[
+            'bounding_wkb'], response_str = find_boundbox(region_name)
 
-        if query!=None:
-
-            modify_query={
-                'Original_bounding_box_of_'+region_name:str(geo_functions.globals_dict['bounding_coordinates']),
-                          "query":query
-                          }
-            modified_box=process_boundingbox(str(modify_query))
-            geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict['bounding_wkb'], response_str = find_boundbox(modified_box,'changed')
+        if query != None:
+            modify_query = {
+                'Original_bounding_box_of_' + region_name: str(geo_functions.globals_dict['bounding_coordinates']),
+                "query": query
+            }
+            modified_box = process_boundingbox(str(modify_query))
+            geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict[
+                'bounding_wkb'], response_str = find_boundbox(modified_box, 'changed')
             # print(wkb.loads(bytes.fromhex(geo_functions.globals_dict['bounding_wkb'])))
 
         geo_dict = {
-            geo_functions.globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((geo_functions.globals_dict['bounding_wkb']))))}
-   
+            geo_functions.globals_dict["bounding_box_region_name"]: (
+                wkb.loads(bytes.fromhex((geo_functions.globals_dict['bounding_wkb']))))}
+
         return {'geo_map': geo_dict}
     else:
         return None
-def process_boundingbox(query,messages=None):
+
+
+def process_boundingbox(query, messages=None):
     if query == None:
         return None
     if messages == None:
@@ -1061,7 +1081,7 @@ def process_boundingbox(query,messages=None):
     ask_prompt = """You will receive an original bounding box coordinate list and an address. Based on the 
     directional modifier (e.g., south, west, east, north, center) mentioned in the query for this address, you need to adjust 
     the bounding box accordingly.
-    
+
      The output should be in JSON format as follows: 
 
 json
@@ -1078,7 +1098,8 @@ json
 
     return json.loads(result)['boundingbox']
 
-def process_query(query,messages=None):
+
+def process_query(query, messages=None):
     if query == None:
         return None
     if messages == None:
@@ -1109,146 +1130,3 @@ def process_query(query,messages=None):
     result = chat_single(messages, 'json', 'gpt-4o-2024-05-13')
 
     return json.loads(result)['query_filtered']
-#ge_object_subject_multi('I want to know buildings close to largest 5 park ')
-# a={'clothes', 'pitch', 'playground', 'scrub', 'newsagent', 'mobile_phone_shop', 'biergarten', 'kindergarten', 'track', 'bank', 'shelter', 'university', 'bicycle_rental', 'meadow', 'public_building', 'allotments', 'castle', 'toilet', 'parking_multistorey', 'parking', 'tourist_info', 'hostel', 'forest', 'bus_stop', 'butcher', 'memorial', 'museum', 'jeweller', 'restaurant', 'bus_station', 'embassy', 'graveyard', 'parking_underground', 'fast_food', 'water_works', 'furniture_shop', 'retail', 'hospital', 'riverbank', 'kiosk', 'commercial', 'courthouse', 'park', 'theatre', 'attraction', 'tower', 'grass', 'helipad', 'bicycle_shop', 'school', 'cemetery', 'water', 'cafe', 'fountain', 'fire_station', 'recreation_ground', 'bar', 'taxi', 'arts_centre', 'industrial', 'college', 'bookshop', 'library', 'monument', 'comms_tower', 'bakery', 'supermarket', 'chemist', 'hairdresser', 'police', 'artwork', 'convenience', 'parking_bicycle', 'hotel', 'residential'}
-# b={'entity_text': 'land', 'non_spatial_modify_statement': 'name technische universität münchen,largest 3,education'}
-# b={'entity_text': 'buildings', 'non_spatial_modify_statement': 'name Hauptbahnhof'}
-# print(pick_match(b,'buildings'))
-# print(general_gpt('I want to know forest in residential area'))
-# query='I want to know commercial buildings in residential area which around 10m of hospital in north of Munich'
-# address_list,query_without_address=judge_bounding_box(query)
-# entity_suggest=judge_object_subject_multi(query_without_address)
-# suggest_info=f"#address_list:{address_list},entity_suggest:{(entity_suggest)}"
-# set_bounding_box('Oberschleissheim')
-# id1=id_list_of_entity('land which named See')
-# print(id_list_explain(id1, 'area'))
-# print(general_gpt(query+suggest_info))
-# a={'entity_text': 'soil', 'non_spatial_modify_statement': ''}
-# a={'entity_text': 'land', 'non_spatial_modify_statement': 'name technische'}
-# print(pick_match(a,'land'))
-# print(is_string_in_list_partial('technische', ids_of_attribute('land', 'name')))
-# print(judge_object_subject_multi('residential area close to park'))
-# a=ids_of_attribute('buildings','name')
-# print(is_string_in_list_partial('Studentenwohnheim', a))
-# print(a)
-# pick_match('named see','land')
-# query="""
-# Previous code:*9+-
-# residential_area_ids = id_list_of_entity("residential area")
-# buildings_ids = id_list_of_entity("buildings")
-# result = geo_filter(buildings_ids, residential_area_ids, 'in')
-# User-query:
-# Can you explain me the residential area you filtered by geo?
-# """
-# # print(explain_agent(query))
-#
-# print(process_boundingbox('Munich:[48.178202, 48.248098, 11.625186, 11.804967],I want to know buildings in north Munich'))
-# a={ 'Waginger See', 'Tierarztpraxis Eberhard', 'Holnstainer Grundschule', 'Hölbinger Weiher', 'Triebenbach', 'Instanbul Kebap', 'Bayersoier Hof', 'Wertstoffhof Weichering', 'Kinderhaus "kleine Hände - große Taten"', 'Haus Thier', 'Lechstaustufe 8 - Sperber', 'Schlatt', 'SV Wangen', 'Realschule', 'Langbürgner See', 'Wallner Alm', 'Campus West Garching Forschungszentrum', 'Hub', 'Eichendorffplatz', 'Tennisclub am Brandl e.V.', 'Genrlinden (S)', 'Streetball-Platz', 'Reutbergstüberl', 'Café Konditorei Schwarz', 'Schlagenhofen', 'Hundeplatz', 'Am Saum', 'Der Haartreff', 'Sultan Imbiss', 'P Arztpraxis', 'Städtisches Adolf-Weber-Gymnasium', 'NAT Arena', 'SV Alzgern', 'Gasthof Steininger', 'Comfort Hotel', 'Wassertretanlage', 'EKC Rottach-Egern', 'Scherer', 'Hanneslabauer', 'Cobra', 'Beim Jäger', 'Bogenschießanlage', 'Hans Kurfer Möbelhaus', 'Wasserrad', 'Gewerbegebiet Feldlerchenstraße', 'Bräuhaus', 'Brummi-Bistro', 'Marka', 'Opel', 'Sudetendeutsches Museum', 'Tipbet', 'Alpenhäusl', 'Gasthaus Huber', 'Höhe', 'Kindertagesstätte Christkönig', 'Betzwiese', 'Mariahilfplatz', 'Karakuş Automobile', 'Kemmler Baustoffe & Fliesen', 'Amtsgericht Landsberg am Lech', 'Hotel Seehof'}
-# pick_match('land named see','land')
-# print(is_string_in_list_partial('see', a))
-# set_bounding_box("Munich")
-# print(id_list_of_entity('buildings'))
-# judge_bounding_box()
-# print(pick_match('land', 'land'))
-# print(judge_bounding_box('show all land in center of Oberschleissheim'))
-# set_bounding_box('Oberschleissheim')
-# id1=id_list_of_entity('land forest')
-# id2=id_list_of_entity('buildings')
-# aa=geo_filter('in',id2,id1)
-# print(aa.keys())
-# print(aa['subject'])
-# print(id_list_explain(aa['subject'],'name'))
-# id_list_see_water = id_list_of_entity("land which named see and is water")
-# print(id_list_see_water)
-# set_bounding_box('Oberschleissheim','show me land in North of Oberschleissheim')
-# forest_ids = id_list_of_entity("forest")
-# building_ids = id_list_of_entity("buildings")
-# geo_result = geo_filter('in', building_ids, forest_ids)
-# soil_ids = id_list_of_entity("soil")
-# geo_result_soil = geo_filter('under', soil_ids,geo_result['subject'])
-# print(geo_result_soil)
-# print(list(geo_result['subject']['id_list'])[:1000])
-# print(list(soil_ids['id_list'])[:1000])
-# set_bounding_box('Oberschleissheim','show me forest under buildings in north of Oberschleissheim')
-# id_list_forest = id_list_of_entity("forest")
-# id_list_buildings = id_list_of_entity("buildings")
-# geo_relation_result = geo_filter('under', id_list_forest, id_list_buildings)
-# id_list_soil = id_list_of_entity("soil")
-# geo_relation_soil_result = geo_filter('under', geo_relation_result['object'], id_list_soil)
-# id_list_explain_soil = id_list_explain(geo_relation_soil_result['object'], 'type')
-# print(geo_relation_soil_result)
-# type_list=ids_of_attribute('land')
-
-# id_list_lake_landuse = id_list_of_entity("land is lake")
-# print(set_bounding_box('Munich Moosach'))
-# farmland_ids=id_list_of_entity('land which is farmland')
-# potato_landuse_ids = id_list_of_entity("good for planting potatoes")
-# filtered_farmland_ids = geo_filter('on', potato_landuse_ids, farmland_ids)
-# set_bounding_box('Munich')
-
-# print(len(id_list_of_entity('buildings')['id_list']))
-
-# id1=id_list_of_entity('park')
-# id2=id_list_of_entity('buildings')
-# print(geo_filter('contains', id1, id2))
-
-# print(id_list_explain(id1,'area'))
-# set_bounding_box('Munich')
-# print(len(id_list_of_entity('buildings')['id_list']))
-# set_bounding_box("Munich")
-#
-# # Get the list of IDs for buildings
-# buildings_id_list = id_list_of_entity("buildings")
-#
-# # Get the list of IDs for greenery
-# greenery_id_list = id_list_of_entity("land which is park")
-#
-# # Filter buildings that are in greenery
-# filtered_result = geo_filter('in', buildings_id_list, greenery_id_list)
-#
-# # Extract the filtered buildings ID list
-# filtered_buildings_id_list = filtered_result['subject']
-# # Output the filtered buildings ID list
-#
-# print_process(filtered_buildings_id_list)
-# print(id_list_of_entity('largest hospital'))
-# print(general_gpt('"Could you explain doityourself area which name is Peter Khal intersects with parking_bicycle area which is good for living, and laundry area which is good for study intersects with doityourself area"'))
-# output = id_list_of_entity("parking area which named LMU")
-# print(output)
-# output = id_list_of_entity("buildings named Peter Khal")
-
-# output2 = id_list_of_entity("parking area named John Smith")
-# output3 = id_list_of_entity("supermarket area named TUM")
-# print(output)
-# print(judge_object_subject_multi(
-#     "I'd be interested in hearing school area which is good for study intersects with service area which name is Peter Khal, and laundry area which is good for study close service area, and taxi area which is good for study in 100m of laundry area"
-# ))
-# output = id_list_of_entity('allotments area')
-# output2 = id_list_of_entity('dentist area')
-# output3 = id_list_of_entity('clothes area')
-# print(output3)
-# id2=id_list_of_entity('land which is drinking_water')
-# print(id2)
-# print(ids_of_type('points', {'non_area_col': {'fclass': {'drinking_water'}, 'name': set()}, 'area_num': None}))
-# print(revers_mapping_dict)
-# print(ids_of_attribute('soil'))
-# print(get_column_names('points'))
-# print(ids_of_attribute('points','population'))
-# print(id_list_of_entity('lines which maxspeed is higher 30',True))
-
-# from shapely.geometry import Polygon, mapping
-# def polygons_to_geojson(polygons_dict):
-#     """
-#     将键值都为Polygon对象的字典转换为键值都为GeoJSON的字典。
-#
-#     :param polygons_dict: 一个键值都为Polygon对象的字典。
-#     :return: 一个键值都为GeoJSON格式的字典。
-#     """
-#     geojson_dict = {}
-#     for key, polygon in polygons_dict.items():
-#         # 将每个Polygon对象转换为GeoJSON格式的字典
-#         geojson_dict[key] = mapping(polygon)
-#     return geojson_dict
-# set_bounding_box('Munich Maxvorstadt')
-# print(polygons_to_geojson(id_list_of_entity('lines', True)['geo_map']))
-# print(ids_of_attribute('points','name'))

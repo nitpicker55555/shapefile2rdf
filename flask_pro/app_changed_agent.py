@@ -10,7 +10,8 @@ from shapely.geometry import Polygon, mapping
 import geo_functions
 from geo_functions import *
 from ask_functions_agent import *
-from flask import Flask, Response, stream_with_context, request, render_template, jsonify, session
+from flask import Flask, Response, stream_with_context, request, render_template, jsonify, session, redirect, url_for
+
 from werkzeug.utils import secure_filename
 import time
 from openai import OpenAI
@@ -41,7 +42,7 @@ app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
 
 # 示例的 Markdown 文本（包含图片链接）
 # ![示例图片](/static/data.png "这是一个示例图片")
-socketio = SocketIO(app, manage_session=True,async_mode='threading')
+socketio = SocketIO(app, manage_session=True, async_mode='threading')
 
 
 # async def async_task(news):
@@ -55,10 +56,41 @@ socketio = SocketIO(app, manage_session=True,async_mode='threading')
 #     pool.waitall()
 @socketio.on('join')
 def on_join(data):
-    session['sid'] =  request.sid
-    send_data(session['sid'],'sid',sid=session['sid'])
+    session['sid'] = request.sid
+    send_data(session['sid'], 'sid', sid=session['sid'])
 
     # print(session['username'])
+
+
+@app.route('/submit-qu', methods=['POST'])
+def submit_qu():
+    start_time = request.form.get('start_time')
+    end_time = time.time()
+    ip_address = request.remote_addr
+    answers = {key: value for key, value in request.form.items() if key != 'start_time'}
+
+    response_data = {
+        'ip_address': ip_address,
+        'start_time': start_time,
+        'end_time': end_time,
+        'answers': answers
+    }
+
+    with open('responses.jsonl', 'a') as f:
+        f.write(json.dumps(response_data) + '\n')
+
+    return redirect(url_for('thank_you'))
+
+
+@app.route('/thank_you')
+def thank_you():
+    return render_template('thank_you.html')
+
+
+@app.route('/question')
+def question():
+    return render_template('question.html')
+
 
 def complete_json(input_stream):
     """
@@ -283,7 +315,9 @@ def home():
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
     print("initial")
-    geo_functions.globals_dict = {'bounding_box_region_name': 'Munich', 'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291], 'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
+    geo_functions.globals_dict = {'bounding_box_region_name': 'Munich',
+                                  'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291],
+                                  'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
 
     geo_functions.global_id_attribute = {}
     geo_functions.global_id_geo = {}
@@ -293,7 +327,7 @@ def home():
     ip_ = request.headers.get('X-Real-IP')
     session['ip_'] = ip_
     session['uploaded_indication'] = None
-    session['sid']=''
+    session['sid'] = ''
     # if 'messages2' not in session:
     #     session['messages2'] = []
     #     session['messages2'].append({"role": "system",
@@ -339,22 +373,28 @@ def polygons_to_geojson(polygons_dict):
     return geojson_dict
 
 
-def send_data(data, mode="data",index="",sid=''):
+def send_data(data, mode="data", index="", sid=''):
+    target_labels = []
     if mode == "map":
-        if not isinstance(data,str) and len(data)!=0:
+
+        if not isinstance(data, str) and len(data) != 0:
+            if 'target_label' in data:
+                target_labels=data['target_label']
+                data.pop('target_label')
             data = polygons_to_geojson(data)
-    if sid !='':
-        socketio.emit('text', {mode: data,'index':index},room=sid)
+    if sid != '':
+        socketio.emit('text', {mode: data, 'index': index,'target_label':target_labels}, room=sid)
     else:
         print('no sid')
-def find_insert_comment_position(multiline_str, code_line,mode=False):
+
+
+def find_insert_comment_position(multiline_str, code_line, mode=False):
     lines = multiline_str
     comment_positions = []
     if mode:
-        normal_special_char='#><;'
+        normal_special_char = '#><;'
     else:
-        normal_special_char='#'
-
+        normal_special_char = '#'
 
     for i, line in enumerate(lines):
         if line.strip().startswith("#"):
@@ -364,10 +404,10 @@ def find_insert_comment_position(multiline_str, code_line,mode=False):
         if idx + 1 < len(comment_positions):
             next_comment_pos = comment_positions[idx + 1][0]
             if pos < lines.index(code_line) < next_comment_pos:
-                return comment.replace(normal_special_char,'').replace("'",'').strip()
+                return comment.replace(normal_special_char, '').replace("'", '').strip()
         else:
             if pos < lines.index(code_line):
-                return comment.replace(normal_special_char,'').replace("'",'').strip()
+                return comment.replace(normal_special_char, '').replace("'", '').strip()
 
     result = (-1, "")
     return result[1][4:].strip()
@@ -390,8 +430,6 @@ def submit():
         true_step = 0  # 总返回数
         stop_step = False  # 强制该轮停止
 
-
-
         while compelete != True and steps < 2 and whole_step <= 5 and stop_step != True:
             compelete = True
             # print(messages)
@@ -406,22 +444,22 @@ def submit():
 
                 code_list.append(data)
                 yield data
-                compelete=True
+                compelete = True
             else:
                 # bounding_box, new_message = judge_bounding_box(data)
                 # if bounding_box:
 
-                    # code_list.append(f"set_bounding_box('{bounding_box}','{data}')")
-                    # messages.append(message_template('user', new_message))
+                # code_list.append(f"set_bounding_box('{bounding_box}','{data}')")
+                # messages.append(message_template('user', new_message))
                 # else:
                 #     messages.append(message_template('user', data))
                 address_list, query_without_address = judge_bounding_box(data)
                 # entity_suggest = judge_object_subject_multi(query_without_address)
-                if address_list!=[]:
+                if address_list != []:
                     suggest_info = f"# address_in_query:'{address_list}'"
                 else:
-                    suggest_info=''
-                messages.append(message_template('user', data+suggest_info))
+                    suggest_info = ''
+                messages.append(message_template('user', data + suggest_info))
                 # print(messages)
 
                 chat_response = (chat_single(messages, "stream", 'gpt-4o-2024-05-13'))
@@ -434,7 +472,7 @@ def submit():
                 buffer = ""
                 line_buffer = ""
                 total_buffer = ""
-                total_char_list=[]
+                total_char_list = []
                 for chunk in chat_response:
                     if chunk is not None:
                         if chunk.choices[0].delta.content is not None:
@@ -443,12 +481,11 @@ def submit():
 
                             else:
                                 char = chunk.choices[0].delta.content
-                            chunk_num+=1
-                            total_buffer+=char
+                            chunk_num += 1
+                            total_buffer += char
 
                             total_char_list.append(char)
                             print(char, end='', flush=True)
-
 
                             line_buffer += char
                             # 检查是否遇到了Python代码块的起始标志
@@ -464,7 +501,7 @@ def submit():
 
                             # 如果不在代码块中，则打印行缓冲区内容
                             if (not in_code_block and line_buffer) or line_buffer.startswith('#'):
-                                yield char.replace('#','#><;').replace("'",'')
+                                yield char.replace('#', '#><;').replace("'", '')
                                 # time.sleep(0.1)  # 模拟逐字打印的效果
 
                             # 如果遇到换行符，重置line_buffer
@@ -472,7 +509,7 @@ def submit():
                                 line_buffer = ""
 
                 print(total_char_list)
-                chat_result=total_buffer
+                chat_result = total_buffer
                 full_result = chat_result
                 processed_response.append({'role': 'assistant', 'content': chat_result})
                 messages.append({'role': 'assistant', 'content': chat_result})
@@ -480,8 +517,8 @@ def submit():
 
                 if "```python" in full_result and ".env" not in full_result and "pip install" not in full_result:
                     steps += 1
-                    code_list .extend( extract_code_blocks(full_result))
-                    compelete=True
+                    code_list.extend(extract_code_blocks(full_result))
+                    compelete = True
                 # else:
                 #     steps += 1
                 #     if steps < 2 and whole_step < 5:
@@ -515,20 +552,19 @@ def submit():
                 filtered_lst = [item for item in lines if item.strip()]
                 lines = filtered_lst
                 new_lines = []
-                variable_dict={}
-                for line_num,each_line in enumerate(lines):
-
+                variable_dict = {}
+                for line_num, each_line in enumerate(lines):
 
                     if '=' in each_line and (
                             'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
 
                         variable_str = each_line.split('=')[0]
-                        variable_dict[variable_str]=each_line
-                        comment_index=find_insert_comment_position(lines,each_line,session['template'])
+                        variable_dict[variable_str] = each_line
+                        comment_index = find_insert_comment_position(lines, each_line, session['template'])
 
                         new_line = f"""
 send_data({variable_str}['geo_map'],'map','{comment_index}',sid='{sid}')
-    
+
                             """
                         new_lines.append(each_line)
                         new_lines.append(new_line)
@@ -538,13 +574,14 @@ send_data({variable_str}['geo_map'],'map','{comment_index}',sid='{sid}')
                         new_line = f"""
 temp_result={each_line}
 send_data(temp_result['geo_map'],'map','{comment_index}',sid='{sid}')
-    
+
                             """
                         new_lines.append(each_line)
                         new_lines.append(new_line)
                     else:
                         new_lines.append(each_line)
-                if '=' not in new_lines[-1] and 'send_data' not in new_lines[-1] and 'id_list_explain(' not in new_lines[-1]:
+                if '=' not in new_lines[-1] and 'send_data' not in new_lines[-1] and 'id_list_explain(' not in \
+                        new_lines[-1]:
                     if new_lines[-1] in variable_dict:
                         if 'id_list_explain(' in variable_dict[new_lines[-1]]:
                             continue
@@ -566,7 +603,7 @@ print_process({lines[-1]})
                 except Exception as e:
                     exc_info = traceback.format_exc()
                     # 打印错误信息和代码行
-                    if session['template']==True:
+                    if session['template'] == True:
                         print(f"An error occurred: {repr(e)}\n{exc_info}")
                     else:
                         print("Nothing can I get! Please change an area and search again :)")
@@ -592,7 +629,7 @@ print_process({lines[-1]})
                                  "content": send_result})
                 processed_response.append({'role': 'user', 'content': send_result})
 
-        send_data(processed_response,sid=sid)
+        send_data(processed_response, sid=sid)
 
         data_with_response = {
             'len': str(len(messages)),

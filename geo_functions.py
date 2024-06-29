@@ -15,7 +15,12 @@ import pandas as pd
 globals_dict = {}
 global_id_attribute={}
 global_id_geo={}
-
+def map_keys_to_values(similar_col_name_dict):
+    result = {}
+    for key, value in similar_col_name_dict.items():
+        result[key] = value
+        result[value] = value
+    return result
 # sparql = SPARQLWrapper("http://127.0.0.1:7200/repositories/osm_search")
 
 conn_params = "dbname='osm_database' user='postgres' host='localhost' password='9417941'"
@@ -32,6 +37,8 @@ cur = conn.cursor()
         select_query=f'SELECT {fclass},{osm_id},geom'
 
 """
+similar_ori_table_name_dict={'lands': "land", 'building': 'buildings', 'point': 'points', 'streets': 'lines'}
+similar_table_name_dict=map_keys_to_values(similar_ori_table_name_dict)
 col_name_mapping_dict={
 "soil":{
     "osm_id":"objectid",
@@ -78,7 +85,6 @@ col_name_mapping_dict={
 }
 
 }
-
 revers_mapping_dict={}
 
 
@@ -308,7 +314,8 @@ ids_of_type('landuse',a)
 
     geo_dict.update(feed_back)
     if len(feed_back)==0:
-        raise Exception(f'Nothing found for {type_dict}! Please change an area and search again.')
+        print(f"Table {graph_name} have elements {type_dict}, but not in the current region.")
+    #     raise Exception(f'Nothing found for {type_dict} in {graph_name}! Please change an area and search again.')
 
     return {'id_list':feed_back,'geo_map':geo_dict}
 
