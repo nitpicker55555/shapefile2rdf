@@ -204,7 +204,7 @@
     color: white; /* 白色文字 */
 }
 .input-button-container {
-    position: fixed; /* 使用固定定位 */
+    position: absolute; /* 使用固定定位 */
     bottom: 20px; /* 距离窗口底部20px */
     left: 20px; /* 距离窗口左边50px */
     right: 20px; /* 距离窗口右边50px */
@@ -220,6 +220,7 @@
 }
 
 #inputField {
+    /*position: absolute;*/
     width: 80%; /* 输入框占据大部分空间 */
     margin-right: 5px; /* 和按钮之间留出一些间隔 */
     margin-left: 5px; /* 和按钮之间留出一些间隔 */
