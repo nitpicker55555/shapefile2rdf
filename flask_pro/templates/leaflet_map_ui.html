@@ -65,7 +65,8 @@
             position: absolute;
             top: 50px; /* Initial top position below toggle */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow */
-            max-height: 37vh;
+            /*height: calc(66.67vh - 100px);*/
+
             overflow-y: auto;
         }
         .leaflet-control-toggle {
@@ -3011,7 +3012,19 @@
     ]
     var allControls = [];
 
+    function updateControlHeight() {
+        var mapHeight = $('#map-container').height();
+        console.log(mapHeight)
+        var newHeight = mapHeight / 3*2;
+        $('.leaflet-control-custom').css('max-height', newHeight + 'px');
+    }
 
+    $(document).ready(function() {
+        updateControlHeight();
+        $(window).resize(function() {
+            updateControlHeight();
+        });
+    });
 
 
     function updateMapDataAndFitBounds(map,geojson,target_labels=[]){
@@ -3325,6 +3338,8 @@
             create_container_list(labels,div)
             return div;
         };
+
+
         controls.addTo(map);
         allControls.push(controls)
 
@@ -3379,9 +3394,14 @@
             if (mapElement.classList.contains('fullscreen')) {
                 mapElement.classList.remove('fullscreen');
                 expandBtn.textContent = 'Expand';
+                updateControlHeight();
+
             } else {
                 mapElement.classList.add('fullscreen');
                 expandBtn.textContent = 'Shrink';
+                updateControlHeight();
+
+
                 // document.querySelector('.content').classList.add('hidden');
             }
             map.invalidateSize(); // Leaflet needs to adjust to new container size
