@@ -16,7 +16,7 @@
 <!-- Example elements -->
 <button id="element1" style="margin-top: 100px;">Element 1</button>
 <button id="element2" style="margin-top: 50px;">Element 2</button>
-<button id="element3" style="margin-top: 50px;">Element 3</button>
+<textarea type="text" id="inputField" class="your-button-class" placeholder="Input question..."></textarea>
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"></div>
@@ -29,10 +29,29 @@
 
 <script>
   const tips = [
-    { text: "This is the first element", xpath: "//button[@id='element1']" },
-    { text: "Here is the second element", xpath: "//button[@id='element2']" },
-    { text: "Finally, this is the third element", xpath: "//button[@id='element3']" },
+    {
+      text: "This is the first element",
+      xpath: "//button[@id='element1']",
+      command: function() { console.log("Command 1 executed"); },
+      goal: function() { return true; },
+      button_name: "Next"
+    },
+    {
+      text: "Here is the second element",
+      xpath: "//button[@id='element2']",
+      command: function() { console.log("Command 2 executed"); },
+      goal: function() { return new Promise(resolve => setTimeout(() => resolve(true), 2000)); },
+      button_name: "Continue"
+    },
+    {
+      text: "Finally, this is the third element",
+      xpath: "//textarea[@id='inputField']",
+      command: function() { console.log("Command 3 executed"); },
+      goal: function() { return true; },
+      button_name: "Finish"
+    }
   ];
+
   teach_assistent(tips)
 </script>
 

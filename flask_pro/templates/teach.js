@@ -17,18 +17,25 @@ function teach_assistent(tips){
             // Add highlight class to element
             element.classList.add('highlight');
 
-            const rect = element.getBoundingClientRect();
             tooltipText.textContent = tip.text;
-            tooltip.style.top = `${rect.top + window.scrollY - tooltip.offsetHeight - 20}px`; // Adjusted to show above the element
-            tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
+            tooltipButton.textContent = tip.button_name || "Got it";
 
+            // Temporarily show the tooltip to get the correct height
+            tooltip.style.display = 'block';
             tooltip.classList.add('visible');
             overlay.classList.add('visible');
-            tooltip.style.display = 'block';
+
+            // Get the correct position after rendering
+            const rect = element.getBoundingClientRect();
+            tooltip.style.top = `${rect.top + window.scrollY - tooltip.offsetHeight - 20}px`; // Adjusted to show above the element
+            tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
         }
 
-        tooltipButton.addEventListener('click', function () {
-            const element = document.evaluate(tips[currentTipIndex].xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        tooltipButton.addEventListener('click', async function () {
+
+            const tip = tips[currentTipIndex];
+            const element = document.evaluate(tip.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
             if (element) {
                 // Remove highlight class from element
                 element.classList.remove('highlight');
@@ -36,6 +43,15 @@ function teach_assistent(tips){
 
             tooltip.classList.remove('visible');
             overlay.classList.remove('visible');
+            if (tip.command) {
+                tip.command();
+            }
+            // Check the goal function
+            if (tip.goal) {
+                const goalAchieved = await tip.goal();
+                if (!goalAchieved) return;
+            }
+
             currentTipIndex++;
             if (currentTipIndex < tips.length) {
                 setTimeout(() => {

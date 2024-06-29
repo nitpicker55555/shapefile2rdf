@@ -6,12 +6,15 @@
     height: 100%;
     background: rgba(0, 0, 0, 0);
     display: block;
-    z-index: 999;
+    z-index: 2000;
     transition: background 0.5s ease;
+    pointer-events:none;
 }
 
 .overlay.visible {
     background: rgba(0, 0, 0, 0.5);
+    pointer-events: all;
+
 }
 
 .tooltip {
@@ -21,11 +24,12 @@
     padding: 10px;
     border-radius: 5px;
     display: none;
-    z-index: 1000;
+    z-index:3000;
     text-align: center;
     width: 200px;
     opacity: 0;
     transition: opacity 0.5s ease, top 0.5s ease;
+
 }
 
 .tooltip.visible {
@@ -41,6 +45,7 @@
     border-width: 10px;
     border-style: solid;
     border-color: #007bff transparent transparent transparent;
+
 }
 
 .tooltip button {
@@ -51,6 +56,8 @@
     border-radius: 5px;
     padding: 5px 10px;
     cursor: pointer;
+    z-index: 2000;
+
 }
 
 .tooltip button:hover {
@@ -59,5 +66,5 @@
 
 .highlight {
     position: relative;
-    z-index: 1001;
+    z-index: 3001;
 }
