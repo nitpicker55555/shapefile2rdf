@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Guide</title>
+  <style>
+
+  </style>
+  <link rel="stylesheet" href="teach.css">
+  <script src="teach.js"></script>
+
+</head>
+<body>
+
+<!-- Example elements -->
+<button id="element1" style="margin-top: 100px;">Element 1</button>
+<button id="element2" style="margin-top: 50px;">Element 2</button>
+<button id="element3" style="margin-top: 50px;">Element 3</button>
+
+<!-- Overlay -->
+<div id="overlay" class="overlay"></div>
+
+<!-- Tooltip -->
+<div id="tooltip" class="tooltip">
+  <span id="tooltip-text"></span>
+  <button id="tooltip-button">Got it!</button>
+</div>
+
+<script>
+  const tips = [
+    { text: "This is the first element", xpath: "//button[@id='element1']" },
+    { text: "Here is the second element", xpath: "//button[@id='element2']" },
+    { text: "Finally, this is the third element", xpath: "//button[@id='element3']" },
+  ];
+  teach_assistent(tips)
+</script>
+
+</body>
+</html>
