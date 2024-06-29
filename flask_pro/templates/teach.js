@@ -1,3 +1,13 @@
+function waitForTrue(variableReference, checkInterval = 100) {
+    return new Promise((resolve) => {
+        const intervalId = setInterval(() => {
+            if (!variableReference.value) {
+                clearInterval(intervalId);
+                resolve(true);
+            }
+        }, checkInterval);
+    });
+}
 function teach_assistent(tips){
     document.addEventListener('DOMContentLoaded', function () {
 
@@ -6,12 +16,24 @@ function teach_assistent(tips){
         const tooltip = document.getElementById('tooltip');
         const tooltipText = document.getElementById('tooltip-text');
         const tooltipButton = document.getElementById('tooltip-button');
+        function checkElementExists(xpath) {
+            return new Promise(resolve => {
+                const interval = setInterval(() => {
+                    const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    if (element) {
+                        clearInterval(interval);
+                        resolve(element);
+                    }
+                    console.log('wait for elements',xpath)
+                }, 1000); // Check every 100ms
+            });
+        }
 
-        function showTip(index) {
+        async function showTip(index) {
             const tip = tips[index];
             if (!tip) return;
 
-            const element = document.evaluate(tip.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            const element = await checkElementExists(tip.xpath);
             if (!element) return;
 
             // Add highlight class to element
