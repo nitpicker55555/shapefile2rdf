@@ -8,14 +8,17 @@ function waitForTrue(variableReference, checkInterval = 100) {
         }, checkInterval);
     });
 }
-function teach_assistent(tips){
+function teach_assistant(tips){
     document.addEventListener('DOMContentLoaded', function () {
 
         let currentTipIndex = 0;
-        const overlay = document.getElementById('overlay');
-        const tooltip = document.getElementById('tooltip');
-        const tooltipText = document.getElementById('tooltip-text');
-        const tooltipButton = document.getElementById('tooltip-button');
+
+            const overlay = document.getElementById('overlay');
+            const tooltip = document.getElementById('tooltip');
+            const tooltipText = document.getElementById('tooltip-text');
+            const tooltipButton = document.getElementById('tooltip-button');
+
+
         function checkElementExists(xpath) {
             return new Promise(resolve => {
                 const interval = setInterval(() => {
@@ -101,4 +104,30 @@ function teach_assistent(tips){
         // Show the first tip initially
         showTip(currentTipIndex);
     });
+}
+function showCenteredTooltip(message) {
+    const overlay = document.getElementById('overlay');
+    const tooltip = document.getElementById('centeredTooltip');
+    const tooltipText = document.getElementById('tooltipText');
+    const tooltipButton = document.getElementById('tooltipButton');
+
+    tooltipText.innerHTML = message;
+
+    tooltipButton.onclick = function() {
+        tooltip.classList.remove('visible');
+        overlay.classList.remove('visible');
+        setTimeout(() => {
+            tooltip.style.display = 'none';
+            overlay.style.display = 'none';
+        }, 500); // Wait for the fade-out animation to complete
+        return true
+    };
+
+    overlay.style.display = 'block';
+    tooltip.style.display = 'block';
+    setTimeout(() => {
+        overlay.classList.add('visible');
+        tooltip.classList.add('visible');
+    }, 10); // Trigger the animation
+
 }

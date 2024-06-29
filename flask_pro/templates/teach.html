@@ -3,35 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Guide</title>
+  <title>Centered Tooltip with Overlay</title>
   <style>
-    .input-button-container {
-      /*position: fixed; !* 使用固定定位 *!*/
-      bottom: 20px; /* 距离窗口底部20px */
-      left: 20px; /* 距离窗口左边50px */
-      right: 20px; /* 距离窗口右边50px */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0);
+      display: none;
+      z-index: 999;
+      transition: background 0.5s ease;
+    }
 
-      display: flex; /* 使用flex布局 */
-      justify-content: space-between; /* 使输入框和按钮分布在两端 */
-      align-items: center; /* 垂直居中对齐 */
+    .overlay.visible {
+      display: block;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .tooltip {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #007bff;
+      color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+      z-index: 1000;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .tooltip.visible {
+      display: block;
+      opacity: 1;
+    }
+
+    .tooltip button {
+      margin-top: 10px;
+      background-color: #fff;
+      color: #007bff;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .tooltip button:hover {
+      background-color: #e6e6e6;
     }
   </style>
-  <link rel="stylesheet" href="teach.css">
-  <script src="teach.js"></script>
-
 </head>
 <body>
 
-<!-- Example elements -->
-<button id="element1" style="margin-top: 100px;">Element 1</button>
-<button id="element2" style="margin-top: 50px;">Element 2</button>
-<div class="input-button-container">
-
-
-  <textarea type="text" id="inputField" class="your-button-class" placeholder="Input question..."></textarea>
-<!--  <button id="confirmButton" class="your-button-class">submit</button>-->
-<!--  <button id="debug_mode" class="your-button-class">debug</button>-->
-</div>
 <!-- Overlay -->
 <div id="overlay" class="overlay"></div>
 
@@ -40,33 +68,42 @@
   <span id="tooltip-text"></span>
   <button id="tooltip-button">Got it!</button>
 </div>
-
+<div id="centeredTooltip" class="centered-tooltip">
+  <span id="tooltipText"></span>
+  <div>
+    <button id="tooltipButton">Got it!</button>
+  </div>
+</div>
 <script>
-  const tips = [
-    {
-      text: "This is the first element",
-      xpath: "//button[@id='element1']",
-      command: function() { console.log("Command 1 executed"); },
-      goal: function() { return true; },
-      button_name: "Next"
-    },
-    {
-      text: "Here is the second element",
-      xpath: "//button[@id='element2']",
-      command: function() { console.log("Command 2 executed"); },
-      // goal: function() { return new Promise(resolve => setTimeout(() => resolve(true), 2000)); },
-      button_name: "Continue"
-    },
-    {
-      text: "Finally, this is the third element",
-      xpath: "//textarea[@id='inputField']",
-      command: function() { console.log("Command 3 executed"); },
-      goal: function() { return true; },
-      button_name: "Finish"
-    }
-  ];
+  function showCenteredTooltip(message) {
+    const overlay = document.getElementById('overlay');
+    const tooltip = document.getElementById('tooltip');
+    const tooltipText = document.getElementById('tooltip-text');
+    const tooltipButton = document.getElementById('tooltip-button');
 
-  teach_assistent(tips)
+    tooltipText.textContent = message;
+
+    tooltipButton.onclick = function() {
+      tooltip.classList.remove('visible');
+      overlay.classList.remove('visible');
+      setTimeout(() => {
+        tooltip.style.display = 'none';
+        overlay.style.display = 'none';
+      }, 500); // Wait for the fade-out animation to complete
+    };
+
+    overlay.style.display = 'block';
+    tooltip.style.display = 'block';
+    setTimeout(() => {
+      overlay.classList.add('visible');
+      tooltip.classList.add('visible');
+    }, 10); // Trigger the animation
+  }
+
+  // Example usage
+  document.addEventListener('DOMContentLoaded', function () {
+    showCenteredTooltip("This is a centered tooltip message!");
+  });
 </script>
 
 </body>
