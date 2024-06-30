@@ -3,130 +3,193 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GeoQA User Experiment Introduction</title>
+  <title>Generate Question Divs</title>
   <style>
     body, html {
-      height: 100%;
       margin: 0;
-      font-family: Arial, sans-serif;
+      padding: 0;
+      height: 100%;
       overflow: hidden;
+      font-family: Arial, sans-serif;
     }
     .container {
-      height: 300vh; /* Ensure container covers the total height of all sections */
+      width: 100%;
+      height: 100vh;
+      overflow-y: auto;
+      scroll-behavior: smooth;
       position: relative;
-      transition: transform 0.8s ease;
     }
     .section {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
       height: 100vh;
+    }
+    .question {
+      display: flex;
+      align-items: center;
+      width: 80%;
+      margin: 10px 0;
+    }
+    .question label {
+      flex: 1;
+      text-align: right;
+      padding-right: 10px;
+    }
+    .question input[type="radio"] {
+      margin: 0 5px;
+    }
+    .question span {
+      flex: 1;
+      text-align: left;
+      padding-left: 10px;
+    }
+    .slider {
+      position: fixed;
+      top: 10px;
+      left: 20px;
+      right: 20px;
+      height: 20px;
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .slider .emoji {
+      position: absolute;
+      top: -5px;
+      left: 0;
+      font-size: 24px;
+      transition: left 0.3s;
+    }
+    .submit-button {
       display: flex;
       justify-content: center;
       align-items: center;
-      flex-direction: column;
-      text-align: center;
-      position: relative;
-      background-color: #cccccc;
-
+      width: 100%;
+      height: 100px;
     }
-    .section:nth-child(1) {
-      background-color: #f2f2f2;
-    }
-    .section:nth-child(2) {
-      background-color: #e6e6e6;
-    }
-    .section:nth-child(3) {
-      background-color: #cccccc;
-    }
-    h1 {
-      color: #333;
-    }
-    p {
-      color: #666;
-      line-height: 1.6;
-    }
-    .scroll-hint {
-      position: absolute;
-      font-size: 18px;
-      background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(255, 255, 255, 0) 100%);
-      background-size: 200% 100%;
-      -webkit-background-clip: text;
-      color: transparent;
-      animation: scrollHintAnimation 2s linear infinite;
-    }
-    .scroll-hint.top {
-      top: 20px;
-    }
-    .scroll-hint.bottom {
-      bottom: 20px;
-    }
-    @keyframes scrollHintAnimation {
-      from { background-position: 0% 0%; }
-      to { background-position: 200% 0%; }
+    .submit-button button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-<div class="container" id="container">
-  <div class="section" id="section1">
-    <h1>GeoQA User Experiment Introduction</h1>
-    <p>Interact with geographical information databases stored in multiple formats using natural language!</p>
-    <div class="scroll-hint bottom">Scroll down</div>
-  </div>
-  <div class="section" id="section2">
-    <div class="scroll-hint top">Scroll up</div>
-    <h1>Our Databases</h1>
-    <p>points: Contains point data such as restaurant points</p>
-    <p>lines: Contains various road data such as Theresienstrasse</p>
-    <p>land: Contains various land type data such as University</p>
-    <p>soil: Contains various soil composition data such as saline-alkali soil</p>
-    <p>buildings: Contains various building data such as monuments</p>
-    <div class="scroll-hint bottom">Scroll down</div>
-  </div>
-  <div class="section" id="section3">
-    <div class="scroll-hint top">Scroll up</div>
-    <h1>Explore More</h1>
-    <p>Discover the power of interacting with geographical data using GeoQA.</p>
-    <div class="scroll-hint bottom">Scroll down</div>
 
-  </div>
-  <div class="section" id="section4">
-    <p>Discover the power of interacting with geographical data using GeoQA.</p>
-    <div class="scroll-hint top">Scroll up</div>
-    <h1>Explore More</h1>
-  </div>
-  <div class="section" id="section5">
-    <p>Discover the power of interacting with geographical data using GeoQA.</p>
-    <div class="scroll-hint top">Scroll up</div>
-    <h1>Explore More</h1>
-  </div>
+<div class="slider">
+  <div class="emoji">😊</div>
 </div>
 
+<form class="container" id="questionsContainer" action="{{ url_for('submit_qu') }}" method="post">
+  <!-- Questions will be generated here by JavaScript -->
+  <input type="hidden" name="start_time" id="start_time">
+
+</form>
+
 <script>
-  let currentSection = 0;
-  const sections = document.querySelectorAll('.section');
-  const totalSections = sections.length;
-  const container = document.getElementById('container');
+  function createQuestionDiv(beforeLabel, afterLabel, name) {
+    const div = document.createElement('div');
+    div.className = 'question';
 
-  window.addEventListener('wheel', (event) => {
-    if (event.deltaY > 0) {
-      // Scrolling down
-      if (currentSection < totalSections - 1) {
-        currentSection++;
-        scrollToSection();
+    const label = document.createElement('label');
+    label.textContent = beforeLabel;
+    div.appendChild(label);
+
+    for (let i = 1; i <= 7; i++) {
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.required = true; // Make each radio input required
+      input.name = name;
+      input.value = i;
+      if (i === 1) {
+        input.required = true;
       }
-    } else {
-      // Scrolling up
-      if (currentSection > 0) {
-        currentSection--;
-        scrollToSection();
-      }
+      div.appendChild(input);
+      div.appendChild(document.createTextNode(i));
     }
-  });
 
-  function scrollToSection() {
-    container.style.transform = `translateY(-${currentSection * 100}vh)`;
+    const endLabel = document.createElement('span');
+    endLabel.textContent = afterLabel;
+    div.appendChild(endLabel);
+
+    return div;
   }
 
-  scrollToSection(); // Initial call to set the first section
+  function generateSections(questions) {
+    const container = document.getElementById('questionsContainer');
+    let section;
+    questions.forEach((q, index) => {
+      if (index % 4 === 0) {
+        section = document.createElement('div');
+        section.className = 'section';
+        container.appendChild(section);
+      }
+      section.appendChild(createQuestionDiv(q.beforeLabel, q.afterLabel, q.name));
+    });
+
+    // Add submit button at the end
+    const submitButtonContainer = document.createElement('div');
+    submitButtonContainer.className = 'submit-button';
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit';
+    submitButton.textContent = 'Submit';
+    submitButtonContainer.appendChild(submitButton);
+    container.appendChild(submitButtonContainer);
+  }
+
+
+  const questions = [
+    { beforeLabel: '1. annoying', afterLabel: 'enjoyable', name: 'annoying_enjoyable' },
+    { beforeLabel: '2. not understandable', afterLabel: 'understandable', name: 'not_understandable_understandable' },
+    { beforeLabel: '3. creative', afterLabel: 'dull', name: 'creative_dull' },
+    { beforeLabel: '4. easy to learn', afterLabel: 'difficult to learn', name: 'easy_to_learn_difficult_to_learn' },
+    { beforeLabel: '5. valuable', afterLabel: 'inferior', name: 'valuable_inferior' },
+    { beforeLabel: '6. boring', afterLabel: 'exciting', name: 'boring_exciting' },
+    { beforeLabel: '7. not interesting', afterLabel: 'interesting', name: 'not_interesting_interesting' },
+    { beforeLabel: '8. unpredictable', afterLabel: 'predictable', name: 'unpredictable_predictable' },
+    { beforeLabel: '9. fast', afterLabel: 'slow', name: 'fast_slow' },
+    { beforeLabel: '10. inventive', afterLabel: 'conventional', name: 'inventive_conventional' },
+    { beforeLabel: '11. obstructive', afterLabel: 'supportive', name: 'obstructive_supportive' },
+    { beforeLabel: '12. good', afterLabel: 'bad', name: 'good_bad' },
+    { beforeLabel: '13. complicated', afterLabel: 'easy', name: 'complicated_easy' },
+    { beforeLabel: '14. unlikable', afterLabel: 'pleasing', name: 'unlikable_pleasing' },
+    { beforeLabel: '15. usual', afterLabel: 'leading edge', name: 'usual_leading_edge' },
+    { beforeLabel: '16. unpleasant', afterLabel: 'pleasant', name: 'unpleasant_pleasant' },
+    { beforeLabel: '17. secure', afterLabel: 'not secure', name: 'secure_not_secure' },
+    { beforeLabel: '18. motivating', afterLabel: 'demotivating', name: 'motivating_demotivating' },
+    { beforeLabel: '19. meets expectations', afterLabel: 'does not meet expectations', name: 'meets_expectations_does_not_meet_expectations' },
+    { beforeLabel: '20. inefficient', afterLabel: 'efficient', name: 'inefficient_efficient' },
+    { beforeLabel: '21. clear', afterLabel: 'confusing', name: 'clear_confusing' },
+    { beforeLabel: '22. impractical', afterLabel: 'practical', name: 'impractical_practical' },
+    { beforeLabel: '23. organized', afterLabel: 'cluttered', name: 'organized_cluttered' },
+    { beforeLabel: '24. attractive', afterLabel: 'unattractive', name: 'attractive_unattractive' },
+    { beforeLabel: '25. friendly', afterLabel: 'unfriendly', name: 'friendly_unfriendly' },
+    { beforeLabel: '26. conservative', afterLabel: 'innovative', name: 'conservative_innovative' },
+  ];
+
+  generateSections(questions);
+
+  const container = document.querySelector('.container');
+  const emoji = document.querySelector('.emoji');
+  const slider = document.querySelector('.slider');
+  const sliderWidth = slider.clientWidth - 40; // Padding on both sides
+
+  container.addEventListener('scroll', () => {
+    const maxScrollTop = container.scrollHeight - container.clientHeight;
+    const scrollTop = container.scrollTop;
+    const scrollPercentage = scrollTop / maxScrollTop;
+    const emojiPosition = scrollPercentage * sliderWidth;
+    emoji.style.left = `${emojiPosition}px`;
+
+  });
+  document.getElementById('start_time').value = Date.now();
+  console.log(document.getElementById('start_time').value)
 </script>
+
 </body>
 </html>

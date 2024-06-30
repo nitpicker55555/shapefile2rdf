@@ -37,7 +37,7 @@ cur = conn.cursor()
         select_query=f'SELECT {fclass},{osm_id},geom'
 
 """
-similar_ori_table_name_dict={'lands': "land", 'building': 'buildings', 'point': 'points', 'streets': 'lines'}
+similar_ori_table_name_dict={'lands': "land", 'building': 'buildings', 'point': 'points', 'streets': 'lines','soil':'soil'}
 similar_table_name_dict=map_keys_to_values(similar_ori_table_name_dict)
 col_name_mapping_dict={
 "soil":{
