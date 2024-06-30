@@ -8,15 +8,23 @@ function waitForTrue(variableReference, checkInterval = 100) {
         }, checkInterval);
     });
 }
+function change_overlay_zindex(mode){
+
+
+    $('.overlay').css('z-index',mode);
+
+
+}
+
 function teach_assistant(tips){
     document.addEventListener('DOMContentLoaded', function () {
 
         let currentTipIndex = 0;
 
-            const overlay = document.getElementById('overlay');
-            const tooltip = document.getElementById('tooltip');
-            const tooltipText = document.getElementById('tooltip-text');
-            const tooltipButton = document.getElementById('tooltip-button');
+        const overlay = document.getElementById('overlay');
+        const tooltip = document.getElementById('tooltip');
+        const tooltipText = document.getElementById('tooltip-text');
+        const tooltipButton = document.getElementById('tooltip-button');
 
 
         function checkElementExists(xpath) {
@@ -58,26 +66,31 @@ function teach_assistant(tips){
             tooltip.classList.add('visible');
             overlay.classList.add('visible');
 
-            // Get the correct position after rendering
             const rect = element.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
 
             let tooltipTop, arrowDirection;
+            console.log(viewportHeight,rect.bottom ,tooltip.offsetHeight)
             if (rect.top + window.scrollY < viewportHeight / 2) {
-                // Element is in the upper half of the page
-                tooltipTop = rect.bottom + window.scrollY + 10; // Place below the element
-                arrowDirection = 'bottom';
+                if ((viewportHeight-rect.bottom) < tooltip.offsetHeight + 20) {
+                    // Element is in the upper half but too small to fit the tooltip below it
+                    tooltipTop = rect.top + window.scrollY + (rect.height / 2) - (tooltip.offsetHeight / 2);
+                    arrowDirection = 'top';
+                } else {
+                    // Element is in the upper half of the page
+                    tooltipTop = rect.bottom + window.scrollY + 10; // Place below the element
+                    arrowDirection = 'bottom';
+                }
             } else {
                 // Element is in the lower half of the page
                 tooltipTop = rect.top + window.scrollY - tooltip.offsetHeight - 10; // Place above the element
                 arrowDirection = 'top';
             }
-
             tooltip.style.top = `${tooltipTop}px`;
             tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
 
             tooltip.classList.add(arrowDirection);
-// 获取元素的z-index
+
 
 
             // console.log('The z-index of the element is: ' + window.getComputedStyle(element).zIndex);
@@ -94,8 +107,8 @@ function teach_assistant(tips){
                 // Remove highlight class from element
                 element.classList.remove('highlight');
             }
-
             tooltip.classList.remove('visible');
+
             overlay.classList.remove('visible');
             if (tip.command) {
                 tip.command();
@@ -105,15 +118,16 @@ function teach_assistant(tips){
                 const goalAchieved = await tip.goal();
                 if (!goalAchieved) return;
             }
-
             currentTipIndex++;
             if (currentTipIndex < tips.length) {
                 setTimeout(() => {
+                    tooltip.classList.remove('top', 'bottom', 'center');
                     showTip(currentTipIndex);
                 }, 500); // Wait for the fade-out animation to complete
             } else {
                 setTimeout(() => {
                     tooltip.style.display = 'none';
+                    tooltip.classList.remove('top', 'bottom', 'center');
                 }, 500); // Wait for the fade-out animation to complete
             }
         });

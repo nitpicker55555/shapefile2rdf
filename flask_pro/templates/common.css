@@ -134,6 +134,18 @@
     top:-10px;
     left: 25px;
 }
+.plan-label-map_tip {
+    /*display: inline-block;*/
+    background-color: green;
+    color: white;
+    /*padding: 2px 5px;*/
+    border-radius: 3px;
+    /*margin-left: 5px;*/
+    font-size: 12px;
+    /*position: absolute;*/
+    /*top:-10px;*/
+    /*left: 25px;*/
+}
 .map-button {
     display: block;
     border-radius: 10px;
@@ -247,6 +259,18 @@
     width: 40px;
     height: 40px;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    font-size: 14px;
+}
+.custom-cluster-icon_tip {
+    border-radius: 50%;
+    color: white;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    position: absolute;
     align-items: center;
     justify-content: center;
     border: 2px solid white;
