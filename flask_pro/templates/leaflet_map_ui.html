@@ -18,21 +18,22 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <!--<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />-->
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <link rel="stylesheet" href="common.css">
-    <link rel="stylesheet" href="teach.css">
-    <link rel="stylesheet" href="firework.css">
-    <script  src="teach.js"></script>
-    <script src="map_container.js"></script>
-    <script src="firework.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/teach.css">
+    <link rel="stylesheet" href="css/firework.css">
+    <script  src="js/teach.js"></script>
+    <script src="js/map_container.js"></script>
+    <script src="js/firework.js"></script>
 </head>
 <body>
 <div class="content-container">
     <div id="myConfettiContainer">
-        <!-- 这里是放置脚本的容器 -->
+        <!-- 这里是放置firework的容器 -->
     </div>
 </div>
 
 <p class="lead text-center">
+
     <a  style="display: inline-block;" class="lead text-center" onclick="location.href='question'" style="color:red;">      Questions    |       </a>
     <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;"> </a>
     <button id="nightModeToggle">🌙</button>
@@ -64,6 +65,8 @@
         <button id="tooltipButton">Got it!</button>
     </div>
 </div>
+<button id="stop-tips">Stop Tips</button>
+
 <script>
 
     var map = L.map('map-container', {
@@ -2835,6 +2838,9 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
     updateMapDataAndFitBounds(map,geojsons,target_labels)
 
 
+    function getVariableValue() {
+        return process_status.value;
+    }
 
     const tips = [
         {
@@ -2854,7 +2860,8 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
                 // change_overlay_zindex('high')
             },
             goal:async function() {
-                if (await waitForTrue(process_status)){
+
+                if (await waitForTrue(getVariableValue)){
                     const colors = ["DodgerBlue", "OliveDrab", "Gold", "Pink", "SlateBlue", "LightBlue", "Violet", "PaleGreen", "SteelBlue", "SandyBrown", "Chocolate", "Crimson"];
 
                     startConfetti(300,1,colors,2000);
@@ -2868,6 +2875,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
             text: "<strong style=\"font-size: 20px;\">Look at these colorful buttons😯❓<br></strong>These represent reasoning procedure of system!😊",
             xpath: "//*[@id=\"chatWindow\"]/div[2]",
             command: function() {
+                console.log(process_status,'process_status')
 
 
             },
@@ -2951,7 +2959,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
         ,{
             text: "<strong style=\"font-size: 20px;\">Elements displayed on the map is clickable 🖱️!</strong><br>By clicking on an element, you can get information about it ℹ️",
-            xpath: "//div[contains(@class, 'leaflet-interactive')]",
+            xpath: "//*[contains(@class, 'leaflet-interactive')]",
 
 
             command: function() {
@@ -2959,7 +2967,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
             },
             goal: async function() {
-                if (await waitForTrue(process_status)){
+                if (await waitForTrue(getVariableValue)){
                     const colors = ["DodgerBlue", "OliveDrab", "Gold", "Pink", "SlateBlue", "LightBlue", "Violet", "PaleGreen", "SteelBlue", "SandyBrown", "Chocolate", "Crimson"];
 
                     startConfetti(300,1,colors,2500);
@@ -2991,7 +2999,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
             },
             goal:async function() {
-                return await waitForTrue(process_status)
+                return await waitForTrue(getVariableValue)
             },
             button_name: "Click to search"
         }
@@ -3025,7 +3033,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
             },
             goal:async function() {
-                return await waitForTrue(process_status)
+                return await waitForTrue(getVariableValue)
             },
             button_name: "Click to search"
         }
@@ -3046,7 +3054,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
             },
             goal:async function() {
-                if (await waitForTrue(process_status)){
+                if (await waitForTrue(getVariableValue)){
                     const colors = ["DodgerBlue", "OliveDrab", "Gold", "Pink", "SlateBlue", "LightBlue", "Violet", "PaleGreen", "SteelBlue", "SandyBrown", "Chocolate", "Crimson"];
 
                     startConfetti(300,1,colors,2500);
@@ -3062,6 +3070,9 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
             xpath: "/html/body/p/a[1]",
             command: function() {
+                const stop_btn=document.getElementById('stop-tips')
+                stop_btn.style.display='none'
+                console.log('asd')
             },
             goal:async function() {
                 return true

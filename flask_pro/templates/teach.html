@@ -82,14 +82,26 @@
       z-index: 1001;
     }
 
+    #stop-tips {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background-color: #ff0000;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 20px;
+      cursor: pointer;
+      z-index: 1002;
+    }
   </style>
 </head>
 <body>
 
 <!-- Example elements -->
-<div id="element1" style="margin-top: 500px;position: absolute">Element 1</div>
-<div id="element2" style="margin-top: 100px;position: absolute">Element 2</div>
-<div id="element3" style="margin-top: 340px;position: absolute">Element 3</div>
+<div id="element1" style="margin-top: 100px;">Element 1</div>
+<div id="element2" style="margin-top: 50px;">Element 2</div>
+<div id="element3" style="margin-top: 50px;">Element 3</div>
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"></div>
@@ -99,6 +111,9 @@
   <span id="tooltip-text"></span>
   <button id="tooltip-button">Got it!</button>
 </div>
+
+<!-- Stop Tips Button -->
+<button id="stop-tips">Stop Tips</button>
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -114,7 +129,7 @@
         text: "Here is the second element",
         xpath: "//div[@id='element2']",
         command: function() { console.log("Command 2 executed"); },
-        goal: function() { return true; },
+        goal: function() { return new Promise(resolve => setTimeout(() => resolve(true), 2000)); },
         button_name: "Continue"
       },
       {
@@ -127,10 +142,12 @@
     ];
 
     let currentTipIndex = 0;
+    let stopTips = false;
     const overlay = document.getElementById('overlay');
     const tooltip = document.getElementById('tooltip');
     const tooltipText = document.getElementById('tooltip-text');
     const tooltipButton = document.getElementById('tooltip-button');
+    const stopTipsButton = document.getElementById('stop-tips');
 
     function checkElementExists(xpath) {
       return new Promise(resolve => {
@@ -145,6 +162,8 @@
     }
 
     async function showTip(index) {
+      if (stopTips) return; // Stop if stopTips is true
+
       const tip = tips[index];
       if (!tip) return;
 
@@ -171,7 +190,7 @@
         if (rect.bottom < tooltip.offsetHeight + 20) {
           // Element is in the upper half but too small to fit the tooltip below it
           tooltipTop = rect.top + window.scrollY + (rect.height / 2) - (tooltip.offsetHeight / 2);
-          arrowDirection = 'top';
+          arrowDirection = 'center';
         } else {
           // Element is in the upper half of the page
           tooltipTop = rect.bottom + window.scrollY + 10; // Place below the element
@@ -198,30 +217,42 @@
       }
 
       tooltip.classList.remove('visible');
-
       overlay.classList.remove('visible');
-      // tooltip.classList.remove('top', 'bottom');
 
-      // Check the goal function
-      if (tip.goal) {
-        const goalAchieved = await tip.goal();
-        if (!goalAchieved) return;
-      }
+      setTimeout(() => {
+        tooltip.classList.remove('top', 'bottom', 'center');
+        // Check the goal function
+        if (tip.goal) {
+          tip.goal().then(goalAchieved => {
+            if (!goalAchieved || stopTips) return;
 
-      currentTipIndex++;
-      if (currentTipIndex < tips.length) {
-        setTimeout(() => {
-          tooltip.classList.remove('top', 'bottom', 'center');
-          showTip(currentTipIndex);
-        }, 500); // Wait for the fade-out animation to complete
-      } else {
-        setTimeout(() => {
-          tooltip.style.display = 'none';
-          tooltip.classList.remove('top', 'bottom', 'center');
-        }, 500); // Wait for the fade-out animation to complete
-      }
+            currentTipIndex++;
+            if (currentTipIndex < tips.length) {
+              showTip(currentTipIndex);
+            } else {
+              tooltip.style.display = 'none';
+            }
+          });
+        } else {
+          currentTipIndex++;
+          if (currentTipIndex < tips.length) {
+            showTip(currentTipIndex);
+          } else {
+            tooltip.style.display = 'none';
+          }
+        }
+      }, 500); // Wait for the fade-out animation to complete
     });
 
+    stopTipsButton.addEventListener('click', function () {
+      stopTips = true;
+      tooltip.classList.remove('visible');
+      overlay.classList.remove('visible');
+      setTimeout(() => {
+        tooltip.classList.remove('top', 'bottom', 'center');
+        tooltip.style.display = 'none';
+      }, 500); // Wait for the fade-out animation to complete
+    });
 
     // Show the first tip initially
     showTip(currentTipIndex);

@@ -1,28 +1,32 @@
-function reorderDictionary(dict) {
-    // 获取字典的键并排序
-    let keys = Object.keys(dict).sort();
-
-    // 将最后一个键移动到第0个位置
-    if (keys.length > 1) {
-        keys.unshift(keys.pop());
-    }
-
-    // 创建一个新的字典并按照新的顺序赋值
-    let newDict = {};
-    for (let key of keys) {
-        newDict[key] = dict[key];
-    }
-
-    return newDict;
+async function waitForFalse(getVariableValue, checkInterval = 100, initialDelay = 1000) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const intervalId = setInterval(() => {
+                if (!getVariableValue()) { // 检查getVariableValue()的返回值是否为false
+                    clearInterval(intervalId);
+                    resolve(true);
+                }
+            }, checkInterval);
+        }, initialDelay);
+    });
 }
 
-// 示例字典
-let dict = {
-    "banana": 1,
-    "apple": 2,
-    "cherry": 3,
-    "date": 4
-};
+let variableReference = { value: true };
 
-let sortedDict = reorderDictionary(dict);
-console.log(sortedDict);
+function getVariableValue() {
+    return variableReference.value;
+}
+
+async function checkVariable() {
+    console.log("Waiting for variableReference.value to become false...");
+    await waitForFalse(getVariableValue);
+    console.log("variableReference.value is now false");
+}
+
+// 模拟在3秒后将variableReference.value设为false
+setTimeout(() => {
+    variableReference.value = false;
+}, 3000);
+
+// 调用异步函数
+checkVariable();
