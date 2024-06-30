@@ -27,8 +27,8 @@ function teach_assistant(tips){
                         clearInterval(interval);
                         resolve(element);
                     }
-                    console.log('wait for elements',xpath)
-                }, 1000); // Check every 100ms
+                    // console.log('wait for elements',xpath)
+                }, 500); // Check every 100ms
             });
         }
 
@@ -41,8 +41,16 @@ function teach_assistant(tips){
 
             // Add highlight class to element
             element.classList.add('highlight');
-
-            tooltipText.innerHTML = tip.text;
+            // if ( tip.text.includes('cluster')){
+            //     let addtional_html=get_innerhtml(tip.xpath)
+            //     console.log(addtional_html)
+            //     tooltipText.innerHTML =tip.text.replace("This",addtional_html)+'<br>';
+            //
+            // }else {
+            //     tooltipText.innerHTML = tip.text+'<br>';
+            //
+            // }
+            tooltipText.innerHTML = tip.text+'<br>';
             tooltipButton.textContent = tip.button_name || "Got it";
 
             // Temporarily show the tooltip to get the correct height
@@ -52,14 +60,23 @@ function teach_assistant(tips){
 
             // Get the correct position after rendering
             const rect = element.getBoundingClientRect();
-            let tooltipTop = rect.top + window.scrollY - tooltip.offsetHeight - 20;
-            if (tooltipTop < 0) {
-                tooltip.style.top = '0px';
+            const viewportHeight = window.innerHeight;
+
+            let tooltipTop, arrowDirection;
+            if (rect.top + window.scrollY < viewportHeight / 2) {
+                // Element is in the upper half of the page
+                tooltipTop = rect.bottom + window.scrollY + 10; // Place below the element
+                arrowDirection = 'bottom';
             } else {
-                tooltip.style.top = `${tooltipTop}px`;
+                // Element is in the lower half of the page
+                tooltipTop = rect.top + window.scrollY - tooltip.offsetHeight - 10; // Place above the element
+                arrowDirection = 'top';
             }
+
+            tooltip.style.top = `${tooltipTop}px`;
             tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
 
+            tooltip.classList.add(arrowDirection);
 // 获取元素的z-index
 
 
@@ -106,28 +123,45 @@ function teach_assistant(tips){
     });
 }
 function showCenteredTooltip(message) {
-    const overlay = document.getElementById('overlay');
-    const tooltip = document.getElementById('centeredTooltip');
-    const tooltipText = document.getElementById('tooltipText');
-    const tooltipButton = document.getElementById('tooltipButton');
+    return new Promise(resolve => {
+        const overlay = document.getElementById('overlay');
+        const tooltip = document.getElementById('centeredTooltip');
+        const tooltipText = document.getElementById('tooltipText');
+        const tooltipButton = document.getElementById('tooltipButton');
 
-    tooltipText.innerHTML = message;
+        tooltipText.innerHTML = message;
 
-    tooltipButton.onclick = function() {
-        tooltip.classList.remove('visible');
-        overlay.classList.remove('visible');
+        tooltipButton.onclick = function() {
+            tooltip.classList.remove('visible');
+            overlay.classList.remove('visible');
+            setTimeout(() => {
+                tooltip.style.display = 'none';
+                // overlay.style.display = 'none';
+                resolve(true); // Resolve the promise when the button is clicked
+            }, 500); // Wait for the fade-out animation to complete
+        };
+
+        // overlay.style.display = 'block';
+        tooltip.style.display = 'block';
         setTimeout(() => {
-            tooltip.style.display = 'none';
-            overlay.style.display = 'none';
-        }, 500); // Wait for the fade-out animation to complete
-        return true
-    };
+            overlay.classList.add('visible');
+            tooltip.classList.add('visible');
+        }, 10); // Trigger the animation
+    });
+}
+function get_innerhtml(xpath){
+    // var xpath = "//div[@id='example']"; // 请根据实际情况修改XPath表达式
 
-    overlay.style.display = 'block';
-    tooltip.style.display = 'block';
-    setTimeout(() => {
-        overlay.classList.add('visible');
-        tooltip.classList.add('visible');
-    }, 10); // Trigger the animation
+// 使用document.evaluate查找元素
+    var result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
 
+// 获取找到的元素
+    var element = result.singleNodeValue;
+
+// 检查元素是否存在，并获取innerHTML
+    if (element) {
+        return element.innerHTML
+    } else {
+        console.log("Element not found");
+    }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Centered Tooltip with Overlay</title>
+  <title>Interactive Guide</title>
   <style>
     .overlay {
       position: fixed;
@@ -12,35 +12,51 @@
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0);
-      display: none;
+      display: block;
       z-index: 999;
       transition: background 0.5s ease;
+      pointer-events: none; /* Ensure overlay does not capture mouse events */
     }
 
     .overlay.visible {
-      display: block;
       background: rgba(0, 0, 0, 0.5);
     }
 
     .tooltip {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      position: absolute;
       background-color: #007bff;
       color: #fff;
-      padding: 20px;
-      border-radius: 10px;
+      padding: 10px;
+      border-radius: 5px;
       display: none;
       z-index: 1000;
       text-align: center;
+      width: 200px;
       opacity: 0;
-      transition: opacity 0.5s ease;
+      transition: opacity 0.5s ease, top 0.5s ease;
     }
 
     .tooltip.visible {
-      display: block;
       opacity: 1;
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      margin-left: -10px;
+      border-width: 10px;
+      border-style: solid;
+    }
+
+    .tooltip.top::after {
+      top: 100%;
+      border-color: #007bff transparent transparent transparent;
+    }
+
+    .tooltip.bottom::after {
+      bottom: 100%;
+      border-color: transparent transparent #007bff transparent;
     }
 
     .tooltip button {
@@ -56,9 +72,19 @@
     .tooltip button:hover {
       background-color: #e6e6e6;
     }
+
+    .highlight {
+      position: relative;
+      z-index: 1001;
+    }
   </style>
 </head>
 <body>
+
+<!-- Example elements -->
+<div id="element1" style="margin-top: 100px;">Element 1</div>
+<div id="element2" style="margin-top: 50px;">Element 2</div>
+<div id="element3" style="margin-top: 50px;">Element 3</div>
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"></div>
@@ -68,41 +94,121 @@
   <span id="tooltip-text"></span>
   <button id="tooltip-button">Got it!</button>
 </div>
-<div id="centeredTooltip" class="centered-tooltip">
-  <span id="tooltipText"></span>
-  <div>
-    <button id="tooltipButton">Got it!</button>
-  </div>
-</div>
+
 <script>
-  function showCenteredTooltip(message) {
+  document.addEventListener('DOMContentLoaded', function () {
+    const tips = [
+      {
+        text: "This is the first element",
+        xpath: "//div[@id='element1']",
+        command: function() { console.log("Command 1 executed"); },
+        goal: function() { return true; },
+        button_name: "Next"
+      },
+      {
+        text: "Here is the second element",
+        xpath: "//div[@id='element2']",
+        command: function() { console.log("Command 2 executed"); },
+        goal: function() { return new Promise(resolve => setTimeout(() => resolve(true), 2000)); },
+        button_name: "Continue"
+      },
+      {
+        text: "Finally, this is the third element",
+        xpath: "//div[@id='element3']",
+        command: function() { console.log("Command 3 executed"); },
+        goal: function() { return true; },
+        button_name: "Finish"
+      }
+    ];
+
+    let currentTipIndex = 0;
     const overlay = document.getElementById('overlay');
     const tooltip = document.getElementById('tooltip');
     const tooltipText = document.getElementById('tooltip-text');
     const tooltipButton = document.getElementById('tooltip-button');
 
-    tooltipText.textContent = message;
+    function checkElementExists(xpath) {
+      return new Promise(resolve => {
+        const interval = setInterval(() => {
+          const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+          if (element) {
+            clearInterval(interval);
+            resolve(element);
+          }
+        }, 100); // Check every 100ms
+      });
+    }
 
-    tooltipButton.onclick = function() {
-      tooltip.classList.remove('visible');
-      overlay.classList.remove('visible');
-      setTimeout(() => {
-        tooltip.style.display = 'none';
-        overlay.style.display = 'none';
-      }, 500); // Wait for the fade-out animation to complete
-    };
+    async function showTip(index) {
+      const tip = tips[index];
+      if (!tip) return;
 
-    overlay.style.display = 'block';
-    tooltip.style.display = 'block';
-    setTimeout(() => {
-      overlay.classList.add('visible');
+      const element = await checkElementExists(tip.xpath);
+      if (!element) return;
+
+      // Add highlight class to element
+      element.classList.add('highlight');
+
+      tooltipText.textContent = tip.text;
+      tooltipButton.textContent = tip.button_name || "Got it";
+
+      // Temporarily show the tooltip to get the correct height
+      tooltip.style.display = 'block';
       tooltip.classList.add('visible');
-    }, 10); // Trigger the animation
-  }
+      overlay.classList.add('visible');
 
-  // Example usage
-  document.addEventListener('DOMContentLoaded', function () {
-    showCenteredTooltip("This is a centered tooltip message!");
+      // Get the correct position after rendering
+      const rect = element.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      let tooltipTop, arrowDirection;
+      if (rect.top + window.scrollY < viewportHeight / 2) {
+        // Element is in the upper half of the page
+        tooltipTop = rect.bottom + window.scrollY + 10; // Place below the element
+        arrowDirection = 'bottom';
+      } else {
+        // Element is in the lower half of the page
+        tooltipTop = rect.top + window.scrollY - tooltip.offsetHeight - 10; // Place above the element
+        arrowDirection = 'top';
+      }
+
+      tooltip.style.top = `${tooltipTop}px`;
+      tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
+
+      tooltip.classList.add(arrowDirection);
+    }
+
+    tooltipButton.addEventListener('click', async function () {
+      const tip = tips[currentTipIndex];
+      const element = document.evaluate(tip.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (element) {
+        // Remove highlight class from element
+        element.classList.remove('highlight');
+      }
+
+      tooltip.classList.remove('visible', 'top', 'bottom');
+      overlay.classList.remove('visible');
+
+      // Check the goal function
+      if (tip.goal) {
+        const goalAchieved = await tip.goal();
+        if (!goalAchieved) return;
+      }
+
+      currentTipIndex++;
+      if (currentTipIndex < tips.length) {
+        setTimeout(() => {
+          showTip(currentTipIndex);
+        }, 500); // Wait for the fade-out animation to complete
+      } else {
+        setTimeout(() => {
+          tooltip.style.display = 'none';
+        }, 500); // Wait for the fade-out animation to complete
+      }
+    });
+
+    // Show the first tip initially
+    showTip(currentTipIndex);
   });
 </script>
 
