@@ -10,10 +10,11 @@ model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniL
 
 
 def calculate_similarity(words, key_word,mode=None):
-
+    strong_indicate=False
     words=list(words)
     if key_word in words:
-        return {key_word:1}
+        strong_indicate=True
+        return {key_word:1},strong_indicate
     # Check if a GPU is available and select the appropriate device
 
     # Include the key_word in the list of words to encode
@@ -39,7 +40,8 @@ def calculate_similarity(words, key_word,mode=None):
     similarity_dict_all = {}
     for word, similarity in zip(words, similarity_scores):
         similarity_dict_all[word] = float(similarity)
-        if similarity > 0.91:
+        if similarity > 0.9:
+            strong_indicate=True
             similarity_dict = {word: float(similarity)}
             break
         elif similarity > 0.65:
@@ -54,6 +56,9 @@ def calculate_similarity(words, key_word,mode=None):
     filtered_items = {k: v for k, v in similarity_dict.items() if v > 0.6}
     sorted_items = sorted(filtered_items.items(), key=lambda x: x[1], reverse=True)
     sorted_dict_by_values = {k: v for k, v in sorted_items}
+    if mode=='judge_strong':
+        return sorted_dict_by_values,strong_indicate
+
     return sorted_dict_by_values
 
 # #

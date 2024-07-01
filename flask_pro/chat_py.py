@@ -52,8 +52,8 @@ def chat_single(messages,mode="",model='gpt-3.5-turbo-0125'):
 
         )
 
-    print(response)
-
+    # print(response)
+    # response.usage.total_tokens
     # print(response.choices[0].message.content)
 
-    return response.choices[0].message.content,response.usage.total_tokens
+    return response.choices[0].message.content

@@ -423,10 +423,13 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                                 set(global_paring_dict[table_name][match_list_key]))
                             # return match_list
                         else:
-                            match_dict = calculate_similarity(given_list, query)
+                            if col_name=='name':
+                                match_dict = name_cosin_list(query)
+                            else:
+                                match_dict = calculate_similarity(given_list, query)
                             print(query + '\n')
                             # print(given_list)
-                            print('\n\nmatch_dict:', match_dict)
+                            # print('\n\nmatch_dict:', match_dict)
                             if match_dict != {}:
                                 match_list['non_area_col'][col_name].update(set(match_dict.keys()))
 
@@ -650,32 +653,60 @@ like: residential area which has buildings.
     json_result = json.loads(result)
     return json_result
 
+def find_keys_by_values(d, elements):
+    result = {}
+    for key, values in d.items():
+        matched_elements = [element for element in elements if element in values]
+        if matched_elements:
+            result[key] = matched_elements
+    return result
 
+def merge_dicts(dict_list):
+    result = {}
+    for d in dict_list:
+        for key, subdict in d.items():
+            if key not in result:
+                result[key] = subdict.copy()  # 初始化键对应的字典
+            else:
+                result[key].update(subdict)  # 使用 update 方法更新字典
+    return result
 def remove_non_spatial_modify_statements(data):
     for entity in data.get("entities", []):
         if "non_spatial_modify_statement" in entity:
             del entity["non_spatial_modify_statement"]
     return data
 
+def fclass_cosin_id_list(query):
+    match_list = set(calculate_similarity(all_fclass_set, query).keys())
 
+    if len(match_list) != 0:
+        print('fclass match')
+        table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
+        all_id_list = []
+        for table_, fclass_list in table_fclass_dicts.items():
+            each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
+                                                'area_num': None})
+            all_id_list.append(each_id_list)
+        return merge_dicts(all_id_list)
+def name_cosin_id_list(query):
+    match_list = name_cosin_list(query)
+    if len(match_list) != 0:
+        print('name match')
+        table_name_dicts = find_keys_by_values(name_dict_4_similarity, match_list)
+        all_id_list = []
+        for table_, name_list in table_name_dicts.items():
+            each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
+                                                'area_num': None})
+            all_id_list.append(each_id_list)
+        return merge_dicts(all_id_list)
+def name_cosin_list(query):
+    match_list = calculate_similarity_chroma(query)
+    return match_list
+def fclass_cosin_list(query,mode):
+    match_list = set(calculate_similarity(all_fclass_set, query).keys())
+    return match_list
 def id_list_of_entity(query, verbose=False):
-    def find_keys_by_values(d, elements):
-        result = {}
-        for key, values in d.items():
-            matched_elements = [element for element in elements if element in values]
-            if matched_elements:
-                result[key] = matched_elements
-        return result
 
-    def merge_dicts(dict_list):
-        result = {}
-        for d in dict_list:
-            for key, subdict in d.items():
-                if key not in result:
-                    result[key] = subdict.copy()  # 初始化键对应的字典
-                else:
-                    result[key].update(subdict)  # 使用 update 方法更新字典
-        return result
 
     """
     graph{num} = judge_type(multi_result['entities'][{num}])["database"]
@@ -691,30 +722,11 @@ def id_list_of_entity(query, verbose=False):
     print("table: ",table_str)
     if table_str == None:
 
-        match_list = set(calculate_similarity(all_fclass_set, query).keys())
-        if len(match_list) != 0:
-            print('fclass match')
-            table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
-            all_id_list = []
-            for table_, fclass_list in table_fclass_dicts.items():
-                each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
-                                                    'area_num': None})
-                all_id_list.append(each_id_list)
-            return merge_dicts(all_id_list)
+        intersects_id_list=data_intersection_id_list(query)
+        if intersects_id_list:
+            return intersects_id_list
 
-        match_list = calculate_similarity_chroma(query)
-        if len(match_list) != 0:
-            print('name match')
-
-            table_name_dicts = find_keys_by_values(name_dict_4_similarity, match_list)
-            all_id_list = []
-            for table_, name_list in table_name_dicts.items():
-                each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
-                                                    'area_num': None})
-                all_id_list.append(each_id_list)
-            return merge_dicts(all_id_list)
-
-        table_str = judge_table_gpt(query)['database']
+        table_str = judge_table(query)['database']
     else:
         table_str = table_str['database']
     query = extract_and_reformat_area_words(query)
@@ -722,6 +734,80 @@ def id_list_of_entity(query, verbose=False):
     ids_list = ids_of_type(table_str, type_dict)
     return ids_list
 
+
+def intersect_dicts(dict1, dict2):
+    # 获取两个字典键的交集
+    common_keys = set(dict1.keys()).intersection(set(dict2.keys()))
+
+    if common_keys:
+        return list(common_keys)
+    else:
+        # 如果没有交集，输出两个字典键名列表的总和
+        combined_keys = list(dict1.keys()) + list(dict2.keys())
+        return combined_keys
+
+
+def data_intersection_id_list(query):
+
+    table_name_dicts={}
+    table_fclass_dicts={}
+    all_id_list=[]
+
+
+    match_list,judge_strong = calculate_similarity(all_fclass_set, query,'judge_strong')
+    match_list=set(match_list.keys())
+    print(judge_strong,'judge_strong')
+    if len(match_list) != 0:
+        print('fclass match')
+        table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
+        print("table_fclass_dicts: ",table_fclass_dicts)
+
+    if not judge_strong:
+        match_list = name_cosin_list(query)
+        if len(match_list) != 0:
+            print('name match')
+            table_name_dicts = find_keys_by_values(name_dict_4_similarity, match_list)
+            print("table_name_dicts: ",table_name_dicts)
+
+
+    if table_name_dicts!={} and table_fclass_dicts!={}:
+        table_fclass_dicts.update({'buildings':['building']})
+    if table_name_dicts=={} and table_fclass_dicts=={}:
+        return None
+
+
+    intersection_keys_list=intersect_dicts(table_name_dicts,table_fclass_dicts)
+    for table_  in intersection_keys_list:
+        name_list=[]
+        fclass_list=[]
+        if table_ in table_name_dicts:
+            name_list=table_name_dicts[table_]
+        if table_ in table_fclass_dicts:
+            fclass_list=table_fclass_dicts[table_]
+
+        each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set(name_list)},'area_num': None})
+        all_id_list.append(each_id_list)
+    merged_id_list=merge_dicts(all_id_list)
+    if len(merged_id_list['id_list'])==0:
+        for table_ in intersection_keys_list:
+            name_list = []
+            fclass_list = []
+            if table_ in table_name_dicts:
+                name_list = table_name_dicts[table_]
+            if table_ in table_fclass_dicts:
+                fclass_list = table_fclass_dicts[table_]
+
+            each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
+                                                'area_num': None})
+            all_id_list.append(each_id_list)
+            each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
+                                                'area_num': None})
+            all_id_list.append(each_id_list)
+
+        return  merge_dicts(all_id_list)
+    else:
+        return merged_id_list
+    # return merge_dicts(all_id_list)
 
 def find_negation(text):
     # 使用spaCy处理文本
@@ -885,6 +971,43 @@ def judge_table(query, messages=None):
     return None
 
 
+def judge_entity(query, messages=None):
+
+        if isinstance(query, dict):
+            query = str(query)
+        if query == None:
+            return None
+        if messages == None:
+            messages = []
+        ask_prompt = """
+        User will give you a sentence or a word, to search elements in dataset, which may related to type of data or name of data,
+        "Type of data" means a more general category name, such as "river" or "restaurant".
+        you need to extract these infomation into a dict:
+        {
+        'type':...,
+        'name':...,
+        }
+        example:
+        User:isar river
+        You:
+        {
+        'type':'river',
+        'name':'isar',
+        }
+        notice: each part of sentence can only be classified to type or name once, if the label do not have words, set it to None.
+
+        notice: Each key value should not include meaningless words such as "location" or "substance".
+        only return json.
+        """
+        if messages == None:
+            messages = []
+
+        messages.append(message_template('system', ask_prompt))
+        messages.append(message_template('user', str(query)))
+        result = chat_single(messages, 'json')
+
+        json_result = json.loads(result)
+        return json_result
 def judge_table_gpt(query, messages=None):
     if isinstance(query, dict):
         query = str(query)
@@ -893,12 +1016,19 @@ def judge_table_gpt(query, messages=None):
     if messages == None:
         messages = []
     ask_prompt = """
-    There are two database: [soil,land], 
-    'soil' database stores various soil types, such as swamps, wetlands, for agriculture or planting or construction.
-    'land' database stores various types of urban land use like park, forest, residential area, school, university, water, river.
-    response the correct database name given the provided data name in json format like:
+    User will give you a sentence, which may contains type of data or name of data, you need to extract these infomation into a dict:
+     
     {
-    'database':database
+    'type':...,
+    'name':...,
+    }
+    example:
+    User:isar river
+    You:
+    {
+    'type':'river',
+    'name':'isar',
+    'other_attributes':none
     }
     """
     if messages == None:
@@ -909,13 +1039,7 @@ def judge_table_gpt(query, messages=None):
     result = chat_single(messages, 'json')
     # print(result)
     json_result = json.loads(result)
-
-    if 'database' in json_result:
-
-        return {'database': json_result['database']}
-
-    else:
-        raise Exception('no relevant item found for: ' + str(query) + ' in given list.')
+    return json_result
 
 
 def mission_gpt(query, messages=None):
@@ -958,7 +1082,6 @@ Please always set an output variable for each function you called. Variable in h
 
 
 def general_gpt(query, messages=None):
-    print(query)
     if isinstance(query, dict):
         query = str(query)
     if query == None:
@@ -976,6 +1099,7 @@ def general_gpt(query, messages=None):
     messages.append(message_template('user', str(query)))
     # result = chat_single(messages, '','gpt-4o-2024-05-13')
     result = chat_single(messages, '')
+    print('general_gpt result:',result)
     return result
 
 
