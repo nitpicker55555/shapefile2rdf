@@ -38,7 +38,8 @@
     </div>
 </div>
 <p class="lead text-center">
-    <a  style="display: inline-block;" class="lead text-center" onclick="location.href='question'" style="color:red;">      Questions    |       </a>
+    <a  style="display: inline-block;" class="lead text-center" onclick="location.href='introduction'" style="color:red;">      Introduction    |       </a>
+    <a  style="display: inline-block;" class="lead text-center" onclick="location.href='question'" style="color:red;">      Questionnaire    |       </a>
     <a style="display: inline-block;"  class="lead text-center" id="my-p" style="color:blue;"> </a>
     <button id="nightModeToggle">🌙</button>
     <br>
@@ -92,20 +93,27 @@
 <button id="stop-tips">Stop Tips</button>
 
 <script>
-    function getVariableValue() {
-        return process_status.value;
+
+    function clickButtonByXPath(xpath) {
+        const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (element) {
+            element.click();
+        } else {
+            console.log("Element not found for XPath: " + xpath);
+        }
     }
+
 
     // function uploadFile() {
     const tips = [
         {
-            text: text = '<strong style="font-size: 20px;">Let\'s get to know our datasets!😊</strong><br> Input prompt to get all data in a specific region',
+            text: text = '<strong style="font-size: 20px;">Let\'s start with an interesting example!😊</strong><br> Get bars around Isar river',
 
             xpath: "//*[@id=\"inputField\"]",
             command: function() {
                 const textarea = document.querySelector("textarea#inputField");
                 if (textarea) {
-                    textarea.value = 'Show me points and lines in Munich Maxvorstadt';
+                    textarea.value = "show me bars in 500m of Isar river in Munich";
                 } else {
                     console.log("Textarea with id 'inputField' not found");
                 }
@@ -120,7 +128,7 @@
                     const colors = ["DodgerBlue", "OliveDrab", "Gold", "Pink", "SlateBlue", "LightBlue", "Violet", "PaleGreen", "SteelBlue", "SandyBrown", "Chocolate", "Crimson"];
 
                     startConfetti(300,1,colors,2000);
-                    await showCenteredTooltip('<strong style="font-size: 20px;">Great!😊 You got data with natural language!</strong>')
+                    await showCenteredTooltip('<strong style="font-size: 20px;">Awesome!😎 You successfully communicated with the database!</strong>')
                 }
                 return true
             },
@@ -206,10 +214,12 @@
 
             command: function() {
                 change_overlay_zindex('200')
+                clickButtonByXPath("//*[@id=\"expandBtn\"]")
+
 
             },
             goal: function() { return true; },
-            button_name: "Get it"
+            button_name: "Click"
         }
 
         ,{
@@ -219,6 +229,7 @@
 
             command: function() {
                 change_overlay_zindex('2000')
+                clickButtonByXPath("//*[@id=\"expandBtn\"]")
 
             },
             goal: async function() {
@@ -233,18 +244,14 @@
             },
             button_name: "I see"
         }
-
-
-
-
         ,{
-            text: text = '<strong style="font-size: 20px;">Let\'s do some complex search!😊</strong><br> Like: farmlands around 2000m of universities in Freising',
+            text: text = '<strong style="font-size: 20px;">Let\'s continue previous search!😊</strong><br> which bars also close to hospital?',
 
             xpath: "//*[@id=\"inputField\"]",
             command: function() {
                 const textarea = document.querySelector("textarea#inputField");
                 if (textarea) {
-                    textarea.value = 'show me farmlands around 2000m of universities in Freising';
+                    textarea.value = 'Limit them to which also close to hospital in 200m';
                 } else {
                     console.log("Textarea with id 'inputField' not found");
                 }
@@ -258,8 +265,9 @@
             },
             button_name: "Click to search"
         }
+
         ,{
-            text: "<strong style=\"font-size: 20px;\">We have easily completed a spatial relationship query! 🌍🔍</strong><br>This is cluster of targets you searched",
+            text: "<strong style=\"font-size: 20px;\">We have easily followed up with further questions🌍🔍</strong><br>This is cluster of targets you searched",
             xpath: "//div[contains(@class, 'leaflet-marker-icon custom-cluster leaflet-zoom-animated leaflet-interactive')]",
 
 
@@ -272,19 +280,19 @@
         }
 
         ,{
-            text: text = '<strong style="font-size: 20px;">We can further refine our search 🔍<br> And make it more abstract😊</strong><br> which of these farmlands on soil good for planting potatoes?',
+            text: text = '<strong style="font-size: 20px;">Let\'s do a complex search!😊</strong><br> Like: farmlands on soil good for planting potatoes and around 2000m of universities in Freising',
 
             xpath: "//*[@id=\"inputField\"]",
             command: function() {
                 const textarea = document.querySelector("textarea#inputField");
                 if (textarea) {
-                    textarea.value = 'which of these farmlands on soil good for planting potatoes?';
+                    textarea.value = 'farmlands on soil good for planting potatoes and around 2000m of universities in Freising';
                 } else {
                     console.log("Textarea with id 'inputField' not found");
                 }
                 const submit_btn=document.getElementById('confirmButton')
                 submit_btn.click()
-
+                change_overlay_zindex('200')
 
             },
             goal:async function() {
@@ -323,7 +331,7 @@
         }        ,{
             text: text = '<strong style="font-size: 20px;">One last thing!😊</strong><br>Please fill this Questionnaire after you playing!',
 
-            xpath: "/html/body/p/a[1]",
+            xpath: "/html/body/p/a[2]",
             command: function() {
                 const stop_btn=document.getElementById('stop-tips')
                 stop_btn.style.display='none'
@@ -490,7 +498,7 @@ Notice:Please include the directional words like east/south/east/north of query 
 Notice:If user does not query in a specific area, do not use this function. If user wants to search in all area, call set_bounding_box('').
 
 2.id_list_of_entity(description of entity):
-Input: Description of the entity, including adj or prepositional phrase like good for commercial,good for planting potatoes, or just entity word like 'technical university munich(TUM)'.
+Input: Description of the entity, including adj or prepositional phrase like good for commercial,good for planting potatoes, or just entity word like 'technical university munich(TUM). Make sure to make plural words singular when you input.
 Output: A list of IDs (id_list) corresponding to the described entity.
 Usage: Use this function to obtain an id_list which will be used as input in the following functions.
 Notice: Some times the description may have complex description like:"I want to know land which named see and is water", input the whole description into function.
@@ -613,6 +621,7 @@ If user ask you to draw a diagram, please always use the true variable in previo
         }
         else if("map" in data) {
             //
+            // console.log(data.map)
             updateMapDataAndFitBounds( map,data.map,data['target_label']);
             // console.log(data['target_label'])
             add_map_button(data.map,data['index'])

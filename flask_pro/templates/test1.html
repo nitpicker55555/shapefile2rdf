@@ -1,405 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>D3 GeoJSON Example</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spatial Query Methods 🌍</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f8ff;
+      color: #333;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #ff4500;
+      text-align: center;
+    }
+    .method {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 40px;
+      position: relative;
+    }
+    .method img {
+      margin: 0 100px;
+      max-width: calc(100% - 200px); /* Ensure image stays within the boundary */
+    }
+    .method span {
+      font-size: 2.2em;
+      position: absolute;
+      left: 100px; /* Align text with the left edge of the image */
+      top: -1.5em; /* Position above the image with a gap */
+    }
+  </style>
 </head>
-
 <body>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<h1>Spatial Query Methods 🌍</h1>
+<br>
+<br>
+<br>
+<div class="method">
+  <span>Buffer</span>
+  <img src="../static/images_spatial/buffer.png" alt="Buffer">
 
-<style>
-
-
-  body {
-    font-family: "Helvetica Neue", Helvetica, sans-serif;
-    font-size: 14px;
-    color: #333;
-  }
-
-  #content .map path {
-    fill: #ddd;
-    stroke: #aaa;
-  }
-  .legend {
-    background-color: #f0f0f0;
-    border-radius: 8px;
-    padding: 5px;
-    margin-bottom: 10px;
-    z-index: 999;
-  }
-
-  .legend-item {
-    cursor: pointer;
-    margin: 5px;
-    padding: 5px;
-    border-radius: 5px;
-  }
-
-  .selected {
-    background-color: pink;
-
-  }
-  #plus_button{
-    z-index: 999;
-  }
-  body, html {
-    height: 100%;
-    margin: 0;
-  }
-  #mapid {
-    width: 100%;
-    height: 100%;
-  }
-  #checkboxContainer {
-    z-index: 999;
-    position: fixed;
-    top: 20px;
-    left: 100px;
-  }
-
-  #checkboxContainer label {
-    color: #333;
-    font-size: 14px;
-  }
-</style>
-<div id="mapid"></div>
-<checkbox id="plus_button">+</checkbox>
-
-<!--<div id="content">-->
-<!--  <svg width="800px" height="800px">-->
-<!--    <g class="map"></g>-->
-<!--  </svg>-->
-<!--</div>-->
-
-<div class="frame">
-  <div class="legend" id="legend">
-    <!-- Legend items will be dynamically added here -->
-  </div>
 </div>
-<div id="checkboxContainer">
-  <input type="checkbox" id="myCheckbox">
-  <label for="myCheckbox">Plus mode</label>
+<div class="method">
+  <span>Intersects</span>
+  <img src="https://via.placeholder.com/50" alt="Intersects">
 </div>
-
-
-<script>
-  // 假设你的GeoJSON文件位于本地服务器的根目录下，文件名为"data.geojson"
-
-  var checkbox = document.getElementById('myCheckbox');
-  var csvdata
-  // let munichCoordinates = [11.58, 48.14];
-  //
-  // let projection = d3.geoMercator()
-  //         .center(munichCoordinates) // 将慕尼黑设置为地图中心
-  //         .scale(100000) // 显著增加缩放值
-  //         .translate([500, 350]); // 可能需要根据实际情况调整这个平移值
-  // let geoGenerator = d3.geoPath()
-  //         .projection(projection);
-
-  function update(geojson,mymap) {
-    console.log(geojson)
-    // let u = d3.select('#content g.map')
-    //         .selectAll('path')
-    //         .data(geojson.features);
-    //
-    // u.enter()
-    //         .append('path')
-    //         .attr('d', geoGenerator);
-
-
-    // 加载一个地图瓦片层
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(mymap);
-
-    // 创建一个GeoJSON对象
-
-
-    // 将GeoJSON对象添加到地图上
-    L.geoJSON(geojson, {
-      onEachFeature: function (feature, layer) {
-        // 如果存在popupContent属性，则添加一个弹出窗口
-        if (feature.properties && feature.properties.popupContent) {
-          layer.bindPopup(feature.properties.popupContent);
-        }
-      }
-    }).addTo(mymap);
-
-  }
-  var circles = [];
-  // update(geojson);
-  Promise.all([
-    d3.json('output_file.geojson'),
-    d3.csv('shap_values_grouped_with features.csv')
-  ]).then(function([geojsonData, csvData]) {
-    csvdata=csvData
-    // 首先更新地图
-    var mymap = L.map('mapid').setView([48.1371, 11.5754], 13);
-    update(geojsonData, mymap);
-
-    // 然后在同一个SVG中绘制CSV数据的圆形
-    drawCircles(csvData, mymap);
-
-
-    let selectedShapes = []; // 存储用户选择的变量名
-    function legend_build(mode){
-      const filter_list=['Long',	'Lat',	'pop','']
-
-      var  shapeVars
-      if (mode==='shap'){
-        shapeVars = Object.keys(csvData[0]).filter(key => key.startsWith('SHAP'));
-        var right_px='10px'
-
-      }else {
-        shapeVars = Object.keys(csvData[0]).filter(key =>!key.startsWith('SHAP') && !filter_list.includes(key));
-        var right_px='260px'
-      }
-      const all_shapvars= Object.keys(csvData[0])
-      const one_quarter={}
-      all_shapvars.forEach(shapvar=>{
-        one_quarter[shapvar]=calculateQuartiles(shapvar)
-      })
-      console.log(one_quarter)
-
-      // 创建图例项
-      let legend = d3.select('.frame').append('div')
-              .attr('class', 'legend')
-              .style('position', 'absolute')
-              .style('right', right_px)
-              .style('top', '10px');
-      console.log(shapeVars)
-      legend.selectAll('.legend-item')
-              .data(shapeVars)
-              .enter().append('div')
-              .text(d => d)
-              .style('cursor', 'pointer')
-              .style('margin', '5px')
-              .on('click', function(event, d) {
-
-                console.log(d3.select(this).attr('class'));
-                let index = selectedShapes.indexOf(d);
-                if (index > -1) {
-                  selectedShapes.splice(index, 1); //
-                  // 变为默认颜色
-                  d3.select(this).classed('selected', false);
-
-                } else if (selectedShapes.length < 2) {
-                  d3.select(this).classed('selected', true);
-                  console.log(d3.select(this).attr('class'));
-                  selectedShapes.push(d);
-                  // 背景变为粉色
-
-
-                } else {
-                  // alert('You can select up to 2 variables.');
-                }
-                updateCircles(mode,one_quarter,selectedShapes);
-              });
-
-    }
-    legend_build('shap')
-    legend_build('')
-  }).catch(function(error) {
-    console.log(error);
-    alert("Failed to load the data files!");
-  });
-
-  // 在函数外部定义circles数组
-  function calculateQuartiles( columnName) {
-    // 从csvData中提取指定列的所有值，并转换为数字
-    const columnValues = csvdata.map(row => {
-      // 判断columnName是否是数组并有两个元素，如果是，则求两列之和
-      if (Array.isArray(columnName) && columnName.length === 2) {
-        return Number(row[columnName[0]]) + Number(row[columnName[1]]);
-      } else {
-        return Number(row[columnName]);
-      }
-    }).filter(value => !isNaN(value)).sort((a, b) => a - b);
-
-// 计算四分位数的位置
-    const q1 = columnValues[Math.floor((columnValues.length - 1) / 4)];
-    const q2 = columnValues[Math.floor((columnValues.length - 1) / 2)]; // 即中位数
-    const q3 = columnValues[Math.floor((columnValues.length - 1) * 3 / 4)];
-    const q4 = columnValues[columnValues.length - 1]; // 最后一个值
-
-// 构建并返回结果字典
-    return {
-      '1/4': q1,
-      '2/4': q2,
-      '3/4': q3,
-      '4/4': q4
-    };
-
-  }
-  function updateCircles(mode, one_quarter,selectedShapes) {
-    function contains_mode_quarter(d_value,selectedShapes,one_quarter){
-      var color
-
-
-      try {
-        // 根据条件计算颜色
-        if (d_value >= one_quarter[selectedShapes]['3/4']) {
-          color = '#574249';
-        } else if (d_value > one_quarter[selectedShapes]['2/4'] && d_value <=one_quarter[selectedShapes]['3/4']) {
-          color = '#64acbe';
-        } else if (d_value > one_quarter[selectedShapes]['1/4'] && d_value <= one_quarter[selectedShapes]['2/4']) {
-          color = '#c85a5a';
-        } else if (d_value <= one_quarter[selectedShapes]['1/4']) {
-          color = '#e8e8e8';
-        } else {
-          console.log(typeof d_value)
-
-          color = 'green'; // 默认颜色
-        }
-      } catch (error) {
-        console.error(error, selectedShapes); // 如果有错误发生，打印错误信息
-        console.log(one_quarter)
-      }
-      return color
-    }
-    function contains_mode_normal(conditions,selectedShapes){
-      if (conditions.every(cond => cond === true)) {
-        color = '#574249';
-      } else if (conditions.every(cond => cond === false)) {
-        color = '#64acbe';
-      } else if (selectedShapes.length > 0 && conditions[0] === true) {
-        color = '#c85a5a';
-      } else if (selectedShapes.length > 0 && conditions[1] === true) {
-        color = '#e8e8e8';
-      } else {
-        color = 'black'; // 默认颜色
-      }
-      return color
-    }
-    if (checkbox.checked && selectedShapes.length===2) {
-      // console.log('Checkbox is checked');
-      one_quarter={}
-      one_quarter[selectedShapes[0]]=calculateQuartiles(selectedShapes)
-
-    }
-
-
-    circles.forEach(function(circle) {
-      // 假设圆圈实例上存储了它对应的数据
-      var d = circle.options.data; // 假设我们在创建圆圈时，将数据保存在了options对象的data属性中
-
-      var conditions;
-
-
-      var color;
-      if (selectedShapes.length===2){
-        if (mode !== 'shap') {
-
-          if (checkbox.checked) {
-            // console.log('Checkbox is checked');
-
-            color=contains_mode_quarter(d[selectedShapes[0]]+d[selectedShapes[1]],selectedShapes[0],one_quarter)
-
-
-
-
-            // 在这里执行你需要的操作，当复选框被选中时
-          } else {
-            // console.log('Checkbox is not checked');
-            try {
-              // 根据条件计算颜色
-              conditions = selectedShapes.map(shape => +d[shape] > one_quarter[shape]['1/4']);
-              color=contains_mode_normal(conditions,selectedShapes)
-            } catch (error) {
-              console.error(error, selectedShapes); // 如果有错误发生，打印错误信息
-            }
-            // 在这里执行你需要的操作，当复选框未被选中时
-          }
-
-
-
-        }
-        else
-        if (checkbox.checked) {
-          // console.log('Checkbox is checked');
-
-          color=contains_mode_quarter(Number(d[selectedShapes[0]])+Number(d[selectedShapes[1]]),selectedShapes[0],one_quarter)
-
-
-
-
-          // 在这里执行你需要的操作，当复选框被选中时
-        }else
-
-        {
-          conditions = selectedShapes.map(shape => +d[shape] > 0);
-          color=contains_mode_normal(conditions,selectedShapes)
-        }
-
-
-
-
-
-      }
-      else if (selectedShapes.length===1) {
-        color=contains_mode_quarter(d[selectedShapes],selectedShapes,one_quarter)
-
-
-
-
-      }
-
-
-
-      // 更新圆圈的颜色
-      circle.setStyle({
-        fillColor: color,
-        color: 'Transparent'
-      });
-    });
-  }
-
-  function drawCircles(csvData, mymap) {
-    // 在添加新圆圈之前清空数组
-    circles = [];
-
-    csvData.forEach(function(d) {
-      if (d.pop > 80) {
-        var radius = d.pop * 1; // 根据实际数据调整比例因子
-
-        // 创建圆圈并添加到地图
-        var circle = L.circle([+d.Lat, +d.Long], {
-          color: 'Transparent',
-          fillColor: '#e8e8e8',
-          fillOpacity: 0.5,
-          radius: radius
-        }).addTo(mymap);
-
-        // 可选: 在圆圈对象上存储额外的数据
-        circle.options.data = d;
-
-        // 将圆圈添加到circles数组
-        circles.push(circle);
-      }
-    });
-  }
-
-
-  //   let circles = d3.select('#content g.map')
-  //           .selectAll('circle')
-  //           .data(csvData);
-  //
-  //   circles.enter()
-  //           .append('circle')
-  //           .attr('cx', function(d) { return projection([+d.Long, +d.Lat])[0]; })
-  //           .attr('cy', function(d) { return projection([+d.Long, +d.Lat])[1]; })
-  //           .attr('r', function(d) { return Math.sqrt(+d.pop) / 5; }) // 假设pop值足够小，或者这里可以进行适当的数值缩放
-  //           .style('fill', 'red') // 可以自定义颜色
-  //           .style('opacity', 0.5);
-  // }
-  // 假设csvData是通过d3.csv加载的数据
-
-
-
-</script>
+<div class="method">
+  <span>Within</span>
+  <img src="https://via.placeholder.com/50" alt="Within">
+</div>
+<div class="method">
+  <span>Largest</span>
+  <img src="https://via.placeholder.com/50" alt="Largest">
+</div>
 </body>
 </html>

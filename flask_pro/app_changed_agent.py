@@ -54,6 +54,10 @@ socketio = SocketIO(app, manage_session=True, async_mode='threading')
 #     pool = eventlet.GreenPool()
 #     pool.spawn(async_task,news)
 #     pool.waitall()
+@app.before_request
+def before_request():
+    geo_functions.initialize_variable()
+
 @socketio.on('join')
 def on_join(data):
     session['sid'] = request.sid
@@ -61,6 +65,26 @@ def on_join(data):
 
     # print(session['username'])
 
+geojson_files = {
+    '1': 'buildings_geojson.geojson',
+    '2': 'land_geojson.geojson',
+    '3': 'soil_maxvorstadt_geojson.geojson',
+    '4': 'points_geojson.geojson',
+    '5': 'lines_geojson.geojson',
+}
+geojson_data = {}
+
+for key, filepath in geojson_files.items():
+    with open('static/geojson' + '/' + filepath, 'r',encoding='utf-8') as file:
+        geojson_data[key] = json.load(file)
+
+@app.route('/introduction')
+def introduction():
+    return render_template('introduction.html')
+
+@app.route('/geojson/<key>')
+def send_geojson(key):
+    return jsonify(geojson_data.get(key, {}))
 
 @app.route('/submit-qu', methods=['POST'])
 def submit_qu():
@@ -294,15 +318,6 @@ def debug_mode():
     return jsonify({"text": True}), 400
 
 
-@app.route('/submit_email', methods=['POST'])
-def submit_email():
-    data = request.get_json().get('text')
-    with open("./static/email.text", 'a', encoding='utf-8') as file:
-        file.write('\n' + json.dumps(
-            {"email": data, "time": str(datetime.now()), "ip": session['ip_'], "os": session['os'],
-             "device": session['device_type'], 'browser': session['browser']}))
-    return jsonify({"text": True}), 400
-
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -315,16 +330,16 @@ def home():
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
     print("initial")
-    geo_functions.globals_dict = {'bounding_box_region_name': 'Munich',
+    munich_boundingbox= {'bounding_box_region_name': 'Munich',
                                   'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291],
                                   'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
-
+    modify_globals_dict(munich_boundingbox)
     geo_functions.global_id_attribute = {}
     geo_functions.global_id_geo = {}
     # globals_dict = {}
     # global_id_attribute = {}
     # global_id_geo = {}
-    ip_ = request.headers.get('X-Real-IP')
+    ip_ = request.remote_addr
     session['ip_'] = ip_
     session['uploaded_indication'] = None
     session['sid'] = ''
@@ -433,7 +448,7 @@ def submit():
         while compelete != True and steps < 2 and whole_step <= 5 and stop_step != True:
             compelete = True
             # print(messages)
-            print(whole_step, "whole_step")
+            # print(whole_step, "whole_step")
             whole_step += 1
             true_step += 1
             # chat_response = str(datetime.now())+"   "+str(len(messages)) #test
@@ -485,7 +500,7 @@ def submit():
                             total_buffer += char
 
                             total_char_list.append(char)
-                            print(char, end='', flush=True)
+                            # print(char, end='', flush=True)
 
                             line_buffer += char
                             # 检查是否遇到了Python代码块的起始标志
@@ -508,7 +523,7 @@ def submit():
                             if '\n' in char:
                                 line_buffer = ""
 
-                print(total_char_list)
+                # print(total_char_list)
                 chat_result = total_buffer
                 full_result = chat_result
                 processed_response.append({'role': 'assistant', 'content': chat_result})
@@ -530,7 +545,7 @@ def submit():
                 else:
 
                     compelete = True
-            print(code_list)
+            # print(code_list)
             for line_num, lines in enumerate(code_list):
 
                 # yield f"\n\n```python\n{lines}\n```"
@@ -538,13 +553,13 @@ def submit():
                 plt_show = False
                 if "plt.show()" in lines:
                     plt_show = True
-                    print("plt_show")
+                    # print("plt_show")
                     filename = f"plot_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
                     lines = lines.replace("import matplotlib.pyplot as plt",
                                           "import matplotlib.pyplot as plt\nfrom matplotlib.font_manager import FontProperties\nfont = FontProperties(fname=r'static\msyh.ttc')\n")
                     lines = lines.replace("plt.show()", f"plt.tight_layout()\nplt.savefig('static/{filename}')")
 
-                    print(lines)
+                    # print(lines)
 
                 lines = lines.split('\n')
                 # lines=[lines]
@@ -592,7 +607,7 @@ print_process({lines[-1]})
 
                 code_str = '\n'.join(new_lines)
 
-                print(code_str)
+                # print(code_str)
                 sys.stdout = output
                 start_time = time.time()  # 记录函数开始时间
 
@@ -624,7 +639,7 @@ print_process({lines[-1]})
                 if 'error' in show_template or 'Nothing can I get! Please change an area and search again' in show_template:
                     return
                 send_result = "code_result:" + short_response(code_result)
-                print(send_result)
+                # print(send_result)
                 messages.append({"role": "user",
                                  "content": send_result})
                 processed_response.append({'role': 'user', 'content': send_result})
@@ -635,7 +650,6 @@ print_process({lines[-1]})
             'len': str(len(messages)),
             'time': str(datetime.now()),
             'ip': str(session['ip_']),
-            'location': query_ip_location(session['ip_']),
             'user': str(data),
             'os': str(session['os']),
             'browser': str(session['browser']),

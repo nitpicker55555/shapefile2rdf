@@ -6,6 +6,7 @@ async function waitForFalse(getVariableValue, checkInterval = 100, initialDelay 
                     clearInterval(intervalId);
                     resolve(true);
                 }
+                console.log(getVariableValue())
             }, checkInterval);
         }, initialDelay);
     });
@@ -26,7 +27,7 @@ async function checkVariable() {
 // 模拟在3秒后将variableReference.value设为false
 setTimeout(() => {
     variableReference.value = false;
-}, 3000);
+}, 5000);
 
 // 调用异步函数
 checkVariable();

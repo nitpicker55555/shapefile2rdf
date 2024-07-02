@@ -1,195 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generate Question Divs</title>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
-    .container {
-      width: 100%;
-      height: 100vh;
-      overflow-y: auto;
-      scroll-behavior: smooth;
-      position: relative;
-    }
-    .section {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      height: 100vh;
-    }
-    .question {
-      display: flex;
-      align-items: center;
-      width: 80%;
-      margin: 10px 0;
-    }
-    .question label {
-      flex: 1;
-      text-align: right;
-      padding-right: 10px;
-    }
-    .question input[type="radio"] {
-      margin: 0 5px;
-    }
-    .question span {
-      flex: 1;
-      text-align: left;
-      padding-left: 10px;
-    }
-    .slider {
-      position: fixed;
-      top: 10px;
-      left: 20px;
-      right: 20px;
-      height: 20px;
-      background-color: #f0f0f0;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-    }
-    .slider .emoji {
-      position: absolute;
-      top: -5px;
-      left: 0;
-      font-size: 24px;
-      transition: left 0.3s;
-    }
-    .submit-button {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      height: 100px;
-    }
-    .submit-button button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+    <title>Leaflet Map with GeoJSON</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+        }
+        #description {
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            left: 10px;
+            width: 200px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        #map {
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            right: 10px;
+            left: 220px;
+        }
+        #buttons {
+            position: absolute;
+            top: 50px;
+            left: 220px;
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            flex: 1;
+            margin: 2px;
+        }
+    </style>
 </head>
 <body>
+    <div id="description">地图描述信息将显示在这里。</div>
+    <div id="map"></div>
+    <div id="buttons">
+        <button onclick="loadGeoJSON('1')">GeoJSON 1</button>
+        <button onclick="loadGeoJSON('2')">GeoJSON 2</button>
+        <button onclick="loadGeoJSON('3')">GeoJSON 3</button>
+        <button onclick="loadGeoJSON('4')">GeoJSON 4</button>
+        <button onclick="loadGeoJSON('5')">GeoJSON 5</button>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([51.505, -0.09], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
 
-<div class="slider">
-  <div class="emoji">😊</div>
-</div>
+        var geojsonLayer;
 
-<form class="container" id="questionsContainer" action="{{ url_for('submit_qu') }}" method="post">
-  <!-- Questions will be generated here by JavaScript -->
-  <input type="hidden" name="start_time" id="start_time">
-
-</form>
-
-<script>
-  function createQuestionDiv(beforeLabel, afterLabel, name) {
-    const div = document.createElement('div');
-    div.className = 'question';
-
-    const label = document.createElement('label');
-    label.textContent = beforeLabel;
-    div.appendChild(label);
-
-    for (let i = 1; i <= 7; i++) {
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.required = true; // Make each radio input required
-      input.name = name;
-      input.value = i;
-      if (i === 1) {
-        input.required = true;
-      }
-      div.appendChild(input);
-      div.appendChild(document.createTextNode(i));
-    }
-
-    const endLabel = document.createElement('span');
-    endLabel.textContent = afterLabel;
-    div.appendChild(endLabel);
-
-    return div;
-  }
-
-  function generateSections(questions) {
-    const container = document.getElementById('questionsContainer');
-    let section;
-    questions.forEach((q, index) => {
-      if (index % 4 === 0) {
-        section = document.createElement('div');
-        section.className = 'section';
-        container.appendChild(section);
-      }
-      section.appendChild(createQuestionDiv(q.beforeLabel, q.afterLabel, q.name));
-    });
-
-    // Add submit button at the end
-    const submitButtonContainer = document.createElement('div');
-    submitButtonContainer.className = 'submit-button';
-    const submitButton = document.createElement('button');
-    submitButton.type = 'submit';
-    submitButton.textContent = 'Submit';
-    submitButtonContainer.appendChild(submitButton);
-    container.appendChild(submitButtonContainer);
-  }
-
-
-  const questions = [
-    { beforeLabel: '1. annoying', afterLabel: 'enjoyable', name: 'annoying_enjoyable' },
-    { beforeLabel: '2. not understandable', afterLabel: 'understandable', name: 'not_understandable_understandable' },
-    { beforeLabel: '3. creative', afterLabel: 'dull', name: 'creative_dull' },
-    { beforeLabel: '4. easy to learn', afterLabel: 'difficult to learn', name: 'easy_to_learn_difficult_to_learn' },
-    { beforeLabel: '5. valuable', afterLabel: 'inferior', name: 'valuable_inferior' },
-    { beforeLabel: '6. boring', afterLabel: 'exciting', name: 'boring_exciting' },
-    { beforeLabel: '7. not interesting', afterLabel: 'interesting', name: 'not_interesting_interesting' },
-    { beforeLabel: '8. unpredictable', afterLabel: 'predictable', name: 'unpredictable_predictable' },
-    { beforeLabel: '9. fast', afterLabel: 'slow', name: 'fast_slow' },
-    { beforeLabel: '10. inventive', afterLabel: 'conventional', name: 'inventive_conventional' },
-    { beforeLabel: '11. obstructive', afterLabel: 'supportive', name: 'obstructive_supportive' },
-    { beforeLabel: '12. good', afterLabel: 'bad', name: 'good_bad' },
-    { beforeLabel: '13. complicated', afterLabel: 'easy', name: 'complicated_easy' },
-    { beforeLabel: '14. unlikable', afterLabel: 'pleasing', name: 'unlikable_pleasing' },
-    { beforeLabel: '15. usual', afterLabel: 'leading edge', name: 'usual_leading_edge' },
-    { beforeLabel: '16. unpleasant', afterLabel: 'pleasant', name: 'unpleasant_pleasant' },
-    { beforeLabel: '17. secure', afterLabel: 'not secure', name: 'secure_not_secure' },
-    { beforeLabel: '18. motivating', afterLabel: 'demotivating', name: 'motivating_demotivating' },
-    { beforeLabel: '19. meets expectations', afterLabel: 'does not meet expectations', name: 'meets_expectations_does_not_meet_expectations' },
-    { beforeLabel: '20. inefficient', afterLabel: 'efficient', name: 'inefficient_efficient' },
-    { beforeLabel: '21. clear', afterLabel: 'confusing', name: 'clear_confusing' },
-    { beforeLabel: '22. impractical', afterLabel: 'practical', name: 'impractical_practical' },
-    { beforeLabel: '23. organized', afterLabel: 'cluttered', name: 'organized_cluttered' },
-    { beforeLabel: '24. attractive', afterLabel: 'unattractive', name: 'attractive_unattractive' },
-    { beforeLabel: '25. friendly', afterLabel: 'unfriendly', name: 'friendly_unfriendly' },
-    { beforeLabel: '26. conservative', afterLabel: 'innovative', name: 'conservative_innovative' },
-  ];
-
-  generateSections(questions);
-
-  const container = document.querySelector('.container');
-  const emoji = document.querySelector('.emoji');
-  const slider = document.querySelector('.slider');
-  const sliderWidth = slider.clientWidth - 40; // Padding on both sides
-
-  container.addEventListener('scroll', () => {
-    const maxScrollTop = container.scrollHeight - container.clientHeight;
-    const scrollTop = container.scrollTop;
-    const scrollPercentage = scrollTop / maxScrollTop;
-    const emojiPosition = scrollPercentage * sliderWidth;
-    emoji.style.left = `${emojiPosition}px`;
-
-  });
-  document.getElementById('start_time').value = Date.now();
-  console.log(document.getElementById('start_time').value)
-</script>
-
+        function loadGeoJSON(index) {
+            var url = `/geojson/${index}`;
+            fetch(url).then(response => response.json()).then(data => {
+                if (geojsonLayer) {
+                    map.removeLayer(geojsonLayer);
+                }
+                geojsonLayer = L.geoJSON(data, {
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties && feature.properties.popupContent) {
+                            layer.bindPopup(feature.properties.popupContent);
+                        }
+                    }
+                }).addTo(map);
+            });
+        }
+    </script>
 </body>
 </html>

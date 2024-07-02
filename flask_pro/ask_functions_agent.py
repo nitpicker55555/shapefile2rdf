@@ -28,7 +28,7 @@ if os.path.exists(file_path):
         # 逐行读取并处理每一行
         for line in file:
             current_dict = json.loads(line)
-            key = next(iter(current_dict))  # 获取当前字典的键
+            key = next(iter(current_dict))  # 获取当前字典的键j
             # 如果键不存在于全局字典中，直接添加
             if key not in global_paring_dict:
                 global_paring_dict[key] = current_dict[key]
@@ -1156,6 +1156,7 @@ output as json format like:
 
 
 def set_bounding_box(region_name, query=None):
+    globals_dict=use_globals_dict()
     if region_name == '':
         geo_functions.globals_dict = {}
         return {'geo_map': ''}
@@ -1173,24 +1174,24 @@ def set_bounding_box(region_name, query=None):
             region_name = location_name
         if region_name not in locations:
             region_name = "Munich Maxvorstadt"
-        geo_functions.globals_dict["bounding_box_region_name"] = region_name
-        geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict[
+        globals_dict["bounding_box_region_name"] = region_name
+        globals_dict['bounding_coordinates'], globals_dict[
             'bounding_wkb'], response_str = find_boundbox(region_name)
 
         if query != None:
             modify_query = {
-                'Original_bounding_box_of_' + region_name: str(geo_functions.globals_dict['bounding_coordinates']),
+                'Original_bounding_box_of_' + region_name: str(globals_dict['bounding_coordinates']),
                 "query": query
             }
             modified_box = process_boundingbox(str(modify_query))
-            geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict[
+            globals_dict['bounding_coordinates'], globals_dict[
                 'bounding_wkb'], response_str = find_boundbox(modified_box, 'changed')
             # print(wkb.loads(bytes.fromhex(geo_functions.globals_dict['bounding_wkb'])))
 
         geo_dict = {
-            geo_functions.globals_dict["bounding_box_region_name"]: (
-                wkb.loads(bytes.fromhex((geo_functions.globals_dict['bounding_wkb']))))}
-
+            globals_dict["bounding_box_region_name"]: (
+                wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+        modify_globals_dict(globals_dict)
         return {'geo_map': geo_dict}
     else:
         return None

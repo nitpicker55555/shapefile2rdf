@@ -2788,7 +2788,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
     // var index = 0;
     // var layerControl = document.getElementById('controls');
     // var toggle = document.getElementById('toggle');
-    var process_status=false
+    var process_status=true
     var currentIndex = 0;
     const usedElements = [];
 
@@ -2817,6 +2817,9 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
 
     ]
     var allControls = [];
+    // setTimeout(() => {
+    //     process_status = false;
+    // }, 5000);
 
     function updateControlHeight() {
         var mapHeight = $('#map-container').height();
@@ -2838,9 +2841,7 @@ id_list length 4,id_list print samples:[('soil_997a: Bebaute Flächen mit einem 
     updateMapDataAndFitBounds(map,geojsons,target_labels)
 
 
-    function getVariableValue() {
-        return process_status.value;
-    }
+
 
     const tips = [
         {

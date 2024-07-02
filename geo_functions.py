@@ -1,5 +1,6 @@
 import time
 
+from flask import session
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon,MultiPolygon
 import psycopg2
@@ -12,9 +13,21 @@ from shapely import wkt
 from itertools import islice
 import copy
 import pandas as pd
-globals_dict = {}
 global_id_attribute={}
 global_id_geo={}
+
+def modify_globals_dict(new_value):
+    session['globals_dict'] = new_value
+def initialize_variable():
+    if 'globals_dict' not in session:
+        session['globals_dict'] = {}
+    # if 'global_id_attribute' not in session:
+    #     session['global_id_attribute'] = {}
+    # if 'global_id_geo' not in session:
+    #     session['global_id_geo'] = {}
+def use_globals_dict():
+    return session.get('globals_dict', 'No global variable found in session.')
+
 def map_keys_to_values(similar_col_name_dict):
     result = {}
     for key, value in similar_col_name_dict.items():
@@ -196,10 +209,11 @@ def cur_action(query,mode='query'):
 
 def ids_of_attribute(graph_name,specific_col=None, bounding_box_coordinats=None):
     bounding_judge_query=''
-    if 'bounding_coordinates' in globals_dict:
-        bounding_box_coordinats = globals_dict['bounding_coordinates']
-        min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
-        bounding_judge_query=f"ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
+    if 'globals_dict' in session['globals_dict']:
+        if 'bounding_coordinates' in session['globals_dict']:
+            bounding_box_coordinats = session['globals_dict']['bounding_coordinates']
+            min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
+            bounding_judge_query=f"ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
     attributes_set = set()
 
     fclass= col_name_mapping_dict[graph_name]['fclass']
@@ -233,8 +247,8 @@ def ids_of_type(graph_name, type_dict, bounding_box_coordinats=None):
 
 
     """
-    globals_dict["bounding_box_region_name"]=region_name
-    globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
+    session['globals_dict']["bounding_box_region_name"]=region_name
+    session['globals_dict']['bounding_coordinates'],session['globals_dict']['bounding_wkb']=find_boundbox(region_name)
 set_bounding_box("munich")
 a={'non_area_col':{'fclass':'all'},'area_num':0}
 ids_of_type('landuse',a)
@@ -248,8 +262,9 @@ ids_of_type('landuse',a)
     osm_id=col_name_mapping_dict[graph_name]['osm_id']
 
     bounding_judge_query = ""
-    if 'bounding_coordinates' in globals_dict:
-        bounding_box_coordinats = globals_dict['bounding_coordinates']
+
+    if 'bounding_coordinates' in session['globals_dict']:
+        bounding_box_coordinats = session['globals_dict']['bounding_coordinates']
         min_lat, max_lat, min_lon, max_lon = bounding_box_coordinats
         bounding_judge_query=f"ST_Intersects(geom, ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, {4326}))"
 
@@ -307,8 +322,8 @@ ids_of_type('landuse',a)
         feed_back=area_filter(feed_back, type_dict['area_num'])['id_list'] #计算面积约束
         print(len(feed_back),'area_num',type_dict['area_num'])
 
-    if "bounding_box_region_name" in globals_dict:
-        geo_dict = {globals_dict["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+    if "bounding_box_region_name" in session['globals_dict']:
+        geo_dict = {session['globals_dict']["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((session['globals_dict']['bounding_wkb']))))}
     else:
         geo_dict = {}
 
@@ -372,8 +387,8 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
         data_list1 = copy.deepcopy(data_list2_original)
         data_list2 = copy.deepcopy(data_list1_original)
     if isinstance(data_list1, str):
-        data_list1 = globals_dict[data_list1]
-        data_list2 = globals_dict[data_list2]
+        data_list1 = session['globals_dict'][data_list1]
+        data_list2 = session['globals_dict'][data_list2]
 
     elif isinstance(data_list1,list): #list是geo_calculate return的subject或Object的键值
         list_2_geo1 = {i:global_id_geo[i] for i in data_list1}
@@ -498,14 +513,14 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
         distance = list(data_list1[0].values())[0].distance(list(data_list2[0].values())[0])
         # print(distance)
     """
-        globals_dict["bounding_box_region_name"]=region_name
-    globals_dict['bounding_coordinates'],globals_dict['bounding_wkb']=find_boundbox(region_name)
+        session['globals_dict']["bounding_box_region_name"]=region_name
+    session['globals_dict']['bounding_coordinates'],session['globals_dict']['bounding_wkb']=find_boundbox(region_name)
 
     """
 
-    if "bounding_box_region_name" in globals_dict:
-        # geo_dict = {globals_dict["bounding_box_region_name"]: wkb.loads(bytes.fromhex(globals_dict['bounding_wkb']))}
-        geo_dict = {globals_dict["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((globals_dict['bounding_wkb']))))}
+    if "bounding_box_region_name" in session['globals_dict']:
+        # geo_dict = {session['globals_dict']["bounding_box_region_name"]: wkb.loads(bytes.fromhex(session['globals_dict']['bounding_wkb']))}
+        geo_dict = {session['globals_dict']["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((session['globals_dict']['bounding_wkb']))))}
     else:
         geo_dict = {}
     # data_list1.update(data_list2)
