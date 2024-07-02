@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Map with GeoJSON</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+        }
+        #description {
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            left: 10px;
+            width: 200px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        #map {
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            right: 10px;
+            left: 220px;
+        }
+        #buttons {
+            position: absolute;
+            top: 50px;
+            left: 220px;
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            flex: 1;
+            margin: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="description">地图描述信息将显示在这里。</div>
+    <div id="map"></div>
+    <div id="buttons">
+        <button onclick="loadGeoJSON('1')">GeoJSON 1</button>
+        <button onclick="loadGeoJSON('2')">GeoJSON 2</button>
+        <button onclick="loadGeoJSON('3')">GeoJSON 3</button>
+        <button onclick="loadGeoJSON('4')">GeoJSON 4</button>
+        <button onclick="loadGeoJSON('5')">GeoJSON 5</button>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([51.505, -0.09], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var geojsonLayer;
+
+        function loadGeoJSON(index) {
+            var url = `/geojson/${index}`;
+            fetch(url).then(response => response.json()).then(data => {
+                if (geojsonLayer) {
+                    map.removeLayer(geojsonLayer);
+                }
+                geojsonLayer = L.geoJSON(data, {
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties && feature.properties.popupContent) {
+                            layer.bindPopup(feature.properties.popupContent);
+                        }
+                    }
+                }).addTo(map);
+            });
+        }
+    </script>
+</body>
+</html>
