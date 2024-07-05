@@ -614,7 +614,7 @@ print_process({lines[-1]})
 
                 code_str = '\n'.join(new_lines)
 
-                print(code_str)
+                # print(code_str)
                 sys.stdout = output
                 start_time = time.time()  # 记录函数开始时间
 

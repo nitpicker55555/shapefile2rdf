@@ -533,7 +533,7 @@ Response:
         "num": 0
     }
 }
-Query: "near/close/neighbour"
+Query: "near/close/neighbour/around"
 Response:
 {
     "geo_calculations": {
