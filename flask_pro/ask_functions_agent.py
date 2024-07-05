@@ -10,7 +10,7 @@ from geo_functions import *
 import spacy
 from bounding_box import find_boundbox
 from rag_chroma import calculate_similarity_chroma
-
+from flask import session
 # 加载spaCy的英语模型
 nlp = spacy.load('en_core_web_sm')
 global_paring_dict = {}
@@ -682,31 +682,8 @@ def remove_non_spatial_modify_statements(data):
     return data
 
 
-def fclass_cosin_id_list(query):
-    match_list = set(calculate_similarity(all_fclass_set, query).keys())
-
-    if len(match_list) != 0:
-        print('fclass match')
-        table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
-        all_id_list = []
-        for table_, fclass_list in table_fclass_dicts.items():
-            each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
-                                                'area_num': None})
-            all_id_list.append(each_id_list)
-        return merge_dicts(all_id_list)
 
 
-def name_cosin_id_list(query):
-    match_list = name_cosin_list(query)
-    if len(match_list) != 0:
-        print('name match')
-        table_name_dicts = find_keys_by_values(name_dict_4_similarity, match_list)
-        all_id_list = []
-        for table_, name_list in table_name_dicts.items():
-            each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
-                                                'area_num': None})
-            all_id_list.append(each_id_list)
-        return merge_dicts(all_id_list)
 
 
 def name_cosin_list(query):
@@ -719,7 +696,7 @@ def fclass_cosin_list(query, mode):
     return match_list
 
 
-def id_list_of_entity(query, verbose=False):
+def id_list_of_entity(query, verbose=False,bounding_box=None):
     """
     graph{num} = judge_type(multi_result['entities'][{num}])["database"]
     type{num} = pick_match(multi_result['entities'][{num}], graph{num})
@@ -734,7 +711,7 @@ def id_list_of_entity(query, verbose=False):
     print("table: ", table_str)
     if table_str == None:
 
-        intersects_id_list = data_intersection_id_list(query)
+        intersects_id_list = data_intersection_id_list(query,bounding_box=bounding_box)
         if intersects_id_list:
             return intersects_id_list
 
@@ -743,7 +720,7 @@ def id_list_of_entity(query, verbose=False):
         table_str = table_str['database']
     query = extract_and_reformat_area_words(query)
     type_dict = pick_match(query, table_str, verbose)
-    ids_list = ids_of_type(table_str, type_dict)
+    ids_list = ids_of_type(table_str, type_dict,bounding_box=bounding_box)
     return ids_list
 
 
@@ -759,7 +736,7 @@ def intersect_dicts(dict1, dict2):
         return combined_keys
 
 
-def data_intersection_id_list(query):
+def data_intersection_id_list(query,bounding_box=None):
     table_name_dicts = {}
     table_fclass_dicts = {}
     all_id_list = []
@@ -767,6 +744,8 @@ def data_intersection_id_list(query):
     match_list, judge_strong = calculate_similarity(all_fclass_set, query, 'judge_strong')
     match_list = set(match_list.keys())
     print(judge_strong, 'judge_strong')
+    single_word_sign= len(query.split())>1
+
     if len(match_list) != 0:
         print('fclass match')
         table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
@@ -794,7 +773,7 @@ def data_intersection_id_list(query):
             fclass_list = table_fclass_dicts[table_]
 
         each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set(name_list)},
-                                            'area_num': None})
+                                            'area_num': None},bounding_box=bounding_box)
         all_id_list.append(each_id_list)
     merged_id_list = merge_dicts(all_id_list)
 
@@ -808,10 +787,10 @@ def data_intersection_id_list(query):
                 fclass_list = table_fclass_dicts[table_]
             if table_!='buildings': #并集不并buildings
                 each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
-                                                'area_num': None})
+                                                'area_num': None},bounding_box=bounding_box)
                 all_id_list.append(each_id_list)
             each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
-                                                'area_num': None})
+                                                'area_num': None},bounding_box=bounding_box)
             all_id_list.append(each_id_list)
 
         return merge_dicts(all_id_list)
@@ -854,7 +833,7 @@ def get_label_from_id(id_list):
     return {key[:list(key).index('_', list(key).index('_') + 1)] for key in id_list.keys() if key.count('_') >= 2}
 
 
-def geo_filter(query, id_list_subject, id_list_object):
+def geo_filter(query, id_list_subject, id_list_object,bounding_box=None):
     """
     geo_relation{num}=judge_geo_relation(multi_result['spatial_relations'][{num}]['type'])
     geo_result{num}=geo_calculate(id_list{relations['head']},id_list{relations['tail']},geo_relation{num}['type'],geo_relation{num}['num'])
@@ -874,7 +853,7 @@ def geo_filter(query, id_list_subject, id_list_object):
     # print( geo_relation['type'])
     # print(id_list_subject)
     geo_result = geo_calculate(id_list_subject, id_list_object, geo_relation['type'], geo_relation['num'],
-                               versa_sign=versa_sign)
+                               versa_sign=versa_sign,bounding_box=bounding_box)
     target_label = list(get_label_from_id(geo_result['subject']['id_list']))
     geo_result['geo_map']['target_label'] = target_label
     # print(target_label,'target_label')
@@ -1170,8 +1149,9 @@ output as json format like:
 
 
 def set_bounding_box(region_name, query=None):
+
     if region_name == '':
-        geo_functions.globals_dict = {}
+        session['globals_dict'] = {}
         return {'geo_map': ''}
     locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
                  'Oberschleissheim', 'Hadern']
@@ -1187,23 +1167,24 @@ def set_bounding_box(region_name, query=None):
             region_name = location_name
         if region_name not in locations:
             region_name = "Munich Maxvorstadt"
-        geo_functions.globals_dict["bounding_box_region_name"] = region_name
-        geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict[
+            
+        session['globals_dict']["bounding_box_region_name"] = region_name
+        session['globals_dict']['bounding_coordinates'], session['globals_dict'][
             'bounding_wkb'], response_str = find_boundbox(region_name)
 
         if query != None:
             modify_query = {
-                'Original_bounding_box_of_' + region_name: str(geo_functions.globals_dict['bounding_coordinates']),
+                'Original_bounding_box_of_' + region_name: str(session['globals_dict']['bounding_coordinates']),
                 "query": query
             }
             modified_box = process_boundingbox(str(modify_query))
-            geo_functions.globals_dict['bounding_coordinates'], geo_functions.globals_dict[
+            session['globals_dict']['bounding_coordinates'], session['globals_dict'][
                 'bounding_wkb'], response_str = find_boundbox(modified_box, 'changed')
-            # print(wkb.loads(bytes.fromhex(geo_functions.globals_dict['bounding_wkb'])))
+            # print(wkb.loads(bytes.fromhex(session['globals_dict']['bounding_wkb'])))
 
         geo_dict = {
-            geo_functions.globals_dict["bounding_box_region_name"]: (
-                wkb.loads(bytes.fromhex((geo_functions.globals_dict['bounding_wkb']))))}
+            session['globals_dict']["bounding_box_region_name"]: (
+                wkb.loads(bytes.fromhex((session['globals_dict']['bounding_wkb']))))}
 
         return {'geo_map': geo_dict}
     else:

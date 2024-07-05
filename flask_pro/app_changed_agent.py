@@ -9,7 +9,7 @@ from shapely.geometry import Polygon, mapping
 
 import geo_functions
 from geo_functions import *
-from ask_functions_agent import *
+
 from flask import Flask, Response, stream_with_context, request, render_template, jsonify, session, redirect, url_for
 
 from werkzeug.utils import secure_filename
@@ -29,15 +29,19 @@ import sys
 from io import StringIO
 from datetime import datetime
 from flask_socketio import SocketIO, emit
-
+from ask_functions_agent import *
 # from repair_data import repair,crs_transfer
 # from shape2ttf import shapefile_to_ttl
 output = StringIO()
 original_stdout = sys.stdout
 app = Flask(__name__)
 # app.logger.setLevel(logging.WARNING)
-app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
 
+app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
+@app.before_request
+def initialize_session():
+    if 'globals_dict' not in session:
+        session['globals_dict']={}
 # global_variables = {}
 
 # 示例的 Markdown 文本（包含图片链接）
@@ -54,9 +58,7 @@ socketio = SocketIO(app, manage_session=True, async_mode='threading')
 #     pool = eventlet.GreenPool()
 #     pool.spawn(async_task,news)
 #     pool.waitall()
-@app.before_request
-def before_request():
-    geo_functions.initialize_variable()
+
 
 @socketio.on('join')
 def on_join(data):
@@ -434,6 +436,7 @@ def submit():
     data = request.get_json().get('text')  # 获取JSON数据
     messages = request.get_json().get('messages')  # 获取JSON数据
     sid = request.get_json().get('sid')  # 获取JSON数据
+    need_bounding_box_function=['id_list_of_entity(','geo_filter(']
     # new_message = request.get_json().get('new_message')  # 获取JSON数据
     processed_response = []
 
@@ -568,7 +571,11 @@ def submit():
                 lines = filtered_lst
                 new_lines = []
                 variable_dict = {}
+
                 for line_num, each_line in enumerate(lines):
+
+
+
 
                     if '=' in each_line and (
                             'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
@@ -607,7 +614,7 @@ print_process({lines[-1]})
 
                 code_str = '\n'.join(new_lines)
 
-                # print(code_str)
+                print(code_str)
                 sys.stdout = output
                 start_time = time.time()  # 记录函数开始时间
 
