@@ -140,6 +140,14 @@
       }
       section.appendChild(createQuestionDiv(q.beforeLabel, q.afterLabel, q.name));
     });
+    const submitButtonContainer = document.createElement('div');
+    submitButtonContainer.className = 'submit-button';
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit';
+    submitButton.textContent = 'Submit';
+    submitButton.onclick = validateForm; // Add click event handler
+    submitButtonContainer.appendChild(submitButton);
+    container.appendChild(submitButtonContainer);
 
     // Add submit button at the end
     const textareaContainer = document.createElement('div');
@@ -156,14 +164,7 @@
     container.appendChild(textareaContainer);
 
     // Add submit button at the end
-    const submitButtonContainer = document.createElement('div');
-    submitButtonContainer.className = 'submit-button';
-    const submitButton = document.createElement('button');
-    submitButton.type = 'submit';
-    submitButton.textContent = 'Submit';
-    submitButton.onclick = validateForm; // Add click event handler
-    submitButtonContainer.appendChild(submitButton);
-    container.appendChild(submitButtonContainer);
+
   }
   function validateForm() {
     const questions = document.querySelectorAll('.question');

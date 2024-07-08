@@ -442,7 +442,8 @@ def submit():
     # new_message = request.get_json().get('new_message')  # 获取JSON数据
     processed_response = []
 
-    def generate(data):
+    def process_code(data):
+        yield_list = []
         compelete = False
         template = False
         steps = 0  # 纯文字返回最多两次
@@ -463,7 +464,7 @@ def submit():
             if session['template'] == True:
 
                 code_list.append(data)
-                yield data
+                yield_list.append(data)
                 compelete = True
             else:
                 # bounding_box, new_message = judge_bounding_box(data)
@@ -521,7 +522,9 @@ def submit():
 
                             # 如果不在代码块中，则打印行缓冲区内容
                             if (not in_code_block and line_buffer) or line_buffer.startswith('#'):
-                                yield char.replace('#', '#><;').replace("'", '')
+                                # yield char.replace('#', '#><;').replace("'", '')
+                                yield_list.append(char.replace('#', '#><;').replace("'", ''))
+
                                 # time.sleep(0.1)  # 模拟逐字打印的效果
 
                             # 如果遇到换行符，重置line_buffer
@@ -553,8 +556,9 @@ def submit():
             # print(code_list)
             for line_num, lines in enumerate(code_list):
 
-                # yield f"\n\n```python\n{lines}\n```"
-                yield "\n\n`Code running...`\n"
+
+                # yield "\n\n`Code running...`\n"
+                yield_list.append("\n\n`Code running...`\n")
                 plt_show = False
                 if "plt.show()" in lines:
                     plt_show = True
@@ -647,9 +651,11 @@ print_process({lines[-1]})
                     code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
                     whole_step = 5  # 确保图返回结果只会被描述一次
 
-                    yield code_result
+                    yield_list.append( code_result)
                 show_template = details_span(code_result, run_time)
-                yield list(show_template.values())[0]
+
+                yield_list.append(list(show_template.values())[0])
+
                 if 'error' in show_template or 'Nothing can I get! Please change an area and search again' in show_template:
                     return
                 send_result = "code_result:" + short_response(code_result)
@@ -677,8 +683,13 @@ print_process({lines[-1]})
         # 写入文本文件
         with open('static/data3.txt', 'a', encoding='utf-8') as file:
             file.write(formatted_data)
+        return     yield_list
+    yield_list=process_code(data)
 
-    return Response(stream_with_context(generate(data)))
+    def generate():
+        for yield_element in yield_list:
+            yield yield_element
+    return Response(stream_with_context(generate()))
 
 
 def query_ip_location(ip):
