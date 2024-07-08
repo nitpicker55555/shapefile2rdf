@@ -1149,9 +1149,14 @@ output as json format like:
 
 
 def set_bounding_box(region_name, query=None):
-
+    bounding_box_dict={
+        "bounding_box_region_name":''
+        ,"bounding_coordinates":''
+        ,"bounding_wkb":''
+    }
     if region_name == '':
-        session['globals_dict'] = {}
+        bounding_box_dict = {}
+
         return {'geo_map': ''}
     locations = ['Munich', 'Augsburg', 'Munich Moosach', 'Munich Maxvorstadt', 'Munich Ismaning', 'Freising',
                  'Oberschleissheim', 'Hadern']
@@ -1167,29 +1172,30 @@ def set_bounding_box(region_name, query=None):
             region_name = location_name
         if region_name not in locations:
             region_name = "Munich Maxvorstadt"
-            
-        session['globals_dict']["bounding_box_region_name"] = region_name
-        session['globals_dict']['bounding_coordinates'], session['globals_dict'][
+
+        bounding_box_dict["bounding_box_region_name"] = region_name
+        bounding_box_dict['bounding_coordinates'], bounding_box_dict[
             'bounding_wkb'], response_str = find_boundbox(region_name)
 
         if query != None:
             modify_query = {
-                'Original_bounding_box_of_' + region_name: str(session['globals_dict']['bounding_coordinates']),
+                'Original_bounding_box_of_' + region_name: str(bounding_box_dict['bounding_coordinates']),
                 "query": query
             }
-            modified_box = process_boundingbox(str(modify_query))
-            session['globals_dict']['bounding_coordinates'], session['globals_dict'][
+            modified_box = (str(modify_query))
+            bounding_box_dict['bounding_coordinates'], bounding_box_dict[
                 'bounding_wkb'], response_str = find_boundbox(modified_box, 'changed')
-            # print(wkb.loads(bytes.fromhex(session['globals_dict']['bounding_wkb'])))
+            # print(wkb.loads(bytes.fromhex(bounding_box_dict['bounding_wkb'])))
 
         geo_dict = {
-            session['globals_dict']["bounding_box_region_name"]: (
-                wkb.loads(bytes.fromhex((session['globals_dict']['bounding_wkb']))))}
-
+            bounding_box_dict["bounding_box_region_name"]: (
+                wkb.loads(bytes.fromhex((bounding_box_dict['bounding_wkb']))))}
+        session['globals_dict']=bounding_box_dict
+        session.modified = True
         return {'geo_map': geo_dict}
+
     else:
         return None
-
 
 def process_boundingbox(query, messages=None):
     if query == None:
