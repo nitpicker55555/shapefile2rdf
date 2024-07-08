@@ -69,7 +69,6 @@ def submit():
     data = request.get_json().get('text')  # 获取代码
 
     def generate(data):
-        yield data
         original_stdout = sys.stdout
         output = io.StringIO()
         sys.stdout = output
@@ -89,11 +88,12 @@ def submit():
         code_result = str(output.getvalue().replace('\00', ''))
         output.truncate(0)
         output.seek(0)
-        # print(session['globals_dict'])
+        print(session['globals_dict'])
         yield code_result
 
-    # Collect the results from the generator
-    results = ''.join(list(generate(data)))
+
+    generator = generate(data)
+    next(generator)
     return Response(stream_with_context(generate(data)))
 
 
