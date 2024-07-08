@@ -41,7 +41,15 @@ app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
 @app.before_request
 def initialize_session():
     if 'globals_dict' not in session:
-        session['globals_dict']={}
+        session['globals_dict']={'bounding_box_region_name': 'Munich',
+                              'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291],
+                              'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
+
+        print('session 初始化')
+
+geo_functions.global_id_attribute = {}
+geo_functions.global_id_geo = {}
+
 # global_variables = {}
 
 # 示例的 Markdown 文本（包含图片链接）
@@ -168,7 +176,6 @@ def complete_json(input_stream):
     # 再次尝试解析补全后的JSON
     return json.loads(input_stream)
 
-
 # html_content = markdown2.markdown(markdown_text)
 def reorder_relations(relations):
     for relation in relations:
@@ -215,7 +222,7 @@ def len_str2list(result):
             else:
                 return result
         else:
-            return result
+            return ''
     except (ValueError, SyntaxError):
         # 如果解析时发生错误，说明字符串不是有效的列表字符串
         try:
@@ -332,12 +339,7 @@ def home():
     # session['globals_dict'] ={}
     # session['locals_dict'] = locals()
     print("initial")
-    munich_boundingbox= {'bounding_box_region_name': 'Munich',
-                                  'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291],
-                                  'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
-    modify_globals_dict(munich_boundingbox)
-    geo_functions.global_id_attribute = {}
-    geo_functions.global_id_geo = {}
+
     # globals_dict = {}
     # global_id_attribute = {}
     # global_id_geo = {}
@@ -630,6 +632,7 @@ print_process({lines[-1]})
                     else:
                         print("Nothing can I get! Please change an area and search again :)")
                     # print(f"An error occurred: {repr(e)}\n{exc_info}")
+                session.modified = True
 
                 end_time = time.time()  # 记录函数结束时间
                 run_time = end_time - start_time
@@ -638,8 +641,12 @@ print_process({lines[-1]})
                 sys.stdout = original_stdout
                 code_result = str(code_result)
                 if plt_show and "An error occurred: " not in code_result:
+                    if not os.path.exists(file_path):
+                        filename='plot_20240703005825.png'
+
                     code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
                     whole_step = 5  # 确保图返回结果只会被描述一次
+
                     yield code_result
                 show_template = details_span(code_result, run_time)
                 yield list(show_template.values())[0]
