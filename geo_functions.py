@@ -241,7 +241,7 @@ def judge_area(type):
         return False
 
 def ids_of_type(graph_name, type_dict, bounding_box=None):
-
+    print(type_dict)
 
     """
     session['globals_dict']["bounding_box_region_name"]=region_name
@@ -259,7 +259,7 @@ ids_of_type('landuse',a)
     osm_id=col_name_mapping_dict[graph_name]['osm_id']
 
     bounding_judge_query = ""
-    bounding_box_value=session['globals_dict']
+    bounding_box_value=bounding_box
 
     if bounding_box_value!=None:
         bounding_box_coordinats = bounding_box_value['bounding_coordinates']

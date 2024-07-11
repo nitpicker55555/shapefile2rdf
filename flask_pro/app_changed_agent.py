@@ -30,6 +30,7 @@ from io import StringIO
 from datetime import datetime
 from flask_socketio import SocketIO, emit
 from ask_functions_agent import *
+
 # from repair_data import repair,crs_transfer
 # from shape2ttf import shapefile_to_ttl
 output = StringIO()
@@ -38,14 +39,17 @@ app = Flask(__name__)
 # app.logger.setLevel(logging.WARNING)
 
 app.secret_key = 'secret_key'  # 用于启用 flash() 方法发送消息
+
+
 @app.before_request
 def initialize_session():
     if 'globals_dict' not in session:
-        session['globals_dict']={'bounding_box_region_name': 'Munich',
-                              'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291],
-                              'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
+        session['globals_dict'] = {'bounding_box_region_name': 'Munich',
+                                   'bounding_coordinates': [48.061625, 48.248098, 11.360777, 11.72291],
+                                   'bounding_wkb': '01030000000100000005000000494C50C3B7B82640D9CEF753E3074840494C50C3B7B82640FC19DEACC11F484019E76F4221722740FC19DEACC11F484019E76F4221722740D9CEF753E3074840494C50C3B7B82640D9CEF753E3074840'}
 
         print('session 初始化')
+
 
 geo_functions.global_id_attribute = {}
 geo_functions.global_id_geo = {}
@@ -75,6 +79,7 @@ def on_join(data):
 
     # print(session['username'])
 
+
 geojson_files = {
     '1': 'buildings_geojson.geojson',
     '2': 'land_geojson.geojson',
@@ -85,16 +90,19 @@ geojson_files = {
 geojson_data = {}
 
 for key, filepath in geojson_files.items():
-    with open('static/geojson' + '/' + filepath, 'r',encoding='utf-8') as file:
+    with open('static/geojson' + '/' + filepath, 'r', encoding='utf-8') as file:
         geojson_data[key] = json.load(file)
+
 
 @app.route('/introduction')
 def introduction():
     return render_template('introduction.html')
 
+
 @app.route('/geojson/<key>')
 def send_geojson(key):
     return jsonify(geojson_data.get(key, {}))
+
 
 @app.route('/submit-qu', methods=['POST'])
 def submit_qu():
@@ -175,6 +183,7 @@ def complete_json(input_stream):
 
     # 再次尝试解析补全后的JSON
     return json.loads(input_stream)
+
 
 # html_content = markdown2.markdown(markdown_text)
 def reorder_relations(relations):
@@ -327,7 +336,6 @@ def debug_mode():
     return jsonify({"text": True}), 400
 
 
-
 @app.errorhandler(413)
 def request_entity_too_large(error):
     return jsonify({"error": "The file is too large. Maximum file size is 50MB."}), 413
@@ -398,11 +406,11 @@ def send_data(data, mode="data", index="", sid=''):
 
         if not isinstance(data, str) and len(data) != 0:
             if 'target_label' in data:
-                target_labels=data['target_label']
+                target_labels = data['target_label']
                 data.pop('target_label')
             data = polygons_to_geojson(data)
     if sid != '':
-        socketio.emit('text', {mode: data, 'index': index,'target_label':target_labels}, room=sid)
+        socketio.emit('text', {mode: data, 'index': index, 'target_label': target_labels}, room=sid)
     else:
         print('no sid')
 
@@ -438,7 +446,7 @@ def submit():
     data = request.get_json().get('text')  # 获取JSON数据
     messages = request.get_json().get('messages')  # 获取JSON数据
     sid = request.get_json().get('sid')  # 获取JSON数据
-    need_bounding_box_function=['id_list_of_entity(','geo_filter(']
+    need_bounding_box_function = ['id_list_of_entity(', 'geo_filter(']
     # new_message = request.get_json().get('new_message')  # 获取JSON数据
     processed_response = []
 
@@ -556,7 +564,6 @@ def submit():
             # print(code_list)
             for line_num, lines in enumerate(code_list):
 
-
                 # yield "\n\n`Code running...`\n"
                 yield_list.append("\n\n`Code running...`\n")
                 plt_show = False
@@ -579,9 +586,6 @@ def submit():
                 variable_dict = {}
 
                 for line_num, each_line in enumerate(lines):
-
-
-
 
                     if '=' in each_line and (
                             'geo_filter(' in each_line or 'id_list_of_entity(' in each_line or 'area_filter(' in each_line or 'set_bounding_box(' in each_line):
@@ -631,9 +635,12 @@ print_process({lines[-1]})
                 except Exception as e:
                     exc_info = traceback.format_exc()
                     # 打印错误信息和代码行
+
                     if session['template'] == True:
-                        print(f"An error occurred: {repr(e)}\n{exc_info}")
+                        print(e)
+                        print(f"An error occurred: \n{exc_info}")
                     else:
+                        # print(f"An error occurred: {repr(e)}\n{exc_info}")
                         print("Nothing can I get! Please change an area and search again :)")
                     # print(f"An error occurred: {repr(e)}\n{exc_info}")
                 session.modified = True
@@ -646,12 +653,12 @@ print_process({lines[-1]})
                 code_result = str(code_result)
                 if plt_show and "An error occurred: " not in code_result:
                     if not os.path.exists(file_path):
-                        filename='plot_20240703005825.png'
+                        filename = 'plot_20240703005825.png'
 
                     code_result = f'![matplotlib_diagram](/static/{filename} "matplotlib_diagram")'
                     whole_step = 5  # 确保图返回结果只会被描述一次
 
-                    yield_list.append( code_result)
+                    yield_list.append(code_result)
                 show_template = details_span(code_result, run_time)
 
                 yield_list.append(list(show_template.values())[0])
@@ -683,12 +690,15 @@ print_process({lines[-1]})
         # 写入文本文件
         with open('static/data3.txt', 'a', encoding='utf-8') as file:
             file.write(formatted_data)
-        return     yield_list
-    yield_list=process_code(data)
+        return yield_list
+
+    yield_list = process_code(data)
 
     def generate():
-        for yield_element in yield_list:
-            yield yield_element
+        if yield_list != None and yield_list != []:
+            for yield_element in yield_list:
+                yield yield_element
+
     return Response(stream_with_context(generate()))
 
 

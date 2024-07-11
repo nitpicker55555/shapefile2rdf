@@ -427,12 +427,12 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                             if col_name == 'name':
                                 match_dict = name_cosin_list(query)
                             else:
-                                match_dict = calculate_similarity(given_list, query)
+                                match_dict = calculate_similarity(given_list, query).keys()
                             print(query + '\n')
                             # print(given_list)
                             # print('\n\nmatch_dict:', match_dict)
-                            if match_dict != {}:
-                                match_list['non_area_col'][col_name].update(set(match_dict.keys()))
+                            if match_dict:
+                                match_list['non_area_col'][col_name].update(set(match_dict))
 
                             else:
                                 if col_name == 'fclass':
@@ -704,6 +704,9 @@ def id_list_of_entity(query, verbose=False,bounding_box=None):
     :return:
     """
     # print(query)
+    query=query.lower()
+    if bounding_box==None:
+        bounding_box=session['globals_dict']
     for word in query.split():
         if word in similar_table_name_dict:
             query = query.replace(word, similar_table_name_dict[word])
@@ -777,7 +780,7 @@ def data_intersection_id_list(query,bounding_box=None):
         all_id_list.append(each_id_list)
     merged_id_list = merge_dicts(all_id_list)
 
-    if len(merged_id_list['id_list']) <4:
+    if len(merged_id_list['id_list']) <4 and len(query.split())==1:
         for table_ in intersection_keys_list:
             name_list = []
             fclass_list = []
@@ -1168,8 +1171,8 @@ def set_bounding_box(region_name, query=None):
                 location_name = i
 
         if len(region_name.lower().replace(location_name.lower(), '').strip()) != 0:  # 除了地名外还有额外修饰
-            query = region_name
-            region_name = location_name
+            query = region_name #原始query
+            region_name = location_name #query中的Location
         if region_name not in locations:
             region_name = "Munich Maxvorstadt"
 
@@ -1182,7 +1185,7 @@ def set_bounding_box(region_name, query=None):
                 'Original_bounding_box_of_' + region_name: str(bounding_box_dict['bounding_coordinates']),
                 "query": query
             }
-            modified_box = (str(modify_query))
+            modified_box = process_boundingbox(str(modify_query))
             bounding_box_dict['bounding_coordinates'], bounding_box_dict[
                 'bounding_wkb'], response_str = find_boundbox(modified_box, 'changed')
             # print(wkb.loads(bytes.fromhex(bounding_box_dict['bounding_wkb'])))

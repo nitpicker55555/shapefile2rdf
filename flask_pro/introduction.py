@@ -17,13 +17,13 @@ for key, filepath in geojson_files.items():
     with open('static/geojson' + '/' + filepath, 'r',encoding='utf-8') as file:
         geojson_data[key] = json.load(file)
 
-@app.route('/')
-def index():
-    return render_template('introduction.html')
 
 @app.route('/geojson/<key>')
 def send_geojson(key):
     return jsonify(geojson_data.get(key, {}))
+@app.route('/')
+def index():
+    return render_template('introduction.html')
 
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0')

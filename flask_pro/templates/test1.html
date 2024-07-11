@@ -1,61 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spatial Query Methods 🌍</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f8ff;
-      color: #333;
-      padding: 20px;
-      line-height: 1.6;
-    }
-    h1 {
-      color: #ff4500;
-      text-align: center;
-    }
-    .method {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 40px;
-      position: relative;
-    }
-    .method img {
-      margin: 0 100px;
-      max-width: calc(100% - 200px); /* Ensure image stays within the boundary */
-    }
-    .method span {
-      font-size: 2.2em;
-      position: absolute;
-      left: 100px; /* Align text with the left edge of the image */
-      top: -1.5em; /* Position above the image with a gap */
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Code Executor</title>
 </head>
 <body>
-<h1>Spatial Query Methods 🌍</h1>
-<br>
-<br>
-<br>
-<div class="method">
-  <span>Buffer</span>
-  <img src="../static/images_spatial/buffer.png" alt="Buffer">
-
-</div>
-<div class="method">
-  <span>Intersects</span>
-  <img src="https://via.placeholder.com/50" alt="Intersects">
-</div>
-<div class="method">
-  <span>Within</span>
-  <img src="https://via.placeholder.com/50" alt="Within">
-</div>
-<div class="method">
-  <span>Largest</span>
-  <img src="https://via.placeholder.com/50" alt="Largest">
-</div>
+    <h1>Code Executor</h1>
+    <form action="/execute" method="post">
+        <textarea name="code" rows="10" cols="50">{{ code }}</textarea><br>
+        <input type="submit" value="Execute">
+    </form>
+    <h2>Result:</h2>
+    <textarea rows="10" cols="50" readonly>{{ result }}</textarea>
 </body>
 </html>

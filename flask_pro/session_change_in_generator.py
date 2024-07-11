@@ -68,36 +68,35 @@ def send_data(data, mode="data", index="", sid=''):
 def submit():
     data = request.get_json().get('text')  # 获取代码
 
-    def generate(data):
-        original_stdout = sys.stdout
-        output = io.StringIO()
+    # 普通函数来处理代码执行和会话修改
+    def process_code(data):
         sys.stdout = output
-
         try:
-            # Pass the session into the exec environment
-            exec(data, {'session': session, **globals()})
+            exec(data, globals())  # 执行代码
         except Exception as e:
             exc_info = traceback.format_exc()
-            if session.get('template') == True:
+            # 打印错误信息和代码行
+            if session.get('template'):
                 print(f"An error occurred: {repr(e)}\n{exc_info}")
             else:
                 print("Nothing can I get! Please change an area and search again :)")
-        finally:
-            sys.stdout = original_stdout
+
+        session.modified = True  # 修改会话
 
         code_result = str(output.getvalue().replace('\00', ''))
         output.truncate(0)
-        output.seek(0)
-        print(session['globals_dict'])
-        yield code_result
+        sys.stdout = original_stdout
+        return code_result
 
+    # 执行代码并获取结果
+    code_result = process_code(data)
 
-    generator = generate(data)
-    next(generator)
-    return Response(stream_with_context(generate(data)))
+    # 将结果生成响应
+    def generate():
+        yield data  # 将代码数据发送给客户端
+        yield code_result  # 将执行结果发送给客户端
 
-
-
+    return Response(stream_with_context(generate()))
 
 
 if __name__ == '__main__':
