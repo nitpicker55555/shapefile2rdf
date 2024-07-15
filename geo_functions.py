@@ -241,7 +241,7 @@ def judge_area(type):
         return False
 
 def ids_of_type(graph_name, type_dict, bounding_box=None):
-    print(type_dict)
+
 
     """
     session['globals_dict']["bounding_box_region_name"]=region_name
@@ -320,13 +320,14 @@ ids_of_type('landuse',a)
         feed_back=area_filter(feed_back, type_dict['area_num'])['id_list'] #计算面积约束
         print(len(feed_back),'area_num',type_dict['area_num'])
 
-    if "bounding_box_region_name" in bounding_box_value:
+    if bounding_box_value!=None:
         geo_dict = {bounding_box_value["bounding_box_region_name"]:  (wkb.loads(bytes.fromhex((bounding_box_value['bounding_wkb']))))}
     else:
         geo_dict = {}
 
     geo_dict.update(feed_back)
     if len(feed_back)==0:
+
         print(f"Table {graph_name} have elements {type_dict}, but not in the current region.")
     #     raise Exception(f'Nothing found for {type_dict} in {graph_name}! Please change an area and search again.')
 
@@ -517,7 +518,7 @@ def geo_calculate(data_list1_original, data_list2_original, mode, buffer_number=
 
     """
 
-    if "bounding_box_region_name" in bounding_box_value:
+    if bounding_box_value!=None:
         # geo_dict = {bounding_box_value["bounding_box_region_name"]: wkb.loads(bytes.fromhex(bounding_box_value['bounding_wkb']))}
         geo_dict = {bounding_box_value["bounding_box_region_name"]: (wkb.loads(bytes.fromhex((bounding_box_value['bounding_wkb']))))}
     else:

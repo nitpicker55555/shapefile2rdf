@@ -56,7 +56,7 @@ for i in col_name_mapping_dict:
         # all_name_set.update(each_set)
 
 
-# print(all_fclass_set)
+# print_modify(all_fclass_set)
 def limit_total_words(lst, max_length=10000):
     total_length = 0
     result = []
@@ -72,7 +72,7 @@ def limit_total_words(lst, max_length=10000):
 
 
 def error_test():
-    print("normal output")
+    print_modify("normal output")
     raise Exception("asdasdawfdafc asdac zcx fwe")
 
 
@@ -106,7 +106,7 @@ def describe_label(query, given_list, table_name, messages=None):
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', query))
     result = chat_single(messages, 'json')
-    # print(result)
+    # print_modify(result)
     json_result = json.loads(result)
     if 'result' in json_result:
 
@@ -143,7 +143,7 @@ def vice_versa(query, messages=None):
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', query))
     result = chat_single(messages, 'json')
-    # print(result)
+    # print_modify(result)
     json_result = json.loads(result)
     if 'result' in json_result:
         return json_result['result']
@@ -199,10 +199,10 @@ def details_pick_chatgpt(query, given_list, table_name, messages=None):
             messages = []
             messages.append(message_template('system', ask_prompt))
             messages.append(message_template('user', f'is "{string_process(word)}" "{query}"?'))
-            print(f'is {string_process(word)} {query}?')
+            print_modify(f'is {string_process(word)} {query}?')
 
             result = chat_single(messages, 'json')
-            # print(result)
+            # print_modify(result)
             json_result = json.loads(result)
             if 'judgment' in json_result:
                 if json_result['judgment']:
@@ -366,10 +366,10 @@ def pick_match(query_feature_ori, table_name, verbose=False):
     try:
         query_feature = query_feature_ori.strip()
     except Exception as e:
-        print(query_feature_ori)
+        print_modify(query_feature_ori)
         raise Exception(e)
 
-    # print(query_feature)
+    # print_modify(query_feature)
     if ' and ' in query_feature:  # 复合特征
         query_list = query_feature.split(" and ")
     else:
@@ -384,7 +384,7 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                     match_list['non_area_col'][col_name] = set()
                 if are_strings_similar(query, table_name):
                     match_list['non_area_col'][col_name].add('all')  # 如果query和table名相似则返回所有
-                    # print(match_list)
+                    # print_modify(match_list)
                     continue
 
                 given_list = ids_of_attribute(table_name, col_name)
@@ -394,17 +394,17 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                 num_compare = judge_num_compare(query)
                 if num_compare:
                     compared_list = set(compare_num(given_list, num_compare))
-                    print(col_name, 'Satisfying the conditions:', compared_list)
+                    print_modify(col_name, 'Satisfying the conditions:', compared_list)
                     match_list['non_area_col'][col_name].update(compared_list)
                 else:
 
                     partial_similar = is_string_in_list_partial(query, given_list)
                     if verbose:
-                        print(query, table_name, col_name, partial_similar)
+                        print_modify(query, table_name, col_name, partial_similar)
 
                     if len(partial_similar) >= 1:
                         match_list['non_area_col'][col_name].update(set(partial_similar))
-                        # print('   as')
+                        # print_modify('   as')
                         continue
                     elif len(given_list) == 1:
                         match_list['non_area_col'][col_name].update(set(given_list))
@@ -418,7 +418,7 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                                                                         query)
 
                         if find_pre_matched != {}:
-                            print(f'find_pre_matched for {query}:', find_pre_matched)
+                            print_modify(f'find_pre_matched for {query}:', find_pre_matched)
                             match_list_key = list(find_pre_matched.keys())[0]
                             match_list['non_area_col'][col_name].update(
                                 set(global_paring_dict[table_name][match_list_key]))
@@ -428,9 +428,9 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                                 match_dict = name_cosin_list(query)
                             else:
                                 match_dict = calculate_similarity(given_list, query).keys()
-                            print(query + '\n')
-                            # print(given_list)
-                            # print('\n\nmatch_dict:', match_dict)
+                            print_modify(query + '\n')
+                            # print_modify(given_list)
+                            # print_modify('\n\nmatch_dict:', match_dict)
                             if match_dict:
                                 match_list['non_area_col'][col_name].update(set(match_dict))
 
@@ -441,12 +441,12 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                                             set(details_pick(query, given_list, table_name)))
                                     except Exception as e:
                                         raise Exception(e, query, table_name, given_list)
-                                    print(f'\n\nmatch_list for {query}:', match_list)
+                                    print_modify(f'\n\nmatch_list for {query}:', match_list)
                                 else:
                                     query_modify = general_gpt('what is name of ' + query)
-                                    print(query_modify + '\n')
+                                    print_modify(query_modify + '\n')
                                     match_dict = calculate_similarity(given_list, query_modify)
-                                    print('\n\nmatch_dict:', match_dict)
+                                    print_modify('\n\nmatch_dict:', match_dict)
                                     if match_dict != {}:
                                         match_list['non_area_col'][col_name].update(set(match_dict.keys()))
 
@@ -459,14 +459,14 @@ def pick_match(query_feature_ori, table_name, verbose=False):
     if match_list == []:
         raise Exception('no relevant item found for: ' + query_feature + ' in given list.')
 
-    if verbose: print(match_list, query_feature, table_name)
+    if verbose: print_modify(match_list, query_feature, table_name)
     return match_list
     # messages.append(message_template('assistant',result))
 
 
 def print_process(*args):
     for content in args:
-        # print(type(content))
+        # print_modify(type(content))
         if isinstance(content, dict):
             if 'id_list' in content:
                 if len(content['id_list']) != 0:
@@ -477,15 +477,15 @@ def print_process(*args):
                         print_content += str(random.sample(list(content['id_list'].items()), 2))
                     else:
                         print_content += str(random.sample(list(content['id_list'].items()), len(content['id_list'])))
-                    print(print_content)
+                    print_modify(print_content)
                 else:
-                    print('id_list length 0')
+                    print_modify('id_list length 0')
             else:
                 # pass
-                print(content)
+                print_modify(content)
         else:
             # pass
-            print(content)
+            print_modify(content)
 
 
 def judge_geo_relation(query, messages=None):
@@ -566,7 +566,7 @@ Please ensure accuracy and precision in your responses, as these are critical fo
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', query))
     result = chat_single(messages, 'json')
-    # print(result)
+    # print_modify(result)
     json_result = json.loads(result)
     if 'geo_calculations' in json_result:
         if json_result['geo_calculations']['exist']:
@@ -650,7 +650,7 @@ like: residential area which has buildings.
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', query))
     result = chat_single(messages, 'json', 'gpt-4o-2024-05-13')
-    # print(result)
+    # print_modify(result)
     json_result = json.loads(result)
     return json_result
 
@@ -703,7 +703,7 @@ def id_list_of_entity(query, verbose=False,bounding_box=None):
     :param query:
     :return:
     """
-    # print(query)
+    # print_modify(query)
     query=query.lower()
     if bounding_box==None:
         bounding_box=session['globals_dict']
@@ -711,7 +711,7 @@ def id_list_of_entity(query, verbose=False,bounding_box=None):
         if word in similar_table_name_dict:
             query = query.replace(word, similar_table_name_dict[word])
     table_str = judge_table(query)
-    print("table: ", table_str)
+    print_modify("table: ", table_str)
     if table_str == None:
 
         intersects_id_list = data_intersection_id_list(query,bounding_box=bounding_box)
@@ -738,28 +738,31 @@ def intersect_dicts(dict1, dict2):
         combined_keys = list(dict1.keys()) + list(dict2.keys())
         return combined_keys
 
-
+def print_modify(*args):
+    for i in args:
+        print(i)
+    print('; ')
 def data_intersection_id_list(query,bounding_box=None):
     table_name_dicts = {}
     table_fclass_dicts = {}
     all_id_list = []
-
+    type_dict_list=[]
     match_list, judge_strong = calculate_similarity(all_fclass_set, query, 'judge_strong')
     match_list = set(match_list.keys())
-    print(judge_strong, 'judge_strong')
+    print_modify(judge_strong, 'judge_strong')
     single_word_sign= len(query.split())>1
 
     if len(match_list) != 0:
-        print('fclass match')
+
         table_fclass_dicts = find_keys_by_values(fclass_dict_4_similarity, match_list)
-        print("table_fclass_dicts: ", table_fclass_dicts)
+        print_modify("table_fclass_dicts: ", table_fclass_dicts)
 
     if not judge_strong:
         match_list = name_cosin_list(query)
         if len(match_list) != 0:
-            print('name match')
+
             table_name_dicts = find_keys_by_values(name_dict_4_similarity, match_list)
-            print("table_name_dicts: ", table_name_dicts)
+            print_modify("table_name_dicts: ", table_name_dicts)
 
     if table_name_dicts != {} and table_fclass_dicts != {}:
         table_fclass_dicts.update({'buildings': ['building']})
@@ -777,10 +780,13 @@ def data_intersection_id_list(query,bounding_box=None):
 
         each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set(name_list)},
                                             'area_num': None},bounding_box=bounding_box)
+        type_dict_list.append({'non_area_col': {'fclass': set(fclass_list), 'name': set(name_list)},
+                                            'area_num': None})
         all_id_list.append(each_id_list)
+    print_modify(type_dict_list)
     merged_id_list = merge_dicts(all_id_list)
-
-    if len(merged_id_list['id_list']) <4 and len(query.split())==1:
+    print_modify('merged_id_list length:',len(merged_id_list))
+    if (len(merged_id_list['id_list']) <4 and len(query.split())==1) or len(merged_id_list['id_list']) <1:
         for table_ in intersection_keys_list:
             name_list = []
             fclass_list = []
@@ -789,9 +795,12 @@ def data_intersection_id_list(query,bounding_box=None):
             if table_ in table_fclass_dicts:
                 fclass_list = table_fclass_dicts[table_]
             if table_!='buildings': #并集不并buildings
-                each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
+                if len(fclass_list)!=0:
+                    each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(fclass_list), 'name': set()},
                                                 'area_num': None},bounding_box=bounding_box)
-                all_id_list.append(each_id_list)
+                    all_id_list.append(each_id_list)
+
+
             each_id_list = ids_of_type(table_, {'non_area_col': {'fclass': set(), 'name': set(name_list)},
                                                 'area_num': None},bounding_box=bounding_box)
             all_id_list.append(each_id_list)
@@ -853,18 +862,18 @@ def geo_filter(query, id_list_subject, id_list_object,bounding_box=None):
     if versa_sign:
         query = query.replace(negation_word, '')
     geo_relation = judge_geo_relation(query)
-    # print( geo_relation['type'])
-    # print(id_list_subject)
+    # print_modify( geo_relation['type'])
+    # print_modify(id_list_subject)
     geo_result = geo_calculate(id_list_subject, id_list_object, geo_relation['type'], geo_relation['num'],
                                versa_sign=versa_sign,bounding_box=bounding_box)
     target_label = list(get_label_from_id(geo_result['subject']['id_list']))
     geo_result['geo_map']['target_label'] = target_label
-    # print(target_label,'target_label')
+    # print_modify(target_label,'target_label')
     return geo_result
 
 
 def judge_object_subject(query, geo_relation_dict, messages=None):
-    print('query for judge_object_subject:', query)
+    print_modify('query for judge_object_subject:', query)
 
     if messages == None:
         messages = []
@@ -906,15 +915,15 @@ Your goal is to consistently apply this method to analyze and break down user qu
     if messages == None:
         messages = []
     if geo_relation_dict != None and 'area_calculate' not in geo_relation_dict:
-        print('geo_calculate')
+        print_modify('geo_calculate')
         ask_prompt = ask_prompt_geo_relation
     else:
-        print('ask_prompt_adj')
+        print_modify('ask_prompt_adj')
         ask_prompt = ask_prompt_adj
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', query))
     result = chat_single(messages, 'json')
-    # print(result)
+    # print_modify(result)
     json_result = json.loads(result)
     if 'entity_text' in json_result:
 
@@ -941,7 +950,7 @@ def judge_table(query, messages=None):
         return None
     if messages == None:
         messages = []
-    # print(query.lower(),"query.lower()")
+    # print_modify(query.lower(),"query.lower()")
     for i in similar_table_name_dict:
         if i in query.lower().split():
             return {'database': similar_table_name_dict[i]}
@@ -1033,13 +1042,13 @@ def judge_table_gpt(query, messages=None):
     messages.append(message_template('system', ask_prompt))
     messages.append(message_template('user', str(query)))
     result = chat_single(messages, 'json')
-    # print(result)
+    # print_modify(result)
     json_result = json.loads(result)
     return json_result
 
 
 def mission_gpt(query, messages=None):
-    print(query)
+    print_modify(query)
     if isinstance(query, dict):
         query = str(query)
     if query == None:
@@ -1095,7 +1104,7 @@ def general_gpt(query, messages=None):
     messages.append(message_template('user', str(query)))
     # result = chat_single(messages, '','gpt-4o-2024-05-13')
     result = chat_single(messages, '')
-    print('general_gpt result:', result)
+    print_modify('general_gpt result:', result)
     return result
 
 
@@ -1188,7 +1197,7 @@ def set_bounding_box(region_name, query=None):
             modified_box = process_boundingbox(str(modify_query))
             bounding_box_dict['bounding_coordinates'], bounding_box_dict[
                 'bounding_wkb'], response_str = find_boundbox(modified_box, 'changed')
-            # print(wkb.loads(bytes.fromhex(bounding_box_dict['bounding_wkb'])))
+            # print_modify(wkb.loads(bytes.fromhex(bounding_box_dict['bounding_wkb'])))
 
         geo_dict = {
             bounding_box_dict["bounding_box_region_name"]: (
