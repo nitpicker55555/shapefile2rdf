@@ -785,7 +785,7 @@ def data_intersection_id_list(query,bounding_box=None):
         all_id_list.append(each_id_list)
     print_modify(type_dict_list)
     merged_id_list = merge_dicts(all_id_list)
-    print_modify('merged_id_list length:',len(merged_id_list))
+    print_modify('elements searched length:',len(merged_id_list['id_list']))
     if (len(merged_id_list['id_list']) <4 and len(query.split())==1) or len(merged_id_list['id_list']) <1:
         for table_ in intersection_keys_list:
             name_list = []
