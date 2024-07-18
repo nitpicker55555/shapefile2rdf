@@ -415,7 +415,7 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                         if table_name in global_paring_dict:
                             if list(global_paring_dict[table_name].keys()) != []:
                                 find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()),
-                                                                        query)
+                                                                        query)[0]
 
                         if find_pre_matched != {}:
                             print_modify(f'find_pre_matched for {query}:', find_pre_matched)
@@ -1180,7 +1180,7 @@ def set_bounding_box(region_name, query=None):
                 location_name = i
 
         if len(region_name.lower().replace(location_name.lower(), '').strip()) != 0:  # 除了地名外还有额外修饰
-            query = region_name #原始query
+            query = region_name #原始queryF
             region_name = location_name #query中的Location
         if region_name not in locations:
             region_name = "Munich Maxvorstadt"
