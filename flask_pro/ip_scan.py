@@ -57,6 +57,6 @@ intern_report = scan_network(intern_network)
 
 print(intern_report)
 # save_report(global_report, 'global_network_report.txt')
-# save_report(intern_report, 'intern_network_report.txt')
+save_report(intern_report, 'intern_network_report.txt')
 
 print('Reports saved.')

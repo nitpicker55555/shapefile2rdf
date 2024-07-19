@@ -415,7 +415,9 @@ def pick_match(query_feature_ori, table_name, verbose=False):
                         if table_name in global_paring_dict:
                             if list(global_paring_dict[table_name].keys()) != []:
                                 find_pre_matched = calculate_similarity(list(global_paring_dict[table_name].keys()),
-                                                                        query)[0]
+                                                                        query)
+                                if isinstance(find_pre_matched,tuple):
+                                    find_pre_matched=find_pre_matched[0]
 
                         if find_pre_matched != {}:
                             print_modify(f'find_pre_matched for {query}:', find_pre_matched)
